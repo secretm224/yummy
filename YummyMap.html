@@ -102,6 +102,7 @@
         { name: "비래옥", lat: 37.5057545438943, lng: 127.050042038224, type: "store" },
         { name: "청년다방", lat: 37.5041662879426, lng: 127.052043567109, type: "store" },
         { name: "선릉돈까스", lat: 37.5031737, lng: 127.0479585, type: "store" },
+        { name: "모쿠", lat: 37.5053576, lng: 127.0430391, type: "store" },
         { name: "알바천국", lat: 37.5032355765545, lng: 127.046582379785, type: "company" }
     ];
 
@@ -133,8 +134,50 @@
                 draggable: true
             });
 
+            // var infowindow = new naver.maps.InfoWindow({
+            //     content: `<div style="padding:5px;">${store.name}</div>`
+            // });
+
+            var naverMapLink = `https://map.naver.com/v5/search/${store.name}?c=${store.lng},${store.lat},17,0,0,0,dh`;
+
+            // 가게 타입별 이모지 설정 (귀여운 요소 추가)
+            var emoji = "🍽️"; // 기본 음식점
+            if (store.name.includes("커피") || store.name.includes("카페") || store.name.includes("스타벅스")) {
+                emoji = "☕";
+            } else if (store.name.includes("치킨") || store.name.includes("BBQ")) {
+                emoji = "🍗";
+            } else if (store.name.includes("햄버거") || store.name.includes("버거")|| store.name.includes("맘스터치")) {
+                emoji = "🍔";
+            } else if (store.type === "company") {
+                emoji = "🏢"; // 회사 아이콘
+            }
+
+            // 귀여운 디자인이 적용된 InfoWindow
             var infowindow = new naver.maps.InfoWindow({
-                content: `<div style="padding:5px;">${store.name}</div>`
+                content: `
+                    <div style="
+                        padding: 10px; 
+                        border-radius: 10px; 
+                        background-color: #FFF8DC; 
+                        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2); 
+                        text-align: center;
+                        font-family: 'Comic Sans MS', sans-serif;
+                        max-width: 200px;
+                    ">
+                        <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">
+                            ${emoji} ${store.name}
+                        </div>
+                        <a href="${naverMapLink}" target="_blank" style="
+                            display: inline-block;
+                            padding: 5px 10px;
+                            font-size: 14px;
+                            color: white;
+                            background-color: #FF8C00;
+                            border-radius: 5px;
+                            text-decoration: none;
+                            font-weight: bold;
+                        ">🗺️ 네이버 지도에서 보기</a>
+                    </div>`
             });
 
             naver.maps.Event.addListener(marker, "dragend", function(e) {
