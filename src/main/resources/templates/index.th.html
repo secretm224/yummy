@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Thymeleaf 테스트 페이지</title>
+</head>
+<body>
+<!-- 모델에서 name 값을 받아서 동적으로 출력 -->
+<h1 th:text="'안녕, ' + ${name} + '!'">안녕, Thymeleaf!</h1>
+<p>이건 자바 Thymeleaf 파일로 만든 테스트 페이지야. 오토로 되는지 보자 안되네</p>
+</body>
+</html>
