@@ -1,3 +1,6 @@
+### Application Configuration ###
+application.properties
+
 HELP.md
 .gradle
 build/
