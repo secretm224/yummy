@@ -1,2 +1,2 @@
 # yummy
-yummy java project 
+yummy java project
