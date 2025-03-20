@@ -1,5 +1,5 @@
 ### Application Configuration ###
-application.properties
+*.properties
 
 HELP.md
 .gradle
