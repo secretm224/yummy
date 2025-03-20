@@ -15,6 +15,9 @@ import java.util.Map;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 
+//import com.auth0.jwt.JWT;
+//import com.auth0.jwt.interfaces.DecodedJWT;
+
 
 @Controller
 @RequestMapping("/login")
@@ -39,12 +42,20 @@ public class LoginController {
          String code = loginDto.getCode();
          if(!code.isEmpty()){
             KakaoToken _kakaoToken = loginService.GetKakaoToken(code);
+            if(_kakaoToken != null){
+                String access_token = _kakaoToken.getAccess_token();
+                String refresh_token = _kakaoToken.getRefresh_token();
+                String id_token = _kakaoToken.getId_token();
 
+               // DececodeJWT
+
+            }
          }
 
          Map<String,Object> responseBody = new HashMap<>();
 //         responseBody.put("kakao_access_token","");
 //         responseBody.put("kakao_payload","");
+
 
          return ResponseEntity.ok(responseBody);
      }
