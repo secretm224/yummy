@@ -3,12 +3,19 @@
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{layouts/default}">
 <head>
-    <!-- 추가적인 head 요소가 필요하면 여기서 정의 -->
+    <link rel="stylesheet" th:href="@{/css/login.css}" />
+    <script th:src="@{/js/login.js}"></script>
 </head>
 <body>
 <div layout:fragment="content">
-    <h2>환영합니다!</h2>
-    <p>홈 페이지 내용입니다.</p>
+    <div class="login-container" id="login-container" >
+        <h1>로그인하기</h1>
+        <p>로그인하여 다양한 기능을 사용하세요.</p>
+        <a class="kakao-login" onclick="loginWithKakao();">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/e/e3/KakaoTalk_logo.svg" alt="KakaoTalk Logo">
+            카카오톡으로 로그인
+        </a>
+    </div>
 </div>
 </body>
 </html>

@@ -1,0 +1,403 @@
+@import url('https://cdn.jsdelivr.net/npm/pretendard@1.3.8/dist/web/static/pretendard.css');
+
+body {
+    font-family: "Comic Sans MS", "Pretendard", Arial, sans-serif;
+    background-color: #FFF8DC;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    /* padding-top: 60px;
+    padding-bottom: 80px; */
+}
+
+footer {
+    text-align: center;
+    padding: 0px;
+    font-size: 12px;
+    color: #333;
+    background-color: #FFFAF0;
+    border-top: 1px solid #FFA500;
+    width: 100%;
+}
+
+/* ✅ 헤더 스타일 (귀엽게 변경) */
+header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: #FFFAF0;
+    padding: 8px 12px; /* ✅ 높이 조정 */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1000;
+    border-bottom: 1px solid #FFA500;
+}
+
+/* ✅ 헤더의 h1 폰트 귀엽게 + 이모티콘 추가 */
+header h1 {
+    font-family: "DungGeunMo", "Pretendard", cursive;
+    font-size: 20px;
+    color: #FFA500;
+    text-shadow: 2px 2px 2px rgba(255, 182, 193, 0.5); /* 부드러운 그림자 효과 */
+}
+
+/* ✅ 헤더 이모티콘 추가 */
+header h1::before {
+    content: "🍫🍄 "; /* 왼쪽에 토끼 이모티콘 */
+}
+
+header h1::after {
+    content: " 🍫🍄"; /* 오른쪽에도 토끼 이모티콘 */
+}
+
+/* ✅ 햄버거 버튼 위치 조정 */
+.hamburger-menu {
+    font-size: 24px;
+    cursor: pointer;
+    padding: 10px;
+    position: absolute;
+    right: 40px;
+}
+
+/* 사이드바 스타일 */
+.sidebar {
+    position: fixed;
+    top: 0;
+    right: -250px; /* 처음에는 숨김 */
+    width: 250px;
+    height: 100%;
+    background: #FFF8DC;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.2);
+    transition: right 0.3s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 80px; /* ✅ 헤더와 겹치지 않도록 여백 추가 */
+}
+
+/* 사이드바가 활성화될 때 */
+.sidebar.active {
+    right: 0;
+}
+
+/* 닫기 버튼 */
+.sidebar .close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 20px;
+    cursor: pointer;
+}
+/* 🟠 프로필 이미지 */
+.sidebar .profile-info img {
+    width: 60px; /* ✅ 사이즈 조정 */
+    height: 60px;
+    border-radius: 50%;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+    margin-bottom: 10px;
+}
+
+/* 🟠 닉네임 스타일 */
+.sidebar .profile-info p {
+    font-size: 16px;
+    font-weight: bold;
+    color: #3C1E1E;
+}
+/* 리스트 스타일 */
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+    width: 100%;
+    text-align: center;
+}
+
+/* 각 리스트 항목에 구분선 추가 */
+.sidebar ul li {
+    padding: 15px 0;
+    width: 100%;
+    border-bottom: 1px solid #FFD700; /* 노란색 구분선 */
+}
+
+/* 마지막 항목은 구분선 제거 */
+.sidebar ul li:last-child {
+    border-bottom: none;
+}
+
+/* 리스트 항목의 링크 스타일 */
+.sidebar ul li a {
+    text-decoration: none;
+    color: #3C1E1E;
+    font-weight: bold;
+    display: block;
+    padding: 10px 0;
+    transition: 0.3s;
+}
+
+/* 호버 효과 */
+.sidebar ul li a:hover {
+    background-color: #FFD700;
+}
+
+/* 로그인 버튼 스타일 수정 */
+.sidebar .login-button {
+    width: 80%;
+    text-align: center;
+    display: block;
+    margin: 20px auto; /* 🟢 위쪽 여백 추가해서 헤더와 겹치지 않도록 조정 */
+    padding: 12px 0;
+    background-color: #FF8C00;
+    color: white;
+    font-weight: bold;
+    border-radius: 8px;
+    text-decoration: none;
+}
+
+.sidebar .login-button:hover {
+    background-color: #E67E22;
+}
+
+/* 푸터 위치 고정 */
+footer {
+    position: fixed;
+    bottom: 0px;
+    font-size: 14px;
+    color: #666;
+}
+/* ✅ 카피라이터 추가 */
+.copyright {
+    margin-top: 20px;
+    font-size: 12px;
+    color: #999;
+    text-align: center;
+    font-weight: bold;
+}
+.profile-img {
+    width: 80px; /* ✅ 프로필 이미지 크기 */
+    height: 80px;
+    border-radius: 50%; /* ✅ 원형 프로필 */
+    margin-bottom: 10px;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* ✅ 헤더 내부 컨테이너 정렬 */
+.header-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    justify-content: space-between;
+}
+/*
+/* ✅ 제목 (h1) 스타일 */
+/* ✅ 헤더 스타일 */
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* 좌우 정렬 */
+    padding: 10px 20px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: #FFFAF0;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+/* ✅ 제목 (왼쪽 정렬 유지) */
+header h1 {
+    font-size: 20px;
+    color: #FFA500;
+    margin: 0;
+    flex: 1; /* 검색창 중앙 정렬을 위한 여백 */
+    text-align: left;
+}
+
+/* ✅ 검색 영역을 중앙 정렬 */
+.header-search-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* ✅ 검색 입력창 스타일 */
+.header-search-container input {
+    width: 250px;
+    padding: 8px;
+    font-size: 14px;
+    border: 2px solid #FFD700;
+    border-radius: 20px;
+    outline: none;
+    text-align: center;
+    background-color: #FFFAF0;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    color: transparent; /* 텍스트 색상을 투명하게 */
+    text-shadow: 0 0 0 #333; /* 입력된 텍스트는 보이도록 */
+    caret-color: transparent; /* 커서 색상을 투명하게 */
+}
+
+/* ✅ 검색 버튼 스타일 */
+.header-search-button {
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #50504e;
+    background-color: #FFD700;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: 0.3s;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.header-search-button:hover {
+    background-color: #FF4500;
+    transform: scale(1.05);
+}
+
+/* ✅ 햄버거 버튼 (오른쪽 유지) */
+.hamburger-menu {
+    font-size: 24px;
+    cursor: pointer;
+    padding: 10px;
+    position: relative;
+}
+
+/* ✅ 반응형 (모바일에서 검색창 크기 조정) */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column; /* 세로 정렬로 변경 */
+        padding: 10px;
+        align-items: center; /* 가운데 정렬 */
+    }
+
+    header h1 {
+        order: 1; /* h1을 맨 위로 */
+        margin-bottom: 10px; /* 검색창과의 간격 */
+        position: relative;
+        text-align: center; /* 모바일에서 중앙 정렬 */
+        right: 30px; /* 오른쪽 상단 고정 */
+    }
+
+    .header-search-container {
+        order: 2; /* 검색창을 두 번째로 */
+        position: relative; /* absolute 제거 */
+        left: auto; /* 가운데 정렬 해제 */
+        transform: none; /* transform 제거 */
+        max-width: 280px;
+        width: 100%; /* 모바일에서 꽉 차게 */
+    }
+
+    .header-search-container input {
+        width: 180px;
+    }
+
+    .header-search-button {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .hamburger-menu {
+        order: 3; /* 햄버거 메뉴를 맨 아래로 */
+        position: absolute;
+        top: 10px;
+        right: 30px; /* 오른쪽 상단 고정 */
+    }
+}
+
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    right: -260px; /* 기본적으로 숨김 */
+    width: 260px;
+    height: 100%;
+    background: #FFF8DC;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.2);
+    transition: right 0.3s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 80px;
+    z-index: 1500;
+}
+
+/* ✅ 사이드바가 활성화될 때 */
+.sidebar.active {
+    right: 0;
+}
+
+/* ✅ 본문과 지도 조정 */
+main {
+    transition: margin-right 0.3s ease-in-out;
+}
+
+.sidebar.active ~ main {
+    margin-right: 260px; /* 사이드바 너비만큼 본문 이동 */
+}
+
+#map {
+    transition: margin-right 0.3s ease-in-out;
+}
+
+.sidebar.active ~ main #map {
+    margin-right: 260px; /* 지도도 같이 이동 */
+}
+/* 🗺️ 지도 스타일 반응형 조정 */
+#map {
+    width: 100vw; /* 화면 전체 너비 */
+    height: calc(100vh - 60px); /* 헤더 높이를 제외한 전체 높이 */
+    max-width: 1200px; /* 최대 너비 설정 */
+    max-height: 800px; /* 최대 높이 설정 */
+    margin: 0 auto; /* 가운데 정렬 */
+    transition: margin-right 0.3s ease-in-out, width 0.3s ease-in-out, height 0.3s ease-in-out;
+}
+
+/* ✅ 사이드바 활성화 시 지도 크기 조정 */
+.sidebar.active ~ main #map {
+    margin-right: 260px; /* 사이드바 너비만큼 이동 */
+    width: calc(100vw - 260px); /* 사이드바 제외한 너비 */
+}
+
+/* ✅ 반응형 설정 */
+@media (max-width: 1024px) {
+    #map {
+        width: 90vw;
+        height: calc(100vh - 80px);
+    }
+
+    .sidebar.active ~ main #map {
+        width: calc(90vw - 260px);
+    }
+}
+
+@media (max-width: 768px) {
+    #map {
+        width: 95vw;
+        height: calc(100vh - 100px);
+    }
+
+    .sidebar.active ~ main #map {
+        width: calc(95vw - 260px);
+    }
+}
+
+@media (max-width: 480px) {
+    #map {
+        width: 100vw;
+        height: calc(100vh - 120px);
+        max-height: none;
+    }
+
+    .sidebar.active ~ main #map {
+        width: 100vw;
+    }
+}

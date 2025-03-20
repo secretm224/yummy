@@ -1,0 +1,64 @@
+<!-- layouts/default.html -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<head>
+    <title th:text="${title}"></title>
+    <link rel="stylesheet" th:href="@{/css/common.css}" />
+    <script th:src="@{/js/common.js}"></script>
+    <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js"
+            integrity="sha384-DKYJZ8NLiK8MN4/C5P2dtSmLQ4KwPaoqAfyA/DfmEc1VDxu4yyC7wy6K1Hs90nka"
+            crossorigin="anonymous"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+           // console.log("🚀 DOM이 준비되었습니다.");
+            if (window.Kakao && !Kakao.isInitialized()) {
+                Kakao.init('4a2a51c4104deceb54f805eb34bc4f3d');
+                console.log("Kakao SDK 초기화 완료:", Kakao.isInitialized());
+            }
+        });
+    </script>
+</head>
+<body>
+<header>
+    <h1><a href="/" style="text-decoration: none; color: inherit;">가야 할 지도</a></h1>
+<!--    <div class="header-search-container">-->
+<!--        <input type="text" id="headerSearchInput" placeholder="🔍 검색할 가게명을 입력하세요!">-->
+<!--        <button class="header-search-button" onclick="filterStoreList()">검색</button>-->
+<!--    </div>-->
+    <div class="hamburger-menu" onclick="toggleSidebar()">☰</div>
+</header>
+<div class="sidebar" id="sidebar">
+    <span class="close-btn" onclick="toggleSidebar()">✖</span>
+    <ul>
+<!--        <% if (typeof user !== 'undefined' && user) { %>-->
+<!--        <li>-->
+<!--            <img  src="<%= user.picture %>" alt="프로필" class="profile-img">-->
+<!--            <p><strong ><%= user.name %></strong></p>-->
+<!--        </li>-->
+<!--        &lt;!&ndash; <li><a href="#">내 정보</a></li>-->
+<!--        <li><a href="#">설정</a></li> &ndash;&gt;-->
+<!--        <li><a href="#" onclick="logout()">로그아웃</a></li>-->
+
+<!--        <% if (user.is_admin) { %>-->
+<!--        <li><a href="/admin">관리자 페이지</a></li>-->
+<!--        <% } %>-->
+
+<!--        <% } else { %>-->
+<!--        <li><a href="/login" class="login-button">로그인</a></li>-->
+<!--        <% } %>-->
+
+         <li><a href="#" class="">준비 중</a></li>
+    </ul>
+</div>
+
+
+<div layout:fragment="content">
+    <!-- 여기에 개별 페이지 내용이 들어감 -->
+</div>
+<footer>
+    <p class="copyright">© 2025 Yummy 🍫 초코송이가 만들었어요! 🍄</p>
+    <p><a href="">support@yummymap.com</a></p>
+</footer>
+</body>
+</html>
