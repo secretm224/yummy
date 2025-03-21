@@ -13,6 +13,11 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.*;
+
+
 
 @Service
 @Slf4j
@@ -111,20 +116,37 @@ public class LoginService {
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
             headers.add("Authorization","Bearer "+access_token);
 
-//            ObjectNode req_obj =  om.createObjectNode();
+            Map<String, Object> requestBody = new HashMap<>();
+            List<String> propertyKeys = Arrays.asList(
+                    "kakao_account.profile.nickname",
+                    "kakao_account.profile.thumbnail_image"
+            );
+            requestBody.put("property_keys", propertyKeys);
 
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
 
+            RestTemplate restTemplate = new RestTemplate();
+            ResponseEntity<JsonNode> response = restTemplate.postForEntity(url, requestEntity, JsonNode.class);
+            JsonNode json = response.getBody();
+
+            String nickName =  json.path("kakao_account")
+                                    .path("profile")
+                                    .path("nickname")
+                                    .asText();
+
+            String image = json.path("kakao_account")
+                                .path("profile")
+                                .path("thumbnail_image_url")
+                                .asText();
+            long tokenId = json.path("id").asLong();
+
+            user_obj.put("nickname", nickName);
+            user_obj.put("picture", image);
+            user_obj.put("token_id", tokenId);
 
         }catch(Exception e){
-
-
+            e.printStackTrace();
         }
-
-
-
-
-
-
         return user_obj;
     }
 
