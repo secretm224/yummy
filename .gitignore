@@ -9,6 +9,13 @@ build/
 !**/src/test/**/build/
 !build.gradle
 
+gradle/.tmp/
+gradle/caches/
+gradle/build-scan-data/
+gradle/daemon/
+gradle/native/
+gradle/wrapper/dists/
+
 ### STS ###
 .apt_generated
 .classpath

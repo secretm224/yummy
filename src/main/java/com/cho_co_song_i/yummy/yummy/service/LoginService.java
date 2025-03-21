@@ -143,7 +143,7 @@ public class LoginService {
             user_obj.put("nickname", nickName);
             user_obj.put("picture", image);
             user_obj.put("token_id", tokenId);
-
+//test
         }catch(Exception e){
             e.printStackTrace();
         }
