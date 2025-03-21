@@ -1,71 +1,72 @@
 package com.cho_co_song_i.yummy.yummy.configuration;
 
+
+import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import javax.annotation.PreDestroy;
-import java.io.IOException;
-
-import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 @Configuration
 public class ElasticsearchConfig {
+
     @Value("${spring.elasticsearch.uris}")
-    private String esUris;
+    private String[] uris;
 
     @Value("${spring.elasticsearch.username}")
-    private String username;
+    private String userName;
 
     @Value("${spring.elasticsearch.password}")
     private String password;
 
-    private RestHighLevelClient client;  // 싱글톤 인스턴스를 유지하기 위한 변수
-
     @Bean
-    public RestHighLevelClient restHighLevelClient() {
-        /* 문자열로 된 ES 노드 주소를 HttpHost 배열로 변환 */
-        List<HttpHost> hosts = Arrays.stream(esUris.split(","))
-                .map(url -> {
-                    String[] parts = url.split(":");
-                    String host = parts[1].replace("//", ""); // "http://" 제거
-                    int port = Integer.parseInt(parts[2]);
-                    return new HttpHost(host, port, "http");
-                })
-                .toList();
+    public ElasticsearchAsyncClient elasticAsyncClient() {
+        BasicCredentialsProvider credentialProvider = new BasicCredentialsProvider();
+        credentialProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(userName, password));
 
-        /* 인증 정보 설정 */
-        BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-        credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(username, password));
+        /*
+            ====== Elasticsearch Server URL 설정 ======
+            1) uris 는 String[] 타입의 배열이다.
+            uris = ["http://221.149.34.65:2025", "http://221.149.34.65:2026", "http://221.149.34.65:2027"]
+            이 배열을 스트림으로 변환한 후, HttpHost.create(uri) 로 각각의 문자열 URL 을 HttpHost 객체로 반환한 후 배열로 바꾸는 과정
 
-        /* RestHighLevelClient 생성 (싱글톤) */
-        client = new RestHighLevelClient(
-                RestClient.builder(hosts.toArray(new HttpHost[0]))
-                        .setHttpClientConfigCallback(httpClientBuilder ->
-                                httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider))
+            2) .setHttpClientConfigCallback() 는 비동기 클라이언트 설정을 구성하는 부분
+            -> RestClientBuilder.HttpClientConfigCallback 인터페이스를 구현하는 익명 클래스를 정의.
+            -> 인증정보, 다른 커스텀 설정을 구성 가능
+            -> 타임아웃 설정, 헤더 추가, SSL 인증서 설정 등 다양한 설정 구성가능
+            ** -> credentialProvider 를 매개변수로 넣고 있다.
+        */
+        RestClientBuilder builder = RestClient.builder(
+                Stream.of(uris).map(HttpHost::create).toArray(HttpHost[]::new)
+        ).setHttpClientConfigCallback(
+                httpClientBuilder -> httpClientBuilder.setDefaultCredentialsProvider(credentialProvider)
         );
 
-        return client;
-    }
+        RestClient restClient = builder.build();
 
-    /* ✅ 애플리케이션 종료 시 안전하게 클라이언트 닫기 */
-    @PreDestroy
-    public void closeClient() {
-        try {
-            if (client != null) {
-                client.close();
-                System.out.println("✅ Elasticsearch 클라이언트가 정상적으로 종료되었습니다.");
-            }
-        } catch (IOException e) {
-            System.err.println("❌ Elasticsearch 클라이언트 종료 중 오류 발생: " + e.getMessage());
-        }
-    }
+        /*
+            커스터마이징한 오브젝트 맵퍼 생성 -> Search 결과를 DTO에 맵핑하기 위함.
+        */
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
+        JacksonJsonpMapper jsonMapper = new JacksonJsonpMapper(mapper);
+        RestClientTransport transport = new RestClientTransport(restClient, jsonMapper);
+
+        return new ElasticsearchAsyncClient(transport);
+    }
 }

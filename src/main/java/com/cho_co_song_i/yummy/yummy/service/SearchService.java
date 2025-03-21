@@ -1,58 +1,39 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
-import com.cho_co_song_i.yummy.yummy.configuration.ObjectMapperConfig;
+import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 public class SearchService {
-    private final RestHighLevelClient restHighLevelClient;
-    private final ObjectMapper objectMapper;
+    private final ElasticsearchAsyncClient searchAsyncClient;
 
-    public SearchService(RestHighLevelClient restHighLevelClient) {
-        this.restHighLevelClient = restHighLevelClient;
-        this.objectMapper = ObjectMapperConfig.createObjectMapper();
+    public SearchService(ElasticsearchAsyncClient searchAsyncClient) {
+        this.searchAsyncClient = searchAsyncClient;
     }
 
-    public List<SearchStoreDto> searchStores(String indexName, String field, String value) {
-        List<SearchStoreDto> stores = new ArrayList<>();
+    public CompletableFuture<List<SearchStoreDto>> searchDocuments(String index, String field, String query) {
 
-        /* 검색 요청 설정*/
-        SearchRequest searchRequest = new SearchRequest(indexName);
-        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder()
-                .query(QueryBuilders.matchQuery(field, value))
-                .size(1000);
+        SearchRequest searchRequest = new SearchRequest.Builder()
+                .index(index)
+                .query(q -> q.match(m -> m
+                        .field(field)
+                        .query(query)
+                ))
+                .build();
 
-        searchRequest.source(sourceBuilder);
-
-        try {
-
-            SearchResponse resp = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-
-            for (SearchHit hit : resp.getHits().getHits()) {
-                String sourceAsString = hit.getSourceAsString();
-                SearchStoreDto storeDto = objectMapper.readValue(sourceAsString, SearchStoreDto.class);
-                stores.add(storeDto);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return stores;
+        return searchAsyncClient.search(searchRequest, SearchStoreDto.class)
+                .thenApply(resp -> resp.hits().hits().stream()
+                        .map(Hit::source)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList()));
     }
 }
