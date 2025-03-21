@@ -2,7 +2,7 @@ package com.cho_co_song_i.yummy.yummy.service;
 
 import com.cho_co_song_i.yummy.yummy.dto.StoreDto;
 import com.cho_co_song_i.yummy.yummy.entity.Store;
-import com.cho_co_song_i.yummy.yummy.repogitory.StoreRepository;
+import com.cho_co_song_i.yummy.yummy.repository.StoreRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+
 public class StoreService {
 
     private final StoreRepository storeRepository;

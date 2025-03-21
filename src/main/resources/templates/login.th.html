@@ -5,6 +5,7 @@
 <head>
     <link rel="stylesheet" th:href="@{/css/login.css}" />
     <script th:src="@{/js/login.js}"></script>
+    <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 </head>
 <body>
 <div layout:fragment="content">
@@ -15,6 +16,39 @@
             <img src="https://upload.wikimedia.org/wikipedia/commons/e/e3/KakaoTalk_logo.svg" alt="KakaoTalk Logo">
             카카오톡으로 로그인
         </a>
+    </div>
+    <div class="success-container" id="success-container" style="display:none;">
+        <h1>환영합니다.</h1>
+        <p>대표 주소를 등록해서 주변지도를 완성해보세요.</p>
+        <div class="user-info">
+            <img id="profile-image" src="" alt="카카오프로필" class="profile-img">
+            <p><strong id="nickname"></strong> 님 안녕하세요.</p>
+        </div>
+
+        <div class="address-alias">
+            <h1>주소를 등록해봐!</h1>
+            <div class="address-type-buttons">
+                <input type="radio" id="home" name="address-type" value="H" hidden>
+                <label for="home" class="type-btn">
+                    <span>🏠</span>
+                    <p>집</p>
+                </label>
+                <input type="radio" id="work" name="address-type" value="W" hidden>
+                <label for="work" class="type-btn">
+                    <span>🏢</span>
+                    <p>회사</p>
+                </label>
+            </div>
+            <div class="address-container">
+                <div class="address-input">
+                    <input type="text" id="address" placeholder="주소를 입력하세요" onfocus="SearchAddressLayer();"/>
+                </div>
+                <button class="btn" onclick="RegisterAddress();">주소 등록</button>
+            </div>
+        </div>
+        <div id="layer" style="display:none;position:fixed;overflow:hidden;z-index:1;-webkit-overflow-scrolling:touch;">
+            <img src="//t1.daumcdn.net/postcode/resource/images/close.png" id="btnCloseLayer" style="cursor:pointer;position:absolute;right:-3px;top:-3px;z-index:1" onclick="SearchLayerToggle()" alt="닫기 버튼">
+        </div>
     </div>
 </div>
 </body>

@@ -14,9 +14,9 @@ function loginWithKakao() {
       if(!!param_code){
           KaKaoLogin(param_code);
       }
-//      else{
-//          GetKakoUserInfoByAccessToken();
-//      }
+      else{
+          GetKakoUserInfoByAccessToken();
+      }
   }
 
   function updateBodyPadding() {
@@ -46,18 +46,17 @@ function loginWithKakao() {
                                   });
 
       const tokens = await response.json();
-
       if(!!tokens){
           const access_token = tokens.kakao_access_token;
-          //const userinfo = tokens.kakao_payload;
-//
+          const userinfo = tokens.kakao_payload;
+
           if(!!access_token){
            Kakao.Auth.setAccessToken(access_token);
-            //   document.getElementById("login-container").style.display = 'none';
-            //   document.getElementById("profile-image").src = userinfo.picture;
-            //   document.getElementById("nickname").innerText = userinfo.nickname +"님 안녕하세요";
-            //   document.getElementById("success-container").style.display = 'block';
-            window.location.href = "/login";
+           document.getElementById("login-container").style.display = 'none';
+           document.getElementById("profile-image").src = userinfo.picture;
+           document.getElementById("nickname").innerText = userinfo.nickname;
+           document.getElementById("success-container").style.display = 'block';
+
           }
       }else{
           alert('로그인 실패 다시 시도해주세요');
@@ -68,7 +67,6 @@ function loginWithKakao() {
   //서비스 함수 호출해서 쿠키 날려줘야 한다.
   async function KaKaoLogout(){
       Kakao.Auth.logout().then(function(response){
-
           if(!Kakao.Auth.getAccessToken()){
               alert('로그아웃 되었습니다.');
               document.getElementById("success-container").style.display = 'none';
@@ -120,7 +118,7 @@ function loginWithKakao() {
 //    if (user && user.error_code === '999'){
         let access_token = Kakao.Auth.getAccessToken();
         //if(!!access_token){
-          const url ='/auth/kakao/userinfo';
+          const url ='/login/kakao/GetUserInfoByToken';
           const response = await fetch(url,
                                       {
                                           method:'POST',
@@ -138,9 +136,9 @@ function loginWithKakao() {
               //localStorage.setItem('accessToken', new_access_token);
           }
 
-            setTimeout(() => {
-                 window.location.href = "/login";
-          }, 500);
+//            setTimeout(() => {
+//                 window.location.href = "/login";
+//          }, 500);
 //    }
   }
 

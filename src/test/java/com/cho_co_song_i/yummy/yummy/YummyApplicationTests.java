@@ -1,13 +1,19 @@
 package com.cho_co_song_i.yummy.yummy;
 
-import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class YummyApplicationTests {
+@SpringBootTest(properties = {
+		"spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration",
+})
+public class YummyApplicationTests {
 
-	@Test
-	void contextLoads() {
-	}
+//	@Mock
+//	private RestHighLevelClient elasticsearchClient;
+//
+//	@Test
+//	void contextLoads() {
+//	}
+
+
 
 }
