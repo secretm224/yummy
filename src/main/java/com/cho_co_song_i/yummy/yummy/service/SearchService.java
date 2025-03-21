@@ -4,6 +4,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,6 +22,8 @@ public class SearchService {
     }
 
     public CompletableFuture<List<SearchStoreDto>> searchDocuments(String index, String field, String query) {
+
+
 
         SearchRequest searchRequest = new SearchRequest.Builder()
                 .index(index)

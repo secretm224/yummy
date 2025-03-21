@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration>
+
+    <!-- 파일정보 -->
+    <Properties>
+        <Property name="infoLogNm">./logs/test/api_info.log</Property>
+        <Property name="errorLogNm">./logs/test/api_error.log</Property>
+        <Property name="authLogNm">./logs/test/api_auth.log</Property>
+        <Property name="jsonInfoLogNm">./logs/test/api_json_info.log</Property>
+        <Property name="layoutPattern">%style{%d{yyyy-MM-dd HH:mm:ss}}{black} %highlight{%-5level} [%style{%t}{bright,blue}]
+            %style{%C}{bright,yellow}: %msg%n%throwable
+        </Property>
+    </Properties>
+
+    <!-- 생성 파일 정보 -->
+    <Appenders>
+        <!-- Console 출력 -->
+        <Console name="Console_Appender" target="SYSTEM_OUT">
+            <PatternLayout pattern="${layoutPattern}"/>
+        </Console>
+
+        <!-- Info 레벨 로그 파일 -->
+        <File name="File_Info_Appender" fileName="${infoLogNm}">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} %p %C{1.} [%t] %m%n"/>
+            <Filters>
+                <ThresholdFilter level="INFO" onMatch="ACCEPT" onMismatch="DENY"/>
+            </Filters>
+        </File>
+
+        <!-- Error 레벨 로그 파일 -->
+        <File name="File_Error_Appender" fileName="${errorLogNm}">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} %p %C{1.} [%t] %m%n"/>
+            <Filters>
+                <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
+            </Filters>
+        </File>
+
+        <!-- Auth 관리 로그 -->
+        <File name="File_Auth_Appender" fileName="${authLogNm}">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} %p %C{1.} [%t] %m%n"/>
+        </File>
+
+        <!-- JSON API 로그 -->
+        <File name="File_Json_info_Appender" fileName="${jsonInfoLogNm}">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} %p %C{1.} [%t] %m%n"/>
+        </File>
+    </Appenders>
+
+    <!-- 로그 범위  -->
+    <Loggers>
+        <!-- Spring 관련 로그 -->
+        <Logger name="org.springframework" additivity="false" level="INFO">
+            <AppenderRef ref="Console_Appender"/>
+            <AppenderRef ref="File_Info_Appender"/>
+        </Logger>
+
+        <!-- 프로젝트 로그 -->
+        <Logger name="com.cho_co_song_i.yummy.yummy" additivity="false" level="DEBUG">
+            <AppenderRef ref="Console_Appender"/>
+            <AppenderRef ref="File_Info_Appender"/>
+            <AppenderRef ref="File_Error_Appender"/>
+        </Logger>
+
+        <!-- AUTH 관련 로그 -->
+        <Logger name="com.cho_co_song_i.yummy.yummy.common.filter" additivity="false" level="INFO">
+            <AppenderRef ref="Console_Appender"/>
+            <AppenderRef ref="File_Info_Appender"/>
+            <AppenderRef ref="File_Error_Appender"/>
+        </Logger>
+
+        <!-- 루트 로거 설정 (최상위) -->
+        <root level="ERROR" additivity="false">
+            <AppenderRef ref="Console_Appender"/>
+            <AppenderRef ref="File_Error_Appender"/>
+        </root>
+    </Loggers>
+</Configuration>
