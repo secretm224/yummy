@@ -5,6 +5,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.cho_co_song_i.yummy.yummy.dto.LoginDto;
 import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
 import com.cho_co_song_i.yummy.yummy.service.LoginService;
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -83,7 +84,9 @@ public class LoginController {
 
      @PostMapping("/kakao/GetUserInfoByToken")
      public ResponseEntity<?> GetUserinfoByToken(@RequestBody String access_token ,
-                                                 @CookieValue(value = "access_token", required = false) String accessTokenCookie)
+                                                 @CookieValue(value = "accessToken", required = false) String accessTokenCookie,
+                                                 @CookieValue(value = "refreshToken", required = false) String refreshTokenCookie,
+                                                 HttpServletResponse res)
      {
          Map<String,Object> responseBody = new HashMap<>();
          if(access_token.isEmpty() && !accessTokenCookie.isEmpty()){
@@ -92,7 +95,57 @@ public class LoginController {
 
          boolean is_access_token = loginService.CheckKakaoTokens(access_token);
          if(is_access_token){
+             JsonNode user_info = loginService.GetKaKaoUser(access_token);
+             if(user_info != null){
+                   String nick_name = user_info.get("nickname").asText();
+                   String picture = user_info.get("picture").asText();
+//                 ObjectMapper om = new ObjectMapper();
+                 //responseBody = om.convertValue(user_info, new TypeReference<Map<String, Object>>() {});
+                 responseBody.put("access_token",access_token);
+                 responseBody.put("nickname",nick_name);
+                 responseBody.put("picture",picture);
 
+             }
+         }else{
+//             reflesh token
+             JsonNode token_info = loginService.GetAccessTokenByRefreshToken(refreshTokenCookie);
+             if(token_info != null){
+                 String n_access_token = token_info.get("access_token").asText();
+                 String n_refresh_token = token_info.get("refresh_token").asText();
+                 String n_id_token = token_info.get("id_token").asText();
+
+                 if(!n_access_token.isEmpty()){
+                     Cookie accessCookie  = new Cookie("accessToken",n_access_token);
+                     accessCookie.setHttpOnly(true);
+                     accessCookie.setSecure(false);
+                     accessCookie.setPath("/");
+                     res.addCookie(accessCookie);
+                 }
+
+                 if(!n_refresh_token.isEmpty()){
+                     Cookie refreshCookie = new Cookie("refreshToken",n_refresh_token);
+                     refreshCookie.setHttpOnly(true);
+                     refreshCookie.setSecure(false);
+                     refreshCookie.setPath("/");
+                     res.addCookie(refreshCookie);
+                 }
+
+                 if(!n_id_token.isEmpty()){
+                     DecodedJWT _decodejwt = JWT.decode(n_id_token);
+                     Map<String,Object> payload = _decodejwt.getClaims().entrySet().stream()
+                                                  .collect(Collectors.toMap(Map.Entry::getKey, e->e.getValue().as(Object.class)));
+
+                     if(payload != null)
+                     {
+                        String nick_name = payload.get("nickname").toString();
+                        String picture = payload.get("picture").toString();
+
+                         responseBody.put("access_token",access_token);
+                         responseBody.put("nickname",nick_name);
+                         responseBody.put("picture",picture);
+                     }
+                 }
+             }
          }
 
          return ResponseEntity.ok(responseBody);

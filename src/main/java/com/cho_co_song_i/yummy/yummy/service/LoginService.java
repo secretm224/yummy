@@ -13,10 +13,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.*;
-
 
 
 @Service
@@ -80,10 +77,10 @@ public class LoginService {
             String url=kakaoApiUrl+"/v1/user/access_token_info";
 
             HttpHeaders headers = new HttpHeaders();
-            headers.add("Authorization","Bearer"+CheckToken);
+            headers.add("Authorization","Bearer "+CheckToken);
 
             HttpEntity<?> requestEntity = new HttpEntity<>(null, headers);
-            ResponseEntity<JsonNode> response = restTemplate.postForEntity(url, requestEntity, JsonNode.class);
+            ResponseEntity<JsonNode> response = restTemplate.exchange(url,HttpMethod.GET,requestEntity, JsonNode.class);
 
             if(response.getStatusCode().is2xxSuccessful() && response.getBody() != null){
                 is_token = true;
@@ -116,14 +113,15 @@ public class LoginService {
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
             headers.add("Authorization","Bearer "+access_token);
 
-            Map<String, Object> requestBody = new HashMap<>();
-            List<String> propertyKeys = Arrays.asList(
-                    "kakao_account.profile.nickname",
-                    "kakao_account.profile.thumbnail_image"
-            );
-            requestBody.put("property_keys", propertyKeys);
+//            const data = new URLSearchParams({
+//                    property_keys: '["kakao_account.profile.nickname","kakao_account.profile.thumbnail_image"]'
+//            });
 
-            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+            MultiValueMap<String, Object> requestBody = new LinkedMultiValueMap<>();
+            // JSON 배열 문자열로 property_keys 값을 설정
+            String propertyKeysJson = "[\"kakao_account.profile.nickname\",\"kakao_account.profile.thumbnail_image\"]";
+            requestBody.add("property_keys", propertyKeysJson);
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
 
             RestTemplate restTemplate = new RestTemplate();
             ResponseEntity<JsonNode> response = restTemplate.postForEntity(url, requestEntity, JsonNode.class);
@@ -150,41 +148,41 @@ public class LoginService {
         return user_obj;
     }
 
+    public JsonNode GetAccessTokenByRefreshToken(String refresh_token){
 
+        ObjectMapper om = new ObjectMapper();
+        ObjectNode token_obj = om.createObjectNode();
 
-//    async GetKakaoUserInfo(access_token:string){
-//        if(!access_token){
-//            throw new HttpException('accesss tokens is empty',HttpStatus.BAD_REQUEST);
-//        }
-//
-//        try {
-//            const url = `${process.env.KAKAO_API_URL ?? ""}/v2/user/me`;
-////            const header = {headers:{
-////                'Authorization': `Bearer ${access_token}`,
-////                'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8'
-////            }};
-////
-////            const data = new URLSearchParams({
-////                    property_keys: '["kakao_account.profile.nickname","kakao_account.profile.thumbnail_image"]'
-////            });
-//
-//            const userinfo = await axios.post(url, data, header);
-//            const nickname = userinfo.data.kakao_account.profile.nickname;
-//            const image = userinfo.data.kakao_account.profile.thumbnail_image_url;
-//            const token_id = userinfo.data.id;
-//
-//            if(!!nickname && !!image){
-//                return {nickname:nickname,picture:image,token_id:token_id};
-//            }
-//
-//        }catch(error){
-//            console.error('get userinfo by access toekn'+error);
-//            console.error(error.response?.data);
-//        }
-//    }
+        if(!refresh_token.isEmpty()){
+            try{
 
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
+                Map<String,Object> request_body = new HashMap<>();
+                request_body.put("grant_type","refresh_token");
+                request_body.put("client_id",kakaoApiKey);
+                request_body.put("refresh_token",refresh_token);
 
+                HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(request_body, headers);
+                RestTemplate restTemplate = new RestTemplate();
+                ResponseEntity<JsonNode> response = restTemplate.postForEntity(kakaoAuthUrl, requestEntity, JsonNode.class);
+                JsonNode json = response.getBody();
 
+                if(json != null){
+                    String n_access_token = json.get("access_token").asText();
+                    String n_refresh_token = json.get("refresh_token").asText();
+                    String n_id_token = json.get("id_token").asText();
 
+                    token_obj.put("access_token",n_access_token);
+                    token_obj.put("refresh_token",n_refresh_token);
+                    token_obj.put("id_token",n_id_token);
+                }
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+
+        return token_obj;
+    }
 }

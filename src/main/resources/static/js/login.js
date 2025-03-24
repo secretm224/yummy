@@ -123,17 +123,19 @@ function loginWithKakao() {
                                       {
                                           method:'POST',
                                           headers:{'Content-Type':'application/json'},
-                                          body:JSON.stringify({access_token:access_token}),
+                                          body:access_token,
                                           credentials: 'include'
                                       });
 
           const token_data = await response.json();
-          const new_access_token = token_data.kakao_access_token;
-          //const userinfo = token_data.kakao_payload;
+          console.log(token_data);
+
+          const new_access_token = token_data.access_token;
+          const nickname = token_data.nickname;
+          const picture = token_data.picture;
 
           if(new_access_token){
               Kakao.Auth.setAccessToken(new_access_token);
-              //localStorage.setItem('accessToken', new_access_token);
           }
 
 //            setTimeout(() => {
