@@ -131,6 +131,7 @@ public class SearchService {
             SearchRequest searchRequest = SearchRequest.of(s -> s
                     .index(indexName)
                     .query(q -> q.bool(boolQuery.build()))
+                    .size(10000)
             );
 
             return searchAsyncClient.search(searchRequest, SearchStoreDto.class)
