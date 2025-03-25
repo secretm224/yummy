@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "store") // 가게 테이블 이름. 필요하면 변경해줘.
+@Table(name = "store")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -40,69 +40,4 @@ public class Store {
 
     @Column(name = "chg_id", nullable = true, length = 25)
     private String chgId;
-
-// lombok 에서 자동 생성 처리 된다.
-//    public Long getSeq() {
-//        return seq;
-//    }
-//
-//    public void setSeq(Long seq) {
-//        this.seq = seq;
-//    }
-//
-//    public String getName() {
-//        return name;
-//    }
-//
-//    public void setName(String name) {
-//        this.name = name;
-//    }
-//
-//    public String getType() {
-//        return type;
-//    }
-//
-//    public void setType(String type) {
-//        this.type = type;
-//    }
-//
-//    public String getUseYn() {
-//        return useYn;
-//    }
-//
-//    public void setUseYn(String useYn) {
-//        this.useYn = useYn;
-//    }
-//
-//    public Date getRegDt() {
-//        return regDt;
-//    }
-//
-//    public void setRegDt(Date regDt) {
-//        this.regDt = regDt;
-//    }
-//
-//    public String getRegId() {
-//        return regId;
-//    }
-//
-//    public void setRegId(String regId) {
-//        this.regId = regId;
-//    }
-//
-//    public Date getChgDt() {
-//        return chgDt;
-//    }
-//
-//    public void setChgDt(Date chgDt) {
-//        this.chgDt = chgDt;
-//    }
-//
-//    public String getChgId() {
-//        return chgId;
-//    }
-//
-//    public void setChgId(String chgId) {
-//        this.chgId = chgId;
-//    }
 }

@@ -2,6 +2,7 @@ package com.cho_co_song_i.yummy.yummy.controller;
 
 import com.cho_co_song_i.yummy.yummy.dto.LocationCityDto;
 import com.cho_co_song_i.yummy.yummy.dto.LocationCountyDto;
+import com.cho_co_song_i.yummy.yummy.dto.LocationDistrictDto;
 import com.cho_co_song_i.yummy.yummy.service.LocationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,5 +31,13 @@ public class LocationController {
     ) {
         List<LocationCityDto> locationCities = locationService.getLocationCities(locationCountyCode);
         return ResponseEntity.ok(locationCities);
+    }
+
+    @GetMapping("/district")
+    public ResponseEntity<List<LocationDistrictDto>> getLocationDistricts(
+            @RequestParam(value = "citySeq", required = false) Long locationCityCode
+    ) {
+        List<LocationDistrictDto> locationDistricts = locationService.getLocationDistrict(locationCityCode);
+        return ResponseEntity.ok(locationDistricts);
     }
 }

@@ -32,6 +32,8 @@ public class QLocationCityTbl extends EntityPathBase<LocationCityTbl> {
 
     public final QLocationCountyTbl locationCounty;
 
+    public final ListPath<LocationDistrictTbl, QLocationDistrictTbl> locationDistricts = this.<LocationDistrictTbl, QLocationDistrictTbl>createList("locationDistricts", LocationDistrictTbl.class, QLocationDistrictTbl.class, PathInits.DIRECT2);
+
     public final DateTimePath<java.util.Date> regDt = createDateTime("regDt", java.util.Date.class);
 
     public final StringPath regId = createString("regId");

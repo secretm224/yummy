@@ -4,17 +4,16 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Date;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class LocationCityDto {
+public class LocationDistrictDto {
+    private Long locationDistrictCode;
     private Long locationCityCode;
     private Long locationCountyCode;
-    private String locationCity;
-//    private Date regDt;
-//    private String regId;
-//    private Date chgDt;
-//    private String chgId;
+    private String locationDistrict;
+    //    private Date regDt;
+    //    private String regId;
+    //    private Date chgDt;
+    //    private String chgId;
 }

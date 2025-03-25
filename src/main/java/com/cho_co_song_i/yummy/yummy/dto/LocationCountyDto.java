@@ -10,4 +10,8 @@ import lombok.NoArgsConstructor;
 public class LocationCountyDto {
     private Long locationCountyCode;
     private String locationCounty;
+    //    private Date regDt;
+    //    private String regId;
+    //    private Date chgDt;
+    //    private String chgId;
 }

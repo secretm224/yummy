@@ -5,7 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 @Entity
 @Table(name = "location_city_tbl")
@@ -13,15 +15,6 @@ import java.util.Date;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LocationCityTbl {
-//    @Id
-//    @GeneratedValue(strategy = GenerationType.IDENTITY)
-//    @Column(name = "location_city_code")
-//    private Long locationCityCode;
-//
-//    @Id
-//    @Column(name = "location_county_code", nullable = false)
-//    private Long locationCountyCode;
-
     @EmbeddedId
     private LocationCityTblId id;
 
@@ -43,6 +36,9 @@ public class LocationCityTbl {
     private String chgId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "location_county_code", insertable = false, updatable = false)
+    @JoinColumn(name = "location_county_code", referencedColumnName = "location_county_code", insertable = false, updatable = false)
     private LocationCountyTbl locationCounty;
+
+    @OneToMany(mappedBy = "locationCity", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<LocationDistrictTbl> locationDistricts = new ArrayList<>();
 }
