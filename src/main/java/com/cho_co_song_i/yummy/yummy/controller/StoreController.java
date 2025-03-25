@@ -1,5 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
+import com.cho_co_song_i.yummy.yummy.dto.LocationCountyDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreDto;
 import com.cho_co_song_i.yummy.yummy.service.StoreService;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +46,10 @@ public class StoreController {
             return ResponseEntity.notFound().build();
         }
     }
+
+//    public ResponseEntity<List<LocationCountyDto>> getLocationCounty() {
+//        storeService.g
+//    }
 
 //    @DeleteMapping("/{id}")
 //    public ResponseEntity<Void> deleteStore(@PathVariable Long id) {
