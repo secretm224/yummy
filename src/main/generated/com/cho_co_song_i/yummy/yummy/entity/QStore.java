@@ -7,6 +7,7 @@ import com.querydsl.core.types.dsl.*;
 import com.querydsl.core.types.PathMetadata;
 import javax.annotation.processing.Generated;
 import com.querydsl.core.types.Path;
+import com.querydsl.core.types.dsl.PathInits;
 
 
 /**
@@ -16,6 +17,8 @@ import com.querydsl.core.types.Path;
 public class QStore extends EntityPathBase<Store> {
 
     private static final long serialVersionUID = -874374506L;
+
+    private static final PathInits INITS = PathInits.DIRECT2;
 
     public static final QStore store = new QStore("store");
 
@@ -31,20 +34,36 @@ public class QStore extends EntityPathBase<Store> {
 
     public final NumberPath<Long> seq = createNumber("seq", Long.class);
 
+    public final QStoreLocationInfoTbl storeLocations;
+
+    public final ListPath<StoreTypeLinkTbl, QStoreTypeLinkTbl> storeTypeLinks = this.<StoreTypeLinkTbl, QStoreTypeLinkTbl>createList("storeTypeLinks", StoreTypeLinkTbl.class, QStoreTypeLinkTbl.class, PathInits.DIRECT2);
+
     public final StringPath type = createString("type");
 
-    public final StringPath useYn = createString("useYn");
+    public final ComparablePath<Character> useYn = createComparable("useYn", Character.class);
+
+    public final QZeroPossibleMarket zeroPossibles;
 
     public QStore(String variable) {
-        super(Store.class, forVariable(variable));
+        this(Store.class, forVariable(variable), INITS);
     }
 
     public QStore(Path<? extends Store> path) {
-        super(path.getType(), path.getMetadata());
+        this(path.getType(), path.getMetadata(), PathInits.getFor(path.getMetadata(), INITS));
     }
 
     public QStore(PathMetadata metadata) {
-        super(Store.class, metadata);
+        this(metadata, PathInits.getFor(metadata, INITS));
+    }
+
+    public QStore(PathMetadata metadata, PathInits inits) {
+        this(Store.class, metadata, inits);
+    }
+
+    public QStore(Class<? extends Store> type, PathMetadata metadata, PathInits inits) {
+        super(type, metadata, inits);
+        this.storeLocations = inits.isInitialized("storeLocations") ? new QStoreLocationInfoTbl(forProperty("storeLocations"), inits.get("storeLocations")) : null;
+        this.zeroPossibles = inits.isInitialized("zeroPossibles") ? new QZeroPossibleMarket(forProperty("zeroPossibles"), inits.get("zeroPossibles")) : null;
     }
 
 }

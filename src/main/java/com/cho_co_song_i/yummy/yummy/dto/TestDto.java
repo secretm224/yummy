@@ -4,14 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/* TEST 용 DTO */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class LocationCountyDto {
+public class TestDto {
     private Long locationCountyCode;
     private String locationCounty;
-    //    private Date regDt;
-    //    private String regId;
-    //    private Date chgDt;
-    //    private String chgId;
+    private Long locationCityCode;
+    private String locationCity;
 }

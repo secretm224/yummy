@@ -1,17 +1,18 @@
 package com.cho_co_song_i.yummy.yummy.dto;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.util.Date;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class StoreDto {
+public class StoreRecommendDto {
+    private Long recommendSeq;
     private Long seq;
-    private String name;
-    private String type;
-    private Character useYn;
+    private Date recommendEndDt;
     private Date regDt;
     private String regId;
     private Date chgDt;

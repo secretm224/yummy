@@ -8,16 +8,17 @@ import lombok.NoArgsConstructor;
 import java.util.Date;
 
 @Entity
-@Table(name = "location_district_tbl")
+@Table(name = "store_recommend_tbl")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class LocationDistrictTbl {
+public class StoreRecommendTbl {
     @EmbeddedId
-    private LocationDistrictTblId id;
+    private StoreRecommendTblId id;
 
-    @Column(name = "location_district", nullable = false, length = 25)
-    private String locationDistrict;
+    @Column(name = "recommend_end_dt", nullable = false)
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date recommendEndDt;
 
     @Column(name = "reg_dt", nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
@@ -33,10 +34,4 @@ public class LocationDistrictTbl {
     @Column(name = "chg_id", nullable = true, length = 25)
     private String chgId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumns({
-            @JoinColumn(name="location_city_code", referencedColumnName="location_city_code", insertable = false, updatable = false),
-            @JoinColumn(name="location_county_code", referencedColumnName="location_county_code", insertable = false, updatable = false)
-    })
-    private LocationCityTbl locationCity;
 }

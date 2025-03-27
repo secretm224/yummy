@@ -1,19 +1,31 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
+import com.cho_co_song_i.yummy.yummy.dto.AddStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreDto;
 import com.cho_co_song_i.yummy.yummy.entity.Store;
+import com.cho_co_song_i.yummy.yummy.entity.StoreLocationInfoTbl;
 import com.cho_co_song_i.yummy.yummy.repository.StoreRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.FlushModeType;
+import jakarta.persistence.PersistenceContext;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
-
+@Slf4j
 public class StoreService {
 
     private final StoreRepository storeRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public StoreService(StoreRepository storeRepository) {
         this.storeRepository = storeRepository;
@@ -82,7 +94,33 @@ public class StoreService {
         }
     }
 
-//    public void deleteStore(Long id) {
-//        storeRepository.deleteById(id);
-//    }
+    /**
+     * Store 객체를 디비에 저장해주는 함수
+     * @param addStoreDto
+     * @param now
+     * @return
+     */
+    public Long addStore(AddStoreDto addStoreDto, Date now) {
+        entityManager.setFlushMode(FlushModeType.COMMIT);
+
+        if (addStoreDto == null) {
+            throw new IllegalArgumentException("[Error][StoreService->addStore] AddStoreDto object is null.");
+        }
+        if (addStoreDto.getName() == null || addStoreDto.getName().isEmpty()) {
+            throw new IllegalArgumentException("[Error][StoreService->addStore] The store name is missing.");
+        }
+        if (addStoreDto.getType() == null || addStoreDto.getType().isEmpty()) {
+            throw new IllegalArgumentException("[Error][StoreService->addStore] The store type is missing.");
+        }
+
+        /* Store 객체*/
+        Store newStore = new Store();
+        newStore.setName(addStoreDto.getName());
+        newStore.setType(addStoreDto.getType());
+        newStore.setUseYn('Y');
+        newStore.setRegDt(now);
+        newStore.setRegId("system");
+
+        return storeRepository.save(newStore).getSeq();
+    }
 }

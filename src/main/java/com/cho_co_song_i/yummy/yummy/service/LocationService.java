@@ -1,17 +1,23 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
-import com.cho_co_song_i.yummy.yummy.dto.LocationCityDto;
-import com.cho_co_song_i.yummy.yummy.dto.LocationCountyDto;
-import com.cho_co_song_i.yummy.yummy.dto.LocationDistrictDto;
-import com.cho_co_song_i.yummy.yummy.entity.LocationCityTbl;
-import com.cho_co_song_i.yummy.yummy.entity.LocationCountyTbl;
-import com.cho_co_song_i.yummy.yummy.entity.LocationDistrictTbl;
+import com.cho_co_song_i.yummy.yummy.dto.*;
+import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.repository.LocationCountyRepository;
+import com.cho_co_song_i.yummy.yummy.repository.StoreLocationInfoRepository;
+import com.cho_co_song_i.yummy.yummy.repository.StoreTypeLinkRepository;
+import com.cho_co_song_i.yummy.yummy.repository.ZeroPossibleMarketRepository;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.FlushModeType;
+import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,13 +28,58 @@ import static com.cho_co_song_i.yummy.yummy.entity.QLocationDistrictTbl.location
 @Service
 @Slf4j
 public class LocationService {
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
     private final LocationCountyRepository locationRepository;
+    private final StoreLocationInfoRepository storeLocationInfoRepository;
+    private final ZeroPossibleMarketRepository zeroPossibleMarketRepository;
+    private final StoreTypeLinkRepository storeTypeLinkRepository;
     private final JPAQueryFactory queryFactory;
 
-    public LocationService(LocationCountyRepository locationRepository, JPAQueryFactory queryFactory) {
+    public LocationService(LocationCountyRepository locationRepository, StoreLocationInfoRepository storeLocationInfoRepository,
+                           ZeroPossibleMarketRepository zeroPossibleMarketRepository, JPAQueryFactory queryFactory,
+                           StoreTypeLinkRepository storeTypeLinkRepository
+    ) {
         this.locationRepository = locationRepository;
+        this.storeLocationInfoRepository = storeLocationInfoRepository;
+        this.zeroPossibleMarketRepository = zeroPossibleMarketRepository;
+        this.storeTypeLinkRepository = storeTypeLinkRepository;
         this.queryFactory = queryFactory;
     }
+
+    /* ** Fetch Join / Join 비교 ** -> JPA 를 사용하면서 굉장히 중요한 부분  */
+    public void getTestDtos(Long locationCountyCode) {
+
+        BooleanBuilder conditions = new BooleanBuilder();
+
+        if (locationCountyCode != null && locationCountyCode >= 0) {
+            conditions.and(locationCityTbl.id.locationCountyCode.eq(locationCountyCode));
+        }
+
+        var query = queryFactory
+                .selectFrom(locationCityTbl)
+                .join(locationCityTbl.locationCounty, locationCountyTbl)
+                .fetchJoin(); // 해당 부분을 없애고 실행하면 쿼리가 N+1 번 실행됨
+
+        try {
+            List<LocationCityTbl> locationCityTblList = query.fetch();
+
+            /* Fetch join 을 수행하면 문제가 발생하지 않음 */
+            /* 🔥 N+1 문제를 발생시키는 코드 (for-each 로 연관 객체 접근) */
+            for (LocationCityTbl city : locationCityTblList) {
+                String countyName = city.getLocationCounty().getLocationCounty();  // 🔥 Fetch join 하지 않을 시, N번 추가 쿼리 발생
+                System.out.println("LocationCity: " + city.getLocationCity() + ", County: " + countyName);
+            }
+
+
+        } catch(Exception e) {
+            log.error("[Error][LocationService->getLocationCities] {}", e.getMessage(), e);
+        }
+
+    }
+
 
     /* Entity -> DTO 변환 (LocationCountyTbl) */
     private LocationCountyDto convertCountyToDto(LocationCountyTbl locationCountyTbl) {
@@ -59,11 +110,17 @@ public class LocationService {
 
     /* LocationCountyTbl 객체 리스트를 가져와준다. */
     public List<LocationCountyDto> getAllLocationCounty() {
-        List<LocationCountyTbl> locationCountyList = locationRepository.findAll();
+        try {
+            List<LocationCountyTbl> locationCountyList = locationRepository.findAll();
 
-        return locationCountyList.stream()
-                .map(this::convertCountyToDto)
-                .collect(Collectors.toList());
+            return locationCountyList.stream()
+                    .map(this::convertCountyToDto)
+                    .collect(Collectors.toList());
+
+        } catch(Exception e) {
+            log.error("[Error][LocationService->getAllLocationCounty] {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
     }
 
     /**
@@ -87,11 +144,17 @@ public class LocationService {
             query.where(conditions);
         }
 
-        List<LocationCityTbl> locationCityTblList = query.fetch();
+        try {
+            List<LocationCityTbl> locationCityTblList = query.fetch();
 
-        return locationCityTblList.stream()
-                .map(this::convertCityToDto)
-                .collect(Collectors.toList());
+            return locationCityTblList.stream()
+                    .map(this::convertCityToDto)
+                    .collect(Collectors.toList());
+
+        } catch(Exception e) {
+            log.error("[Error][LocationService->getLocationCities] {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
     }
 
     /**
@@ -113,15 +176,114 @@ public class LocationService {
                 .join(locationDistrictTbl.locationCity, locationCityTbl)
                 .join(locationCityTbl.locationCounty, locationCountyTbl);
 
-
         if (conditions.hasValue()) {
             query.where(conditions);
         }
 
-        List<LocationDistrictTbl> locationDistricts = query.fetch();
+        try {
+            List<LocationDistrictTbl> locationDistricts = query.fetch();
 
-        return locationDistricts.stream()
-                .map(this::convertDistrictToDto)
-                .collect(Collectors.toList());
+            return locationDistricts.stream()
+                    .map(this::convertDistrictToDto)
+                    .collect(Collectors.toList());
+
+        } catch(Exception e) {
+            log.error("[Error][LocationService->getLocationDistrict] {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
     }
+
+    @Transactional
+    public Long addStoreLocation(AddStoreDto addStoreDto, Long storeSeq, Date now) {
+        entityManager.setFlushMode(FlushModeType.COMMIT);
+
+        if (storeSeq <= 0) {
+            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] 'storeSeq' data must be at least 1 natural number.");
+        }
+        if (addStoreDto == null) {
+            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] AddStoreDto object is null.");
+        }
+        if (addStoreDto.getLocationCounty() == null || addStoreDto.getLocationCounty().isEmpty()) {
+            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] The location county name is missing.");
+        }
+        if (addStoreDto.getLocationCity() == null || addStoreDto.getLocationCity().isEmpty()) {
+            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] The location city name is missing.");
+        }
+        if (addStoreDto.getLocationDistrict() == null || addStoreDto.getLocationDistrict().isEmpty()) {
+            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] The location district name is missing.");
+        }
+        if (addStoreDto.getAddress() == null || addStoreDto.getAddress().isEmpty()) {
+            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] The address name is missing.");
+        }
+        if (addStoreDto.getLat() == null) {
+            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] The lat value is missing.");
+        }
+        if (addStoreDto.getLng() == null) {
+            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] The lng value is missing.");
+        }
+
+        StoreLocationInfoTbl storeLocationInfoTbl = new StoreLocationInfoTbl();
+        storeLocationInfoTbl.setSeq(storeSeq);
+        storeLocationInfoTbl.setLat(addStoreDto.getLat());
+        storeLocationInfoTbl.setLng(addStoreDto.getLng());
+        storeLocationInfoTbl.setLocationCounty(addStoreDto.getLocationCounty());
+        storeLocationInfoTbl.setLocationCity(addStoreDto.getLocationCity());
+        storeLocationInfoTbl.setLocationDistrict(addStoreDto.getLocationDistrict());
+        storeLocationInfoTbl.setAddress(addStoreDto.getAddress());
+        storeLocationInfoTbl.setRegId("system");
+        storeLocationInfoTbl.setRegDt(now);
+
+        return storeLocationInfoRepository.save(storeLocationInfoTbl).getSeq();
+    }
+
+    @Transactional
+    public void addZeroPossibleMarket(AddStoreDto addStoreDto, Long storeSeq, Date now) {
+        entityManager.setFlushMode(FlushModeType.COMMIT);
+
+        if (storeSeq <= 0) {
+            throw new IllegalArgumentException("[Error][LocationService->addZeroPossibleMarket] 'storeSeq' data must be at least 1 natural number.");
+        }
+        if (addStoreDto == null) {
+            throw new IllegalArgumentException("[Error][LocationService->addZeroPossibleMarket] AddStoreDto object is null.");
+        }
+        if (addStoreDto.getName() == null || addStoreDto.getName().isEmpty()) {
+            throw new IllegalArgumentException("[Error][LocationService->addZeroPossibleMarket] The store name is missing.");
+        }
+
+        /* ZeroPossibleMarket 객체 */
+        ZeroPossibleMarket zeroPossibleMarket = new ZeroPossibleMarket();
+        zeroPossibleMarket.setSeq(storeSeq);
+        zeroPossibleMarket.setUseYn('Y');
+        zeroPossibleMarket.setName(addStoreDto.getName());
+        zeroPossibleMarket.setRegDt(now);
+        zeroPossibleMarket.setRegId("system");
+
+        zeroPossibleMarketRepository.save(zeroPossibleMarket);
+    }
+
+    @Transactional
+    public void addStoreTypeLink(AddStoreDto addStoreDto, Long storeSeq, Date now) {
+        entityManager.setFlushMode(FlushModeType.COMMIT);
+
+        if (storeSeq <= 0) {
+            throw new IllegalArgumentException("[Error][LocationService->addStoreTypeLink] 'storeSeq' data must be at least 1 natural number.");
+        }
+        if (addStoreDto == null) {
+            throw new IllegalArgumentException("[Error][LocationService->addStoreTypeLink] AddStoreDto object is null.");
+        }
+        if (addStoreDto.getSubType() <= 0) {
+            throw new IllegalArgumentException("[Error][LocationService->addStoreTypeLink] 'subType' data must be at least 1 natural number.");
+        }
+
+        /* StoreTypeLink 객체 */
+        StoreTypeLinkTbl storeTypeLinkTbl = new StoreTypeLinkTbl();
+        StoreTypeLinkTblId storeTypeLinkTblId = new StoreTypeLinkTblId(addStoreDto.getSubType(), storeSeq);
+
+        storeTypeLinkTbl.setId(storeTypeLinkTblId);
+        storeTypeLinkTbl.setRegDt(now);
+        storeTypeLinkTbl.setRegId("system");
+
+        storeTypeLinkRepository.save(storeTypeLinkTbl);
+    }
+
 }

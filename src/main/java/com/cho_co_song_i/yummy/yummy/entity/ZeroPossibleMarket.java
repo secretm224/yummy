@@ -8,16 +8,20 @@ import lombok.NoArgsConstructor;
 import java.util.Date;
 
 @Entity
-@Table(name = "location_district_tbl")
+@Table(name = "zero_possible_market")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class LocationDistrictTbl {
-    @EmbeddedId
-    private LocationDistrictTblId id;
+public class ZeroPossibleMarket {
+    @Id
+    @Column(name = "seq")
+    private Long seq;
 
-    @Column(name = "location_district", nullable = false, length = 25)
-    private String locationDistrict;
+    @Column(name = "use_yn", nullable = true, columnDefinition = "char(1)")
+    private Character useYn;
+
+    @Column(name = "name", nullable = true, length = 255)
+    private String name;
 
     @Column(name = "reg_dt", nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
@@ -33,10 +37,6 @@ public class LocationDistrictTbl {
     @Column(name = "chg_id", nullable = true, length = 25)
     private String chgId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumns({
-            @JoinColumn(name="location_city_code", referencedColumnName="location_city_code", insertable = false, updatable = false),
-            @JoinColumn(name="location_county_code", referencedColumnName="location_county_code", insertable = false, updatable = false)
-    })
-    private LocationCityTbl locationCity;
+    @OneToOne(mappedBy = "zeroPossibles", fetch = FetchType.LAZY)
+    private Store store;
 }

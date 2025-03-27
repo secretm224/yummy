@@ -1,21 +1,30 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
+import com.cho_co_song_i.yummy.yummy.dto.AddStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.LocationCountyDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreDto;
+import com.cho_co_song_i.yummy.yummy.service.LocationService;
 import com.cho_co_song_i.yummy.yummy.service.StoreService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 
 @RestController
+@Slf4j
 @RequestMapping("/stores")
 public class StoreController {
 
     private final StoreService storeService;
+    private final LocationService locationService;
 
-    public StoreController(StoreService storeService) {
+    public StoreController(StoreService storeService, LocationService locationService) {
         this.storeService = storeService;
+        this.locationService = locationService;
     }
 
     @GetMapping
@@ -44,6 +53,34 @@ public class StoreController {
             return ResponseEntity.ok(updatedStore);
         } else {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PostMapping("/addStore")
+    @Transactional
+    public ResponseEntity<String> addStore(@RequestBody AddStoreDto addStoreDto) {
+
+        /* 현재 시각 */
+        Instant nowInstant = Instant.now();
+        Date now = Date.from(nowInstant);
+
+        try {
+
+            Long storeSeq = storeService.addStore(addStoreDto, now);
+            locationService.addStoreLocation(addStoreDto, storeSeq, now);
+
+            /* 비플페이 등록 업체라면 */
+            if (addStoreDto.getIsBeefulPay()) {
+                locationService.addZeroPossibleMarket(addStoreDto, storeSeq, now);
+            }
+
+            /* 음식점-타입 데이터 */
+            locationService.addStoreTypeLink(addStoreDto, storeSeq, now);
+
+            return ResponseEntity.ok("Success");
+        } catch(Exception e) {
+            log.error("[Error][StoreController->addStore] {}", e.getMessage());
+            return ResponseEntity.status(500).body("[Error][StoreController->addStore] " + e.getMessage());
         }
     }
 
