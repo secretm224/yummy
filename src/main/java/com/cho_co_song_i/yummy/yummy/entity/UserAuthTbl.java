@@ -1,11 +1,18 @@
 package com.cho_co_song_i.yummy.yummy.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Persistable;
 
 import java.util.Date;
 
+@Entity
 @Table(name = "user_auth_tbl")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserAuthTbl implements Persistable<Long> {
 
     @Id
@@ -18,7 +25,7 @@ public class UserAuthTbl implements Persistable<Long> {
     private UserTbl user;
 
     @Column(name = "user_no", nullable = false, insertable = false, updatable = false)
-    private int userNo;
+    private Long userNo;
 
     @Column(name="login_channel",length = 10,nullable = false)
     private String login_channel;

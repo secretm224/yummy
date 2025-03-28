@@ -4,6 +4,7 @@ import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -12,7 +13,12 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
+import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
+import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
+import com.cho_co_song_i.yummy.yummy.entity.UserDetailTbl;
+import com.cho_co_song_i.yummy.yummy.entity.UserAuthTbl;
 
+import com.cho_co_song_i.yummy.yummy.repository.UserCustomRepository;
 import java.util.*;
 
 
@@ -33,9 +39,13 @@ public class LoginService {
     private String kakaoApiUrl;
 
     private final RestTemplate restTemplate;
+    private final JPAQueryFactory queryFactory;
+    private  final UserCustomRepository userCustomRepository;
 
-    public LoginService(RestTemplate restTemplate) {
+    public LoginService(RestTemplate restTemplate, JPAQueryFactory queryFactory, UserCustomRepository userCustomRepository) {
         this.restTemplate = restTemplate;
+        this.queryFactory = queryFactory;
+        this.userCustomRepository = userCustomRepository;
     }
 
     public KakaoToken GetKakaoToken(String code){
@@ -186,42 +196,8 @@ public class LoginService {
         return token_obj;
     }
 
-
-//QueryDSL
-//    async GetUserDetailInfo(login_channel:string,token_id:string):Promise<UserProfileDto | null>{
-//        if(!!login_channel && !!token_id){
-//            const auth_info = await this.auth_repository.findOneBy({
-//                    login_channel:login_channel,
-//                    token_id:token_id
-//                                    });
-//            if(auth_info){
-//                const detail_info = await this.detail_repository.findOneBy({user_no:auth_info.user_no});
-//                if(detail_info){
-//                    const user_info = await this.user_repository.findOneBy({user_no:detail_info.user_no});
-//                    if(user_info){
-//                        const user_profile:UserProfileDto={
-//                                user_no:user_info.user_no,
-//                                user_nm:user_info.user_nm,
-//                                login_channel:auth_info.login_channel,
-//                                token_id:auth_info.token_id,
-//                                addr_type:detail_info.addr_type,
-//                                addr:detail_info.addr,
-//                                lngx:detail_info.lng_x,
-//                                laty:detail_info.lat_y,
-//                                reg_dt:user_info.reg_dt,
-//                        }
-//
-//                        return user_profile;
-//                    }
-//                }
-//            }
-//        }
-//
-//        return null;
-//    }
-
-
-
-
+    public UserProfileDto getUserDetailInfo(String loginChannel, String tokenId) {
+        return userCustomRepository.GetUserInfo(loginChannel, tokenId);
+    }
 
 }

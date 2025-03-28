@@ -3,6 +3,7 @@ package com.cho_co_song_i.yummy.yummy.controller;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.cho_co_song_i.yummy.yummy.dto.LoginDto;
+import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
 import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
 import com.cho_co_song_i.yummy.yummy.service.LoginService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -151,5 +152,17 @@ public class LoginController {
          return ResponseEntity.ok(responseBody);
      }
 
+    @GetMapping("/UserInfo")
+    public ResponseEntity<UserProfileDto> getUserDetailInfo(
+            @RequestParam String loginChannel,
+            @RequestParam String tokenId) {
 
+        UserProfileDto userProfile = loginService.getUserDetailInfo(loginChannel, tokenId);
+
+        if (userProfile != null) {
+            return ResponseEntity.ok(userProfile);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }

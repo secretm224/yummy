@@ -42,7 +42,7 @@ public class QUserDetailTbl extends EntityPathBase<UserDetailTbl> {
 
     public final QUserTbl user;
 
-    public final NumberPath<Integer> userNo = createNumber("userNo", Integer.class);
+    public final NumberPath<Long> userNo = createNumber("userNo", Long.class);
 
     public QUserDetailTbl(String variable) {
         this(UserDetailTbl.class, forVariable(variable), INITS);

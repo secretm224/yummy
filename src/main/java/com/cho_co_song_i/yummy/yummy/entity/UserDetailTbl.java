@@ -1,16 +1,21 @@
 package com.cho_co_song_i.yummy.yummy.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Persistable;
 
 import java.math.BigDecimal;
 import java.util.Date;
 
 
-@Data
+
 @Entity
 @Table(name = "user_detail_tbl")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserDetailTbl implements Persistable<Long> {
 
     @Id
@@ -23,7 +28,7 @@ public class UserDetailTbl implements Persistable<Long> {
     private UserTbl user;
 
     @Column(name = "user_no", nullable = false, insertable = false, updatable = false)
-    private int userNo;
+    private Long userNo;
 
     @Column(name = "addr_type", length = 2, nullable = false)
     private String addrType;
