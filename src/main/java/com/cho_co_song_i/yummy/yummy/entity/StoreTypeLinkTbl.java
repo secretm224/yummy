@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.domain.Persistable;
 
 import java.util.Date;
 
@@ -12,7 +13,7 @@ import java.util.Date;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class StoreTypeLinkTbl {
+public class StoreTypeLinkTbl implements Persistable<StoreTypeLinkTblId> {
 
     @EmbeddedId
     private StoreTypeLinkTblId id;
@@ -30,6 +31,25 @@ public class StoreTypeLinkTbl {
 
     @Column(name = "chg_id", nullable = true, length = 25)
     private String chgId;
+
+    /* ✅ Hibernate 에게 신규 엔티티임을 알려주기 위해 사용 */
+    @Transient
+    private boolean isNew = false;
+
+    @Override
+    public StoreTypeLinkTblId getId() {
+        return this.id;
+    }
+
+    @Override
+    public boolean isNew() {
+        return isNew || this.id == null;
+    }
+
+    /* ✅ 새로운 엔티티를 표시하는 메서드 */
+    public void markAsNew() {
+        this.isNew = true;
+    }
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seq", referencedColumnName = "seq", insertable = false, updatable = false)

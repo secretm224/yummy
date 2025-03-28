@@ -32,21 +32,22 @@ public class LocationService {
     @PersistenceContext
     private EntityManager entityManager;
 
-    private final LocationCountyRepository locationRepository;
-    private final StoreLocationInfoRepository storeLocationInfoRepository;
-    private final ZeroPossibleMarketRepository zeroPossibleMarketRepository;
-    private final StoreTypeLinkRepository storeTypeLinkRepository;
     private final JPAQueryFactory queryFactory;
 
-    public LocationService(LocationCountyRepository locationRepository, StoreLocationInfoRepository storeLocationInfoRepository,
-                           ZeroPossibleMarketRepository zeroPossibleMarketRepository, JPAQueryFactory queryFactory,
-                           StoreTypeLinkRepository storeTypeLinkRepository
-    ) {
+    private final LocationCountyRepository locationRepository;
+    private final ZeroPossibleMarketRepository zeroPossibleMarketRepository;
+    private final StoreLocationInfoRepository storeLocationInfoRepository;
+    private final StoreTypeLinkRepository storeTypeLinkRepository;
+
+
+    public LocationService(LocationCountyRepository locationRepository, JPAQueryFactory queryFactory,
+                           ZeroPossibleMarketRepository zeroPossibleMarketRepository, StoreLocationInfoRepository storeLocationInfoRepository,
+                           StoreTypeLinkRepository storeTypeLinkRepository) {
         this.locationRepository = locationRepository;
-        this.storeLocationInfoRepository = storeLocationInfoRepository;
-        this.zeroPossibleMarketRepository = zeroPossibleMarketRepository;
-        this.storeTypeLinkRepository = storeTypeLinkRepository;
         this.queryFactory = queryFactory;
+        this.zeroPossibleMarketRepository = zeroPossibleMarketRepository;
+        this.storeLocationInfoRepository = storeLocationInfoRepository;
+        this.storeTypeLinkRepository = storeTypeLinkRepository;
     }
 
     /* ** Fetch Join / Join 비교 ** -> JPA 를 사용하면서 굉장히 중요한 부분  */
@@ -61,7 +62,7 @@ public class LocationService {
         var query = queryFactory
                 .selectFrom(locationCityTbl)
                 .join(locationCityTbl.locationCounty, locationCountyTbl)
-                .fetchJoin(); // 해당 부분을 없애고 실행하면 쿼리가 N+1 번 실행됨
+                .fetchJoin(); /* 해당 부분을 없애고 실행하면 쿼리가 N+1 번 실행됨 */
 
         try {
             List<LocationCityTbl> locationCityTblList = query.fetch();
@@ -193,15 +194,10 @@ public class LocationService {
         }
     }
 
-    @Transactional
-    public Long addStoreLocation(AddStoreDto addStoreDto, Long storeSeq, Date now) {
-        entityManager.setFlushMode(FlushModeType.COMMIT);
+    public void addStoreLocationInfoTbl(AddStoreDto addStoreDto, Long storeSeq, Date now) {
 
         if (storeSeq <= 0) {
             throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] 'storeSeq' data must be at least 1 natural number.");
-        }
-        if (addStoreDto == null) {
-            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] AddStoreDto object is null.");
         }
         if (addStoreDto.getLocationCounty() == null || addStoreDto.getLocationCounty().isEmpty()) {
             throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] The location county name is missing.");
@@ -232,19 +228,17 @@ public class LocationService {
         storeLocationInfoTbl.setAddress(addStoreDto.getAddress());
         storeLocationInfoTbl.setRegId("system");
         storeLocationInfoTbl.setRegDt(now);
+        storeLocationInfoTbl.markAsNew();
 
-        return storeLocationInfoRepository.save(storeLocationInfoTbl).getSeq();
+        storeLocationInfoRepository.save(storeLocationInfoTbl);
     }
 
-    @Transactional
+
+
     public void addZeroPossibleMarket(AddStoreDto addStoreDto, Long storeSeq, Date now) {
-        entityManager.setFlushMode(FlushModeType.COMMIT);
 
         if (storeSeq <= 0) {
             throw new IllegalArgumentException("[Error][LocationService->addZeroPossibleMarket] 'storeSeq' data must be at least 1 natural number.");
-        }
-        if (addStoreDto == null) {
-            throw new IllegalArgumentException("[Error][LocationService->addZeroPossibleMarket] AddStoreDto object is null.");
         }
         if (addStoreDto.getName() == null || addStoreDto.getName().isEmpty()) {
             throw new IllegalArgumentException("[Error][LocationService->addZeroPossibleMarket] The store name is missing.");
@@ -257,14 +251,14 @@ public class LocationService {
         zeroPossibleMarket.setName(addStoreDto.getName());
         zeroPossibleMarket.setRegDt(now);
         zeroPossibleMarket.setRegId("system");
+        zeroPossibleMarket.markAsNew();
 
         zeroPossibleMarketRepository.save(zeroPossibleMarket);
     }
 
-    @Transactional
-    public void addStoreTypeLink(AddStoreDto addStoreDto, Long storeSeq, Date now) {
-        entityManager.setFlushMode(FlushModeType.COMMIT);
+    public void addStoreTypeLinkTbl(AddStoreDto addStoreDto, Long storeSeq, Date now) {
 
+        // 일부로 에러를 발생시켜줌
         if (storeSeq <= 0) {
             throw new IllegalArgumentException("[Error][LocationService->addStoreTypeLink] 'storeSeq' data must be at least 1 natural number.");
         }
@@ -282,6 +276,7 @@ public class LocationService {
         storeTypeLinkTbl.setId(storeTypeLinkTblId);
         storeTypeLinkTbl.setRegDt(now);
         storeTypeLinkTbl.setRegId("system");
+        storeTypeLinkTbl.markAsNew();
 
         storeTypeLinkRepository.save(storeTypeLinkTbl);
     }

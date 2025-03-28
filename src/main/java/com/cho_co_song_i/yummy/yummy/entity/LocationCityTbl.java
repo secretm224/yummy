@@ -37,7 +37,8 @@ public class LocationCityTbl implements Persistable<LocationCityTblId> {
     private String chgId;
 
     /* ✅ Hibernate 에게 신규 엔티티임을 알려주기 위해 사용 */
-    private transient boolean isNew = false;
+    @Transient
+    private boolean isNew = false;
 
     @Override
     public LocationCityTblId getId() {

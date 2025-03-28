@@ -9,13 +9,14 @@ import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.domain.Persistable;
 
 @Entity
 @Table(name = "store")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Store {
+public class Store implements Persistable<Long> {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,6 +45,26 @@ public class Store {
 
     @Column(name = "chg_id", nullable = true, length = 25)
     private String chgId;
+
+    /* ✅ Hibernate 에게 신규 엔티티임을 알려주기 위해 사용 */
+    @Transient
+    private boolean isNew = false;
+
+    @Override
+    public Long getId() {
+        return this.seq;
+    }
+
+    @Override
+    public boolean isNew() {
+        return isNew || this.seq == null;
+    }
+
+    /* ✅ 새로운 엔티티를 표시하는 메서드 */
+    public void markAsNew() {
+        this.isNew = true;
+    }
+
 
     @OneToMany(mappedBy = "store", fetch = FetchType.LAZY)
     private List<StoreTypeLinkTbl> storeTypeLinks = new ArrayList<>();

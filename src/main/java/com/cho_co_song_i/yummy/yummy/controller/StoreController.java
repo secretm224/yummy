@@ -1,17 +1,15 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
 import com.cho_co_song_i.yummy.yummy.dto.AddStoreDto;
-import com.cho_co_song_i.yummy.yummy.dto.LocationCountyDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreDto;
 import com.cho_co_song_i.yummy.yummy.service.LocationService;
+import com.cho_co_song_i.yummy.yummy.service.RedisService;
 import com.cho_co_song_i.yummy.yummy.service.StoreService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
-import java.util.Date;
+
 import java.util.List;
 
 @RestController
@@ -21,10 +19,12 @@ public class StoreController {
 
     private final StoreService storeService;
     private final LocationService locationService;
+    private final RedisService redisService;
 
-    public StoreController(StoreService storeService, LocationService locationService) {
+    public StoreController(StoreService storeService, LocationService locationService, RedisService redisService) {
         this.storeService = storeService;
         this.locationService = locationService;
+        this.redisService = redisService;
     }
 
     @GetMapping
@@ -57,40 +57,16 @@ public class StoreController {
     }
 
     @PostMapping("/addStore")
-    @Transactional
-    public ResponseEntity<String> addStore(@RequestBody AddStoreDto addStoreDto) {
-
-        /* 현재 시각 */
-        Instant nowInstant = Instant.now();
-        Date now = Date.from(nowInstant);
-
-        try {
-
-            Long storeSeq = storeService.addStore(addStoreDto, now);
-            locationService.addStoreLocation(addStoreDto, storeSeq, now);
-
-            /* 비플페이 등록 업체라면 */
-            if (addStoreDto.getIsBeefulPay()) {
-                locationService.addZeroPossibleMarket(addStoreDto, storeSeq, now);
-            }
-
-            /* 음식점-타입 데이터 */
-            locationService.addStoreTypeLink(addStoreDto, storeSeq, now);
-
-            return ResponseEntity.ok("Success");
-        } catch(Exception e) {
-            log.error("[Error][StoreController->addStore] {}", e.getMessage());
-            return ResponseEntity.status(500).body("[Error][StoreController->addStore] " + e.getMessage());
-        }
+    public ResponseEntity<Boolean> addStore(@RequestBody AddStoreDto addStoreDto) {
+        Boolean addStore = storeService.addStore(addStoreDto);
+        return ResponseEntity.ok(addStore);
     }
 
-//    public ResponseEntity<List<LocationCountyDto>> getLocationCounty() {
-//        storeService.g
-//    }
+    @GetMapping("/redisTest")
+    public ResponseEntity<Boolean> redisTest() {
 
-//    @DeleteMapping("/{id}")
-//    public ResponseEntity<Void> deleteStore(@PathVariable Long id) {
-//        storeService.deleteStore(id);
-//        return ResponseEntity.noContent().build();
-//    }
+        System.out.println(redisService.get("categories:main"));
+        return ResponseEntity.ok(true);
+    }
+
 }

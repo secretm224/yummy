@@ -40,7 +40,7 @@ public class LocationCountyTbl implements Persistable<Long> {
 
     /* ✅ Hibernate 에게 신규 엔티티임을 알려주기 위해 사용 */
     @Transient
-    private boolean isNew = true;
+    private boolean isNew = false;
 
     @Override
     public Long getId() {
