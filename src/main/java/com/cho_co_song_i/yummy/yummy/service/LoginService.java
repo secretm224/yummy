@@ -185,4 +185,43 @@ public class LoginService {
 
         return token_obj;
     }
+
+
+//QueryDSL
+//    async GetUserDetailInfo(login_channel:string,token_id:string):Promise<UserProfileDto | null>{
+//        if(!!login_channel && !!token_id){
+//            const auth_info = await this.auth_repository.findOneBy({
+//                    login_channel:login_channel,
+//                    token_id:token_id
+//                                    });
+//            if(auth_info){
+//                const detail_info = await this.detail_repository.findOneBy({user_no:auth_info.user_no});
+//                if(detail_info){
+//                    const user_info = await this.user_repository.findOneBy({user_no:detail_info.user_no});
+//                    if(user_info){
+//                        const user_profile:UserProfileDto={
+//                                user_no:user_info.user_no,
+//                                user_nm:user_info.user_nm,
+//                                login_channel:auth_info.login_channel,
+//                                token_id:auth_info.token_id,
+//                                addr_type:detail_info.addr_type,
+//                                addr:detail_info.addr,
+//                                lngx:detail_info.lng_x,
+//                                laty:detail_info.lat_y,
+//                                reg_dt:user_info.reg_dt,
+//                        }
+//
+//                        return user_profile;
+//                    }
+//                }
+//            }
+//        }
+//
+//        return null;
+//    }
+
+
+
+
+
 }
