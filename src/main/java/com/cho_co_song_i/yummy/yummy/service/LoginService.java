@@ -1,6 +1,8 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
+import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
 import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
+import com.cho_co_song_i.yummy.yummy.repository.UserCustomRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -13,13 +15,10 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
-import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
-import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
-import com.cho_co_song_i.yummy.yummy.entity.UserDetailTbl;
-import com.cho_co_song_i.yummy.yummy.entity.UserAuthTbl;
 
-import com.cho_co_song_i.yummy.yummy.repository.UserCustomRepository;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 
 @Service
@@ -196,7 +195,7 @@ public class LoginService {
         return token_obj;
     }
 
-    public UserProfileDto getUserDetailInfo(String loginChannel, String tokenId) {
+    public List<UserProfileDto> getUserDetailInfo(String loginChannel, String tokenId) {
         return userCustomRepository.GetUserInfo(loginChannel, tokenId);
     }
 

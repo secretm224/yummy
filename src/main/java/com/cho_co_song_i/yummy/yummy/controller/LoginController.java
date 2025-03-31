@@ -16,6 +16,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -152,17 +153,24 @@ public class LoginController {
          return ResponseEntity.ok(responseBody);
      }
 
-    @GetMapping("/UserInfo")
-    public ResponseEntity<UserProfileDto> getUserDetailInfo(
-            @RequestParam String loginChannel,
-            @RequestParam String tokenId) {
+    @GetMapping("/userinfo")
+    @ResponseBody
+    public ResponseEntity<List<UserProfileDto>> getUserDetailInfo(
+            @RequestParam("loginChannel") String loginChannel,
+            @RequestParam("tokenId") String tokenId) {
 
-        UserProfileDto userProfile = loginService.getUserDetailInfo(loginChannel, tokenId);
+        List<UserProfileDto> userProfile = loginService.getUserDetailInfo(loginChannel, tokenId);
 
         if (userProfile != null) {
             return ResponseEntity.ok(userProfile);
         } else {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @GetMapping("/test")
+    @ResponseBody
+    public String Test() {
+        return "Call Method Test";
     }
 }

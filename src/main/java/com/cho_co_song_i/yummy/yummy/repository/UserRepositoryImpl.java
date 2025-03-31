@@ -1,14 +1,14 @@
 package com.cho_co_song_i.yummy.yummy.repository;
 
-import com.cho_co_song_i.yummy.yummy.entity.QUserTbl;
-import com.cho_co_song_i.yummy.yummy.entity.QUserDetailTbl;
-import com.cho_co_song_i.yummy.yummy.entity.QUserAuthTbl;
-
 import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
-
+import com.cho_co_song_i.yummy.yummy.entity.QUserAuthTbl;
+import com.cho_co_song_i.yummy.yummy.entity.QUserDetailTbl;
+import com.cho_co_song_i.yummy.yummy.entity.QUserTbl;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 
 @Repository
@@ -21,12 +21,12 @@ public class UserRepositoryImpl implements UserCustomRepository{
         this.jpaQueryFactory = jpaQueryFactory;
     }
 
-    public UserProfileDto GetUserInfo(String login_channel , String token_id){
+    public List<UserProfileDto> GetUserInfo(String login_channel , String token_id){
         QUserTbl user = QUserTbl.userTbl;
         QUserDetailTbl detail = QUserDetailTbl.userDetailTbl;
         QUserAuthTbl auth = QUserAuthTbl.userAuthTbl;
 
-        UserProfileDto userprofile = jpaQueryFactory.select(
+        List<UserProfileDto> userProfileList= jpaQueryFactory.select(
                 Projections.constructor(UserProfileDto.class,
                         user.user_no,
                         user.user_nm,
@@ -39,12 +39,12 @@ public class UserRepositoryImpl implements UserCustomRepository{
                         user.reg_dt
                         ))
                 .from(user)
-                .join(user).on(user.user_no.eq(auth.authNo))   // User와 UserAuth 조인
+                .join(auth).on(user.user_no.eq(auth.userNo))   // User와 UserAuth 조인
                 .join(detail).on(detail.userNo.eq(auth.userNo))
                 .where(auth.login_channel.eq(login_channel)
                 .and(auth.token_id.eq(token_id)))
-                .fetchOne();
+                .fetch();
 
-        return userprofile;
+        return userProfileList;
     }
 }
