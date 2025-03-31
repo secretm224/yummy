@@ -3,10 +3,10 @@
 
     <!-- 파일정보 -->
     <Properties>
-        <Property name="infoLogNm">./logs/test/api_info.log</Property>
-        <Property name="errorLogNm">./logs/test/api_error.log</Property>
-        <Property name="authLogNm">./logs/test/api_auth.log</Property>
-        <Property name="jsonInfoLogNm">./logs/test/api_json_info.log</Property>
+        <Property name="infoLogNm">./logs/api_info.log</Property>
+        <Property name="errorLogNm">./logs/api_error.log</Property>
+        <Property name="authLogNm">./logs/api_auth.log</Property>
+        <Property name="jsonInfoLogNm">./logs/api_json_info.log</Property>
         <Property name="layoutPattern">%style{%d{yyyy-MM-dd HH:mm:ss}}{black} %highlight{%-5level} [%style{%t}{bright,blue}]
             %style{%C}{bright,yellow}: %msg%n%throwable
         </Property>
