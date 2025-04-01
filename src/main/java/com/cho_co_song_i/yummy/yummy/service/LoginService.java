@@ -1,5 +1,7 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
 import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
 import com.cho_co_song_i.yummy.yummy.repository.UserCustomRepository;
@@ -7,6 +9,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -16,9 +20,13 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import static com.cho_co_song_i.yummy.yummy.utils.CookieUtil.*;
 
 
 @Service
@@ -39,17 +47,80 @@ public class LoginService {
 
     private final RestTemplate restTemplate;
     private final JPAQueryFactory queryFactory;
-    private  final UserCustomRepository userCustomRepository;
+    private final UserCustomRepository userCustomRepository;
+    private final RedisService redisService;
 
-    public LoginService(RestTemplate restTemplate, JPAQueryFactory queryFactory, UserCustomRepository userCustomRepository) {
+
+    public LoginService(RestTemplate restTemplate, JPAQueryFactory queryFactory,
+                        UserCustomRepository userCustomRepository, RedisService redisService) {
         this.restTemplate = restTemplate;
         this.queryFactory = queryFactory;
         this.userCustomRepository = userCustomRepository;
+        this.redisService = redisService;
     }
 
-    public KakaoToken GetKakaoToken(String code){
+    /**
+     *
+     * @param code
+     * @param res
+     * @return
+     */
+    public Map<String, Object> handleKakaoLogin(String code, HttpServletResponse res) {
+        Map<String, Object> result = new HashMap<>();
 
-        try{
+        if (code == null || code.isEmpty()) {
+            result.put("kakao_access_token", null);
+            result.put("kakao_payload", null);
+            return result;
+        }
+
+        KakaoToken kakaoToken = getKakaoToken(code);
+
+        if (kakaoToken == null) {
+            result.put("kakao_access_token", null);
+            result.put("kakao_payload", null);
+            return result;
+        }
+
+        String accessToken = kakaoToken.getAccess_token();
+        String refreshToken = kakaoToken.getRefresh_token();
+        String idToken = kakaoToken.getId_token();
+
+        if (accessToken != null && !accessToken.isEmpty()) {
+            addCookie(res, "accessToken", accessToken, 60 * 60);
+        }
+
+        if (refreshToken != null && !refreshToken.isEmpty()) {
+            addCookie(res, "refreshToken", refreshToken, 60 * 60 * 24 * 7);
+        }
+
+        Map<String, Object> payload = decodeJwtPayload(idToken);
+
+        result.put("kakao_access_token", accessToken);
+        result.put("kakao_payload", payload);
+
+        return result;
+    }
+
+    /**
+     * jwt 페이로드를 해석(디코드)해주는 함수
+     * @param idToken
+     * @return
+     */
+    private Map<String, Object> decodeJwtPayload(String idToken) {
+        if (idToken == null || idToken.isEmpty()) return Collections.emptyMap();
+
+        DecodedJWT decoded = JWT.decode(idToken);
+        return decoded.getClaims().entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> e.getValue().as(Object.class)
+                ));
+    }
+
+    private KakaoToken getKakaoToken(String code){
+
+        try {
 
             MultiValueMap<String,Object> params = new LinkedMultiValueMap<>();
             params.add("grant_type","authorization_code");
@@ -73,7 +144,7 @@ public class LoginService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"kakao token data is empty");
             }
 
-        }catch (Exception e){
+        } catch (Exception e){
             log.error("kakao get token error",e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,"Error during Kakao Token retrieval",e);
         }
@@ -186,7 +257,7 @@ public class LoginService {
                     token_obj.put("refresh_token",n_refresh_token);
                     token_obj.put("id_token",n_id_token);
                 }
-            }catch (Exception e){
+            } catch (Exception e){
                 e.printStackTrace();
             }
         }
@@ -196,6 +267,43 @@ public class LoginService {
 
     public List<UserProfileDto> getUserDetailInfo(String loginChannel, String tokenId) {
         return userCustomRepository.GetUserInfo(loginChannel, tokenId);
+    }
+
+    /**
+     * 토큰을 쿠키, Redis 모두에서 삭제해주는 함수
+     * @param res
+     * @param req
+     * @param tokenKeyName
+     * @return
+     */
+    private Boolean removeTokenAndCookie(HttpServletResponse res , HttpServletRequest req, String tokenKeyName) {
+        /* 쿠키에서 토큰 키 추출 */
+        String tokenKey = getCookieValue(req, tokenKeyName);
+
+        if (tokenKey != null) {
+            clearCookie(res, tokenKeyName);
+            Boolean result = redisService.deleteKey(tokenKey);
+
+            if (!result) {
+                log.error("[Error][LoginService->removeTokenAndCookie] Failed to delete {}.", tokenKeyName);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * 유저 로그인 관련 토큰을 삭제해주는 함수
+     * @param res
+     * @param req
+     * @return
+     */
+    public Boolean clearUserToken(HttpServletResponse res , HttpServletRequest req) {
+        Boolean accessRes = removeTokenAndCookie(res, req, "accessTokenKey");
+        Boolean refreshRes = removeTokenAndCookie(res, req, "refreshTokenKey");
+
+        return accessRes && refreshRes;
     }
 
 }

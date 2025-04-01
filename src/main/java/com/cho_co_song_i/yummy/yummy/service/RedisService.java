@@ -22,6 +22,9 @@ public class RedisService {
         return redisTemplate.opsForValue().get(key);
     }
 
+    public Boolean deleteKey(String key) {
+        return Boolean.TRUE.equals(redisTemplate.delete(key));
+    }
     public <T> T getValue(String key, TypeReference<T> typeReference) {
         Object redisData = redisTemplate.opsForValue().get(key);
 

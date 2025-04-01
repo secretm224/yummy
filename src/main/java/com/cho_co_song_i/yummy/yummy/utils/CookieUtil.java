@@ -5,6 +5,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Cookie;
 
 public class CookieUtil {
+
+    /* 인스턴스 생성 방지 */
+    private CookieUtil() {}
+
     /* 쿠키 조회 */
     public static String getCookieValue(HttpServletRequest request, String name) {
         if (request.getCookies() != null) {
@@ -16,7 +20,7 @@ public class CookieUtil {
         }
         return null;
     }
-
+    
     /* 쿠키 삭제 */
     public static void clearCookie(HttpServletResponse response, String name) {
         Cookie cookie = new Cookie(name, null);
