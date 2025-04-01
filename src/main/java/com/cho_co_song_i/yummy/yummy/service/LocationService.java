@@ -6,19 +6,19 @@ import com.cho_co_song_i.yummy.yummy.repository.LocationCountyRepository;
 import com.cho_co_song_i.yummy.yummy.repository.StoreLocationInfoRepository;
 import com.cho_co_song_i.yummy.yummy.repository.StoreTypeLinkRepository;
 import com.cho_co_song_i.yummy.yummy.repository.ZeroPossibleMarketRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.FlushModeType;
 import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QLocationCountyTbl.locationCountyTbl;
@@ -38,16 +38,26 @@ public class LocationService {
     private final ZeroPossibleMarketRepository zeroPossibleMarketRepository;
     private final StoreLocationInfoRepository storeLocationInfoRepository;
     private final StoreTypeLinkRepository storeTypeLinkRepository;
+    private final RedisService redisService;
 
+
+    /* Redis Cache 관련 필드 */
+    @Value("${spring.redis.location_county}")
+    private String locationCounty;
+    @Value("${spring.redis.location_city}")
+    private String locationCity;
+    @Value("${spring.redis.location_district}")
+    private String locationDistrict;
 
     public LocationService(LocationCountyRepository locationRepository, JPAQueryFactory queryFactory,
                            ZeroPossibleMarketRepository zeroPossibleMarketRepository, StoreLocationInfoRepository storeLocationInfoRepository,
-                           StoreTypeLinkRepository storeTypeLinkRepository) {
+                           StoreTypeLinkRepository storeTypeLinkRepository, RedisService redisService) {
         this.locationRepository = locationRepository;
         this.queryFactory = queryFactory;
         this.zeroPossibleMarketRepository = zeroPossibleMarketRepository;
         this.storeLocationInfoRepository = storeLocationInfoRepository;
         this.storeTypeLinkRepository = storeTypeLinkRepository;
+        this.redisService = redisService;
     }
 
     /* ** Fetch Join / Join 비교 ** -> JPA 를 사용하면서 굉장히 중요한 부분  */
@@ -93,7 +103,7 @@ public class LocationService {
     /* Entity -> DTO 변환 (LocationCityTbl) */
     private LocationCityDto convertCityToDto(LocationCityTbl locationCityTbl) {
         return new LocationCityDto(
-                locationCityTbl.getId().getLocationCityCode(),
+                Objects.requireNonNull(locationCityTbl.getId()).getLocationCityCode(),
                 locationCityTbl.getId().getLocationCountyCode(),
                 locationCityTbl.getLocationCity()
         );
@@ -102,21 +112,34 @@ public class LocationService {
     /* Entity -> DTO 변환 (LocationDistrictTbl) */
     private LocationDistrictDto convertDistrictToDto(LocationDistrictTbl locationDistrictTbl) {
         return new LocationDistrictDto(
-                locationDistrictTbl.getId().getLocationDistrictCode(),
+                Objects.requireNonNull(locationDistrictTbl.getId()).getLocationDistrictCode(),
                 locationDistrictTbl.getId().getLocationCityCode(),
                 locationDistrictTbl.getId().getLocationCountyCode(),
                 locationDistrictTbl.getLocationDistrict()
         );
     }
 
-    /* LocationCountyTbl 객체 리스트를 가져와준다. */
+    /*
+        LocationCountyTbl 객체 리스트를 가져와준다.
+        -> 먼저 Redis 를 바라봐주고, 데이터가 존재하지 않거나, Redis 에 문제가 생긴 경우 db에서 데이터를 가져와준다.
+    */
     public List<LocationCountyDto> getAllLocationCounty() {
         try {
-            List<LocationCountyTbl> locationCountyList = locationRepository.findAll();
 
-            return locationCountyList.stream()
+            List<LocationCountyDto> locationCountyList =
+                    redisService.getValue(locationCounty, new TypeReference<List<LocationCountyDto>>() {});
+
+            if (locationCountyList.isEmpty()) {
+                /* Redis 에서 데이터를 받아오지 못한 경우 */
+                List<LocationCountyTbl> locationCountyListDb = locationRepository.findAll();
+
+                return locationCountyListDb.stream()
                     .map(this::convertCountyToDto)
                     .collect(Collectors.toList());
+
+            } else {
+                return locationCountyList;
+            }
 
         } catch(Exception e) {
             log.error("[Error][LocationService->getAllLocationCounty] {}", e.getMessage(), e);
@@ -131,30 +154,45 @@ public class LocationService {
      */
     public List<LocationCityDto> getLocationCities(Long locationCountyCode) {
 
-        BooleanBuilder conditions = new BooleanBuilder();
-
-        if (locationCountyCode != null && locationCountyCode >= 0) {
-            conditions.and(locationCityTbl.id.locationCountyCode.eq(locationCountyCode));
-        }
-
-        var query = queryFactory
-                .selectFrom(locationCityTbl)
-                .join(locationCityTbl.locationCounty, locationCountyTbl);
-
-        if (conditions.hasValue()) {
-            query.where(conditions);
-        }
+        List<LocationCityDto> locationCityList = new ArrayList<>();
 
         try {
-            List<LocationCityTbl> locationCityTblList = query.fetch();
-
-            return locationCityTblList.stream()
-                    .map(this::convertCityToDto)
-                    .collect(Collectors.toList());
-
+            String locationCityKey = String.format("%s:%s", locationCity, locationCountyCode);
+            locationCityList = redisService.getValue(locationCityKey, new TypeReference<List<LocationCityDto>>() {});
         } catch(Exception e) {
             log.error("[Error][LocationService->getLocationCities] {}", e.getMessage(), e);
-            return Collections.emptyList();
+        }
+
+        if (locationCityList == null || locationCityList.isEmpty()) {
+            /* Redis 에서 데이터를 못가져오거나 데이터가 존재하지 않을 경우 */
+            BooleanBuilder conditions = new BooleanBuilder();
+
+            if (locationCountyCode != null && locationCountyCode > 0) {
+                conditions.and(locationCityTbl.id.locationCountyCode.eq(locationCountyCode));
+            }
+
+            var query = queryFactory
+                    .selectFrom(locationCityTbl)
+                    .join(locationCityTbl.locationCounty, locationCountyTbl);
+
+            if (conditions.hasValue()) {
+                query.where(conditions);
+            }
+
+            try {
+                List<LocationCityTbl> locationCityTblList = query.fetch();
+
+                return locationCityTblList.stream()
+                        .map(this::convertCityToDto)
+                        .collect(Collectors.toList());
+
+            } catch(Exception e) {
+                log.error("[Error][LocationService->getLocationCities] {}", e.getMessage(), e);
+                return Collections.emptyList();
+            }
+
+        } else {
+            return locationCityList;
         }
     }
 
@@ -165,32 +203,48 @@ public class LocationService {
      */
     public List<LocationDistrictDto> getLocationDistrict(Long locationCityCode) {
 
-        BooleanBuilder conditions = new BooleanBuilder();
-
-        if (locationCityCode != null && locationCityCode >= 0) {
-            conditions.and(locationDistrictTbl.id.locationCityCode.eq(locationCityCode));
-        }
-
-        var query = queryFactory
-                .select(locationDistrictTbl)
-                .from(locationDistrictTbl)
-                .join(locationDistrictTbl.locationCity, locationCityTbl)
-                .join(locationCityTbl.locationCounty, locationCountyTbl);
-
-        if (conditions.hasValue()) {
-            query.where(conditions);
-        }
+        List<LocationDistrictDto> locationDistrictList = new ArrayList<>();
 
         try {
-            List<LocationDistrictTbl> locationDistricts = query.fetch();
-
-            return locationDistricts.stream()
-                    .map(this::convertDistrictToDto)
-                    .collect(Collectors.toList());
-
+            String locationDistrictKey = String.format("%s:%s", locationDistrict, locationCityCode);
+            locationDistrictList = redisService.getValue(locationDistrictKey, new TypeReference<List<LocationDistrictDto>>() {});
         } catch(Exception e) {
             log.error("[Error][LocationService->getLocationDistrict] {}", e.getMessage(), e);
-            return Collections.emptyList();
+        }
+
+
+        if (locationDistrictList == null || locationDistrictList.isEmpty()) {
+
+            BooleanBuilder conditions = new BooleanBuilder();
+
+            if (locationCityCode != null && locationCityCode > 0) {
+                conditions.and(locationDistrictTbl.id.locationCityCode.eq(locationCityCode));
+            }
+
+            var query = queryFactory
+                    .select(locationDistrictTbl)
+                    .from(locationDistrictTbl)
+                    .join(locationDistrictTbl.locationCity, locationCityTbl)
+                    .join(locationCityTbl.locationCounty, locationCountyTbl);
+
+            if (conditions.hasValue()) {
+                query.where(conditions);
+            }
+
+            try {
+                List<LocationDistrictTbl> locationDistricts = query.fetch();
+
+                return locationDistricts.stream()
+                        .map(this::convertDistrictToDto)
+                        .collect(Collectors.toList());
+
+            } catch(Exception e) {
+                log.error("[Error][LocationService->getLocationDistrict] {}", e.getMessage(), e);
+                return Collections.emptyList();
+            }
+
+        } else {
+            return locationDistrictList;
         }
     }
 

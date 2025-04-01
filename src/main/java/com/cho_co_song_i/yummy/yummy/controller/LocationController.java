@@ -19,7 +19,7 @@ public class LocationController {
 
     public LocationController(LocationService locationService) { this.locationService = locationService; }
 
-    // N+1 문제를 테스트하기 위한 컨트롤러
+    /* N+1 문제를 테스트하기 위한 컨트롤러 */
     @GetMapping("/test")
     public ResponseEntity<String> getTest(
             @RequestParam(value = "countySeq", required = false) Long locationCountyCode

@@ -2,6 +2,8 @@ package com.cho_co_song_i.yummy.yummy.controller;
 
 import com.cho_co_song_i.yummy.yummy.dto.AddStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreDto;
+import com.cho_co_song_i.yummy.yummy.dto.StoreTypeMajorDto;
+import com.cho_co_song_i.yummy.yummy.dto.StoreTypeSubDto;
 import com.cho_co_song_i.yummy.yummy.service.LocationService;
 import com.cho_co_song_i.yummy.yummy.service.RedisService;
 import com.cho_co_song_i.yummy.yummy.service.StoreService;
@@ -60,6 +62,20 @@ public class StoreController {
     public ResponseEntity<Boolean> addStore(@RequestBody AddStoreDto addStoreDto) {
         Boolean addStore = storeService.addStore(addStoreDto);
         return ResponseEntity.ok(addStore);
+    }
+
+    @GetMapping("/getTypeMajor")
+    public ResponseEntity<List<StoreTypeMajorDto>> getStoreTypeMajor() {
+        List<StoreTypeMajorDto> storeTypeMajors = storeService.getStoreTypeMajors();
+        return ResponseEntity.ok(storeTypeMajors);
+    }
+
+    @GetMapping("/getTypeSub")
+    public ResponseEntity<List<StoreTypeSubDto>> getStoreTypeSub(
+            @RequestParam(value = "majorType", required = false) Long majorType
+    ) {
+        List<StoreTypeSubDto> storeTypeMajors = storeService.getStoreTypeSubs(majorType);
+        return ResponseEntity.ok(storeTypeMajors);
     }
 
     @GetMapping("/redisTest")
