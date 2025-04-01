@@ -48,36 +48,35 @@ public class LoginService {
     }
 
     public KakaoToken GetKakaoToken(String code){
-        if(!code.isEmpty()){
-            try{
-                MultiValueMap<String,Object> params = new LinkedMultiValueMap<>();
-                params.add("grant_type","authorization_code");
-                params.add("client_id",kakaoApiKey);
-                params.add("redirect_url",kakaoRedirectUrl);
-                params.add("code",code);
 
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        try{
 
-                HttpEntity<MultiValueMap<String, Object>> entity = new HttpEntity<>(params,headers);
-                //api 요청 데이터 및 헤더 세팅
-                log.info("kakao api request data",entity);
-                ResponseEntity<KakaoToken> response = restTemplate.postForEntity(kakaoAuthUrl,entity,KakaoToken.class);
-                log.info("kakao api response data",response);
+            MultiValueMap<String,Object> params = new LinkedMultiValueMap<>();
+            params.add("grant_type","authorization_code");
+            params.add("client_id",kakaoApiKey);
+            params.add("redirect_url",kakaoRedirectUrl);
+            params.add("code",code);
 
-                if(response.getStatusCode().is2xxSuccessful() && response.getBody() != null){
-                    return response.getBody();
-                }else{
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"kakao token data is empty");
-                }
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-            }catch (Exception e){
-                log.error("kakao get token error",e);
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,"Error during Kakao Token retrieval",e);
+            HttpEntity<MultiValueMap<String, Object>> entity = new HttpEntity<>(params,headers);
+
+            /* api 요청 데이터 및 헤더 세팅 */
+            log.info("kakao api request data",entity);
+            ResponseEntity<KakaoToken> response = restTemplate.postForEntity(kakaoAuthUrl,entity,KakaoToken.class);
+            log.info("kakao api response data",response);
+
+            if(response.getStatusCode().is2xxSuccessful() && response.getBody() != null){
+                return response.getBody();
+            } else {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"kakao token data is empty");
             }
-        }
 
-        return null;
+        }catch (Exception e){
+            log.error("kakao get token error",e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,"Error during Kakao Token retrieval",e);
+        }
     }
 
     public boolean CheckKakaoTokens(String CheckToken){

@@ -44,9 +44,9 @@ public class LoginController {
         String code = loginDto.getCode();
         Map<String,Object> responseBody = new HashMap<>();
 
-
-        if(!code.isEmpty()){
+        if(code != null && !code.isEmpty()) {
             KakaoToken _kakaoToken = loginService.GetKakaoToken(code);
+
             if(_kakaoToken != null){
                 String access_token = _kakaoToken.getAccess_token();
                 String refresh_token = _kakaoToken.getRefresh_token();
@@ -75,7 +75,7 @@ public class LoginController {
                 responseBody.put("kakao_access_token",access_token);
                 responseBody.put("kakao_payload",payload);
             }
-         }else{
+        } else {
             responseBody.put("kakao_access_token",null);
             responseBody.put("kakao_payload",null);
         }
