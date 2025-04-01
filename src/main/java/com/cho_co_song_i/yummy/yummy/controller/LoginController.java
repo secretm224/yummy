@@ -168,6 +168,15 @@ public class LoginController {
         }
     }
 
+//    @GetMapping("/logOut")
+//    public ResponseEntity<Boolean> logOutUser(HttpServletResponse res , HttpServletRequest req) {
+//
+//        String accessTokenKey = getCookieValue(req, "accessTokenKey");
+//        String refreshTokenKey = getCookieValue(req, "refreshTokenKey");
+//
+//        return ResponseEntity.ok(true);
+//    }
+
     @GetMapping("/test")
     @ResponseBody
     public String Test() {
