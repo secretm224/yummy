@@ -37,5 +37,13 @@ public class CookieUtil {
         cookie.setPath("/");
         cookie.setMaxAge(maxAgeInSeconds);
         response.addCookie(cookie);
+
+        String cookieHeader = name + "=" + value +
+                "; Max-Age=" + maxAgeInSeconds +
+                "; Path=/" +
+                "; HttpOnly" +
+                "; SameSite=Lax";
+
+        response.addHeader("Set-Cookie", cookieHeader);
     }
 }
