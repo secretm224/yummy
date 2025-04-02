@@ -20,7 +20,7 @@ public class CookieUtil {
         }
         return null;
     }
-    
+
     /* 쿠키 삭제 */
     public static void clearCookie(HttpServletResponse response, String name) {
         Cookie cookie = new Cookie(name, null);
@@ -31,12 +31,6 @@ public class CookieUtil {
 
     /* 쿠키 생성 */
     public static void addCookie(HttpServletResponse response, String name, String value, int maxAgeInSeconds) {
-        Cookie cookie = new Cookie(name, value);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false); // HTTPS 환경이면 true
-        cookie.setPath("/");
-        cookie.setMaxAge(maxAgeInSeconds);
-        response.addCookie(cookie);
 
         String cookieHeader = name + "=" + value +
                 "; Max-Age=" + maxAgeInSeconds +

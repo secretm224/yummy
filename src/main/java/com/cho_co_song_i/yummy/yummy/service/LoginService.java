@@ -60,7 +60,7 @@ public class LoginService {
     }
 
     /**
-     *
+     * Kakao 로그인 처리
      * @param code
      * @param res
      * @return
@@ -74,13 +74,10 @@ public class LoginService {
             return result;
         }
 
+        /*
+        * OAuth 인증과정에서 받은 code를 이용해서 access_token을 요청하고, 그 결과를 KakaoToken 으로 반환받는다.
+        * */
         KakaoToken kakaoToken = getKakaoToken(code);
-
-        if (kakaoToken == null) {
-            result.put("kakao_access_token", null);
-            result.put("kakao_payload", null);
-            return result;
-        }
 
         String accessToken = kakaoToken.getAccess_token();
         String refreshToken = kakaoToken.getRefresh_token();
@@ -118,27 +115,50 @@ public class LoginService {
                 ));
     }
 
+    /**
+     * 카카오 OAuth 인증과정에서 받은 code를 이용해서 access_token을 요청하고, 그 결과를 KakaoToken 으로 반환하는 메서드.
+     * @param code
+     * @return
+     */
     private KakaoToken getKakaoToken(String code){
 
         try {
-
+            /* URL-encoded 포맷으로 만들어주기 위한 데이터 구조 를 위해서 MultiValueMap 를 사용한다.
+            * MultiValueMap<String,Object> params = new LinkedMultiValueMap<>();
+            * params.add("grant_type","authorization_code");
+            * params.add("client_id",kakaoApiKey);
+            * params.add("redirect_url",kakaoRedirectUrl);
+            * params.add("code",code);
+            *
+            * => grant_type=authorization_code&client_id=...&redirect_url=...&code=...
+            * */
             MultiValueMap<String,Object> params = new LinkedMultiValueMap<>();
             params.add("grant_type","authorization_code");
             params.add("client_id",kakaoApiKey);
             params.add("redirect_url",kakaoRedirectUrl);
             params.add("code",code);
 
+            /* api 요청 데이터 및 헤더 세팅 */
             HttpHeaders headers = new HttpHeaders();
+            /* Content-Type 의 형식을 정함. -> application/x-www-form-urlencoded
+            * key-value 쌍의 데이터를 &로 연결해서 보내는 URL 인코딩 방식의 데이터 포멧팅
+            * */
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-            HttpEntity<MultiValueMap<String, Object>> entity = new HttpEntity<>(params,headers);
+            /* HTTP 요청을 보낼 때 사용할 바디와 헤더를 함께 감싸는 객체
+            * 이것을 이용해서 RestTemplate이 요청을 보낼 수 있다.
+            * */
+            HttpEntity<MultiValueMap<String, Object>> entity = new HttpEntity<>(params, headers);
 
-            /* api 요청 데이터 및 헤더 세팅 */
-            log.info("kakao api request data",entity);
-            ResponseEntity<KakaoToken> response = restTemplate.postForEntity(kakaoAuthUrl,entity,KakaoToken.class);
-            log.info("kakao api response data",response);
+            log.info("kakao api request data {}",entity);
 
-            if(response.getStatusCode().is2xxSuccessful() && response.getBody() != null){
+            /* Rest Template 을 이용하여 Post 요청을 보내기 위함.
+            * restTemplate.postForEntity(.., entity, ..) 여기서 entity 가 현재 header + body 라고 보면된다.
+            * */
+            ResponseEntity<KakaoToken> response = restTemplate.postForEntity(kakaoAuthUrl, entity, KakaoToken.class);
+            log.info("kakao api response data {}",response);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null){
                 return response.getBody();
             } else {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"kakao token data is empty");

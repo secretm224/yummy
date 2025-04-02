@@ -38,13 +38,11 @@ public class LoginController {
         return "login";
     }
 
-
-
     @PostMapping("/kakao/callback")
     @ResponseBody
     public ResponseEntity<?> KaKaoCode(@RequestBody LoginDto loginDto, HttpServletResponse res , HttpServletRequest req){
         Map<String, Object> response = loginService.handleKakaoLogin(loginDto.getCode(), res);
-         return ResponseEntity.ok(response);
+        return ResponseEntity.ok(response);
     }
 
      @PostMapping("/kakao/GetUserInfoByToken")
