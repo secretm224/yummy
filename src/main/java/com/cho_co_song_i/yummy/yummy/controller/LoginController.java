@@ -149,4 +149,10 @@ public class LoginController {
     public String Test() {
         return "Call Method Test";
     }
+
+    @GetMapping("/deploytest")
+    @ResponseBody
+    public String deployTest(){
+        return "배포 테스트";
+    }
 }
