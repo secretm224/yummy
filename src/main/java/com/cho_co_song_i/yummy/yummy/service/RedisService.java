@@ -25,6 +25,14 @@ public class RedisService {
     public Boolean deleteKey(String key) {
         return Boolean.TRUE.equals(redisTemplate.delete(key));
     }
+
+    /**
+     * Redis 에서 특정 키에 대한 Value 를 사용자가 원하는 인스턴스로 변환해주는 함수.
+     * @param key
+     * @param typeReference
+     * @return
+     * @param <T>
+     */
     public <T> T getValue(String key, TypeReference<T> typeReference) {
         Object redisData = redisTemplate.opsForValue().get(key);
 
@@ -36,8 +44,24 @@ public class RedisService {
             String json = redisData.toString();
             return objectMapper.readValue(json, typeReference);
         } catch(Exception e) {
-            throw new RuntimeException("[Error][RedisService->getValue]Failed to parse Redis data", e);
+            throw new RuntimeException("[Error][RedisService->getValue] Failed to parse Redis data", e);
         }
+    }
 
+    /**
+     * Redis 에서 특정 키에 특정 DTO 를 JSON으로 직렬화 한다음 저장해주는 함수
+     * @param key
+     * @param value
+     * @return
+     * @param <T>
+     */
+    public <T> Boolean set(String key, T value) {
+        try {
+            String json = objectMapper.writeValueAsString(value);
+            redisTemplate.opsForValue().set(key, json);
+            return true;
+        } catch (Exception e) {
+            throw new RuntimeException("[Error][RedisService->set] {} ", e);
+        }
     }
 }

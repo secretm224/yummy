@@ -40,9 +40,8 @@ public class LoginController {
 
     @PostMapping("/kakao/callback")
     @ResponseBody
-    public ResponseEntity<?> KaKaoCode(@RequestBody LoginDto loginDto, HttpServletResponse res , HttpServletRequest req){
-        Map<String, Object> response = loginService.handleKakaoLogin(loginDto.getCode(), res);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<Boolean> KaKaoCode(@RequestBody LoginDto loginDto, HttpServletResponse res , HttpServletRequest req){
+        return ResponseEntity.ok(loginService.handleKakaoLogin(loginDto.getCode(), res));
     }
 
      @PostMapping("/kakao/GetUserInfoByToken")
@@ -133,6 +132,16 @@ public class LoginController {
     public ResponseEntity<Boolean> logOutUser(HttpServletResponse res , HttpServletRequest req) {
         /* Session 을 쓰지 않을 것이므로 Session 관련 삭제 로직은 생략 */
         return ResponseEntity.ok(loginService.clearUserToken(res,req));
+    }
+
+    @PostMapping("/kakao/test")
+    public ResponseEntity<Boolean> loginTest(
+            @CookieValue(value = "accessToken", required = false) String accessTokenCookie
+    ) {
+
+
+
+        return ResponseEntity.ok(true);
     }
 
     @GetMapping("/test")

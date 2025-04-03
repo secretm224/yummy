@@ -7,6 +7,8 @@
         <Property name="errorLogNm">./logs/api_error.log</Property>
         <Property name="authLogNm">./logs/api_auth.log</Property>
         <Property name="jsonInfoLogNm">./logs/api_json_info.log</Property>
+        <Property name="infoLogPattern">./logs/api_info-%d{yyyy-MM-dd}.log</Property>
+        <Property name="errorLogPattern">./logs/api_error-%d{yyyy-MM-dd}.log</Property>
         <Property name="layoutPattern">%style{%d{yyyy-MM-dd HH:mm:ss}}{black} %highlight{%-5level} [%style{%t}{bright,blue}]
             %style{%C}{bright,yellow}: %msg%n%throwable
         </Property>

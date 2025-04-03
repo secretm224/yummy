@@ -2,6 +2,7 @@ package com.cho_co_song_i.yummy.yummy.service;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.cho_co_song_i.yummy.yummy.dto.UserKakaoInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
 import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
 import com.cho_co_song_i.yummy.yummy.repository.UserCustomRepository;
@@ -45,6 +46,12 @@ public class LoginService {
     @Value("${kakao.api.url}")
     private String kakaoApiUrl;
 
+    @Value("${spring.redis.kakao.access_token}")
+    private String kakaoAccessKeyPrefix;
+
+    @Value("${spring.redis.kakao.user_info}")
+    private String kakaoUserInfoPrefix;
+
     private final RestTemplate restTemplate;
     private final JPAQueryFactory queryFactory;
     private final UserCustomRepository userCustomRepository;
@@ -65,38 +72,63 @@ public class LoginService {
      * @param res
      * @return
      */
-    public Map<String, Object> handleKakaoLogin(String code, HttpServletResponse res) {
-        Map<String, Object> result = new HashMap<>();
-
-        if (code == null || code.isEmpty()) {
-            result.put("kakao_access_token", null);
-            result.put("kakao_payload", null);
-            return result;
-        }
-
+    public Boolean handleKakaoLogin(String code, HttpServletResponse res) {
         /*
         * OAuth 인증과정에서 받은 code를 이용해서 access_token을 요청하고, 그 결과를 KakaoToken 으로 반환받는다.
         * */
         KakaoToken kakaoToken = getKakaoToken(code);
-
         String accessToken = kakaoToken.getAccess_token();
         String refreshToken = kakaoToken.getRefresh_token();
         String idToken = kakaoToken.getId_token();
 
-        if (accessToken != null && !accessToken.isEmpty()) {
-            addCookie(res, "accessToken", accessToken, 60 * 60);
-        }
-
-        if (refreshToken != null && !refreshToken.isEmpty()) {
-            addCookie(res, "refreshToken", refreshToken, 60 * 60 * 24 * 7);
+        if (accessToken == null || accessToken.isEmpty()) {
+            return false;
         }
 
         Map<String, Object> payload = decodeJwtPayload(idToken);
+        /* User 정보 */
+        UserKakaoInfoDto userKakaoInfo = getKakaoUserInfo(payload);
 
-        result.put("kakao_access_token", accessToken);
-        result.put("kakao_payload", payload);
+        if (userKakaoInfo == null) {
+            return false;
+        }
 
-        return result;
+        /* Redis 저장 */
+        String redisAccessKeyFormat = String.format("%s:%s", kakaoAccessKeyPrefix, accessToken); /* accessToken */
+        String redisUserInfoFormat = String.format("%s:%s", kakaoUserInfoPrefix, accessToken); /* user 정보 */
+
+        try {
+            redisService.set(redisAccessKeyFormat, refreshToken);
+            redisService.set(redisUserInfoFormat, userKakaoInfo);
+
+            /* accessToken 쿠키 생성 */
+            addCookie(res, "accessToken", accessToken, 60 * 60 * 3); /* 쿠키 유지 시간 : 3시간 */
+        } catch(Exception e) {
+            log.error("[Error][LoginService->handleKakaoLogin] {}", e.getMessage(), e);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * 카카오 토큰에서 유저의 정보를 빼오는 함수
+     * @param payload
+     * @return
+     */
+    private UserKakaoInfoDto getKakaoUserInfo(Map<String, Object> payload) {
+
+        try {
+
+            String userTokenId = (String)payload.get("sub");
+            String nickName = (String)payload.get("nickname");
+            String userPicture = (String)payload.get("picture");
+
+            return new UserKakaoInfoDto(userTokenId, nickName, userPicture);
+        } catch(Exception e) {
+            log.error("[Error][LoginService->getKakaoUserInfo] {}",  e.getMessage(), e);
+            return null;
+        }
     }
 
     /**
@@ -170,13 +202,20 @@ public class LoginService {
         }
     }
 
+    /**
+     * 해당 토큰이 문제 없는 토큰인지 검증하는 메서드
+     * @param CheckToken
+     * @return
+     */
     public boolean CheckKakaoTokens(String CheckToken){
+
         boolean is_token = false;
-        try{
-            String url=kakaoApiUrl+"/v1/user/access_token_info";
+
+        try {
+            String url = kakaoApiUrl+"/v1/user/access_token_info";
 
             HttpHeaders headers = new HttpHeaders();
-            headers.add("Authorization","Bearer "+CheckToken);
+            headers.add("Authorization","Bearer " + CheckToken);
 
             HttpEntity<?> requestEntity = new HttpEntity<>(null, headers);
             ResponseEntity<JsonNode> response = restTemplate.exchange(url,HttpMethod.GET,requestEntity, JsonNode.class);
@@ -185,8 +224,9 @@ public class LoginService {
                 is_token = true;
             }
 
-        }catch (Exception e){
-            is_token = false;
+        } catch (Exception e){
+            log.error("[Error][LoginService->CheckKakaoTokens] {}", e.getMessage(), e);
+            return false;
         }
 
         return is_token;
