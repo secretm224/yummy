@@ -10,6 +10,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +24,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.security.SignatureException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -57,13 +61,17 @@ public class LoginService {
     private final UserCustomRepository userCustomRepository;
     private final RedisService redisService;
 
+    private final JwtProviderService jwtProviderService;
+
 
     public LoginService(RestTemplate restTemplate, JPAQueryFactory queryFactory,
-                        UserCustomRepository userCustomRepository, RedisService redisService) {
+                        UserCustomRepository userCustomRepository, RedisService redisService,
+                        JwtProviderService jwtProviderService) {
         this.restTemplate = restTemplate;
         this.queryFactory = queryFactory;
         this.userCustomRepository = userCustomRepository;
         this.redisService = redisService;
+        this.jwtProviderService = jwtProviderService;
     }
 
     /**
@@ -293,7 +301,7 @@ public class LoginService {
         ObjectNode token_obj = om.createObjectNode();
 
         if(!refresh_token.isEmpty()){
-            try{
+            try {
 
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -365,5 +373,31 @@ public class LoginService {
 
         return accessRes && refreshRes;
     }
+
+
+//    public Boolean validateServer(String access_token) {
+//
+//        /* 해당 access 토큰이 유효한지 검증 */
+//        try {
+//
+//            jwtProviderService.validateTokenAndGetSubject(access_token);
+//
+//        } catch (ExpiredJwtException e) {
+//            log.warn("[Warn][LoginService->handleServerLogin] JWT token expired: {}", e.getMessage(), e);
+//        } catch (UnsupportedJwtException e) {
+//            log.error("[Error][LoginService->handleServerLogin] JWT format not supported: {}", e.getMessage(), e);
+//            return false;
+//        } catch (MalformedJwtException e) {
+//            log.error("[Error][LoginService->handleServerLogin] Invalid JWT format: {}", e.getMessage(), e);
+//        } catch (SecurityException e) {
+//            log.error("[Error][LoginService->handleServerLogin] Signature Verification Failed: {}", e.getMessage(), e);
+//        } catch (IllegalArgumentException e) {
+//            log.error("[Error][LoginService->handleServerLogin] Token is empty or null: {}", e.getMessage(), e);
+//        } catch (Exception e) {
+//            log.error("[Error][LoginService->handleServerLogin] {}",e.getMessage(), e);
+//        }
+//
+//
+//    }
 
 }

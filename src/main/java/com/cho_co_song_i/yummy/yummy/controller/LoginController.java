@@ -138,9 +138,6 @@ public class LoginController {
     public ResponseEntity<Boolean> loginTest(
             @CookieValue(value = "accessToken", required = false) String accessTokenCookie
     ) {
-
-
-
         return ResponseEntity.ok(true);
     }
 
