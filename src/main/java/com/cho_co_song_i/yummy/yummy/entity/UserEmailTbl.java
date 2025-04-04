@@ -9,27 +9,17 @@ import org.springframework.data.domain.Persistable;
 import java.util.Date;
 
 @Entity
-@Table(name = "user_tbl")
+@Table(name = "user_email_tbl")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserTbl implements Persistable<Long> {
+public class UserEmailTbl implements Persistable<Long> {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_no")
     private Long userNo;
 
-    @Column(name = "user_no", nullable = false, length = 100)
-    private String userId;
-
-    @Column(name = "user_pw", nullable = false, columnDefinition = "CHAR(60)")
-    private String userPw;
-
-    @Column(name = "user_nm", nullable = false, length = 100)
-    private String userNm;
-
-    @Column(name = "user_birth", nullable = false, length = 8)
-    private String userBirth;
+    @Column(name = "user_email_address", nullable = false, length = 255)
+    private String userEmailAddress;
 
     @Column(name = "reg_dt", nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
@@ -45,19 +35,20 @@ public class UserTbl implements Persistable<Long> {
     @Column(name = "chg_id", nullable = true, length = 25)
     private String chgId;
 
+    /* ✅ Hibernate 에게 신규 엔티티임을 알려주기 위해 사용 */
     @Transient
-    private boolean isNew = true;
+    private boolean isNew = false;
 
-    public Long getId(){
-        return this.userNo;
-    }
+    @Override
+    public Long getId() { return this.userNo; }
 
-    public boolean isNew(){
-        return this.userNo == null || isNew;
-    }
+    @Override
+    public boolean isNew() { return isNew || this.userNo == null; }
 
-    public void markNotNew(){
-        this.isNew = false;
-    }
+    /* ✅ 새로운 엔티티를 표시하는 메서드 */
+    public void markAsNew() { this.isNew = true; }
 
+    @ManyToOne
+    @JoinColumn(name="user_no")
+    private UserTbl user;
 }

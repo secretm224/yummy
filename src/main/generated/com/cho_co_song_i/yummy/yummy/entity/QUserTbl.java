@@ -19,17 +19,23 @@ public class QUserTbl extends EntityPathBase<UserTbl> {
 
     public static final QUserTbl userTbl = new QUserTbl("userTbl");
 
-    public final DateTimePath<java.util.Date> chg_dt = createDateTime("chg_dt", java.util.Date.class);
+    public final DateTimePath<java.util.Date> chgDt = createDateTime("chgDt", java.util.Date.class);
 
-    public final StringPath chg_id = createString("chg_id");
+    public final StringPath chgId = createString("chgId");
 
-    public final DateTimePath<java.util.Date> reg_dt = createDateTime("reg_dt", java.util.Date.class);
+    public final DateTimePath<java.util.Date> regDt = createDateTime("regDt", java.util.Date.class);
 
-    public final StringPath reg_id = createString("reg_id");
+    public final StringPath regId = createString("regId");
 
-    public final StringPath user_nm = createString("user_nm");
+    public final StringPath userBirth = createString("userBirth");
 
-    public final NumberPath<Long> user_no = createNumber("user_no", Long.class);
+    public final StringPath userId = createString("userId");
+
+    public final StringPath userNm = createString("userNm");
+
+    public final NumberPath<Long> userNo = createNumber("userNo", Long.class);
+
+    public final StringPath userPw = createString("userPw");
 
     public QUserTbl(String variable) {
         super(UserTbl.class, forVariable(variable));

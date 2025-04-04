@@ -7,8 +7,9 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserKakaoInfoDto {
+public class UserOAuthInfoDto {
     private String userTokenId;
     private String nickName;
     private String userPicture;
+    private Boolean isJoinSiteYn;
 }
