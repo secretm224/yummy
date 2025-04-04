@@ -4,15 +4,15 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.cho_co_song_i.yummy.yummy.dto.LoginDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
-import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
 import com.cho_co_song_i.yummy.yummy.service.LoginService;
-
 import com.fasterxml.jackson.databind.JsonNode;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -45,6 +45,7 @@ public class LoginController {
     }
 
      @PostMapping("/kakao/GetUserInfoByToken")
+     @PreAuthorize("hasRole('USER')") // Security 설정 기반
      public ResponseEntity<?> GetUserinfoByToken(@RequestBody String access_token ,
                                                  @CookieValue(value = "accessToken", required = false) String accessTokenCookie,
                                                  @CookieValue(value = "refreshToken", required = false) String refreshTokenCookie,
@@ -115,6 +116,7 @@ public class LoginController {
 
     @GetMapping("/userinfo")
     @ResponseBody
+    @SecurityRequirement(name = "BearerAuth")
     public ResponseEntity<List<UserProfileDto>> getUserDetailInfo(
             @RequestParam("loginChannel") String loginChannel,
             @RequestParam("tokenId") String tokenId) {
@@ -145,8 +147,9 @@ public class LoginController {
 
     @GetMapping("/test")
     @ResponseBody
+    @SecurityRequirement(name = "BearerAuth")
     public String Test() {
-        return "Call Method Test";
+        return "Swagger API TEST";
     }
 
     @GetMapping("/deploytest")
