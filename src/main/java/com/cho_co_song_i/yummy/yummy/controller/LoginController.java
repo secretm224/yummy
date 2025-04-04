@@ -64,7 +64,13 @@ public class LoginController {
                     .status(HttpStatus.BAD_REQUEST)
                     .body(null);
         }
+        
+        //return 없어서 error 발생
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(null);
     }
+    
 
 //    @PostMapping("/kakao/callback")
 //    @ResponseBody
