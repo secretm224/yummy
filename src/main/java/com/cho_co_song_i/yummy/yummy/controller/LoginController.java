@@ -134,12 +134,14 @@ public class LoginController {
         return ResponseEntity.ok(loginService.clearUserToken(res,req));
     }
 
-    @PostMapping("/kakao/test")
-    public ResponseEntity<Boolean> loginTest(
-            @CookieValue(value = "accessToken", required = false) String accessTokenCookie
-    ) {
-        return ResponseEntity.ok(true);
-    }
+
+    /*
+    **********************************************************
+    ****************** Server 관련 인증 ************************
+    **********************************************************
+    * */
+
+
 
     @GetMapping("/test")
     @ResponseBody
