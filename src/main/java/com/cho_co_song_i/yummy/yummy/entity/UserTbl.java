@@ -19,7 +19,7 @@ public class UserTbl implements Persistable<Long> {
     @Column(name = "user_no")
     private Long userNo;
 
-    @Column(name = "user_no", nullable = false, length = 100)
+    @Column(name = "user_id", nullable = false, length = 100)
     private String userId;
 
     @Column(name = "user_pw", nullable = false, columnDefinition = "CHAR(60)")

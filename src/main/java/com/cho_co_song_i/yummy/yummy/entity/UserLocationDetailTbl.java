@@ -58,7 +58,8 @@ public class UserLocationDetailTbl implements Persistable<UserLocationDetailTblI
     public void markAsNew() { this.isNew = true; }
 
 
-    @ManyToOne
-    @JoinColumn(name="user_no")
+    @MapsId("userNo")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_no")
     private UserTbl user;
 }

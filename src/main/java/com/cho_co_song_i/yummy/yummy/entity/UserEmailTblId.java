@@ -14,10 +14,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @EqualsAndHashCode
 @QueryEmbeddable
-public class UserPhoneNumberTblId {
-    @Column(name = "user_no")
+public class UserEmailTblId {
+    @Column(name = "user_no", insertable = false, updatable = false)
     private Long userNo;
 
-    @Column(name = "phone_number", columnDefinition = "CHAR(11)")
-    private String phoneNumber;
+    @Column(name = "user_email_address", nullable = false, length = 255)
+    private String userEmailAddress;
 }

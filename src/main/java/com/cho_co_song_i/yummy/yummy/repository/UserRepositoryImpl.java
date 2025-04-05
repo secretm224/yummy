@@ -1,15 +1,5 @@
 package com.cho_co_song_i.yummy.yummy.repository;
 
-import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
-import com.cho_co_song_i.yummy.yummy.entity.QUserAuthTbl;
-import com.cho_co_song_i.yummy.yummy.entity.QUserLocationDetailTbl;
-import com.cho_co_song_i.yummy.yummy.entity.QUserTbl;
-import com.querydsl.core.types.Projections;
-import com.querydsl.jpa.impl.JPAQueryFactory;
-import org.springframework.stereotype.Repository;
-
-import java.util.List;
-
 //
 //@Repository
 //public class UserRepositoryImpl implements UserCustomRepository {

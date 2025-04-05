@@ -5,7 +5,6 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.cho_co_song_i.yummy.yummy.dto.UserOAuthInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
 import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
-import com.cho_co_song_i.yummy.yummy.repository.UserCustomRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -55,18 +54,16 @@ public class KakaoLoginServiceImpl implements LoginService {
 
     private final RestTemplate restTemplate;
     private final JPAQueryFactory queryFactory;
-    private final UserCustomRepository userCustomRepository;
+//    private final UserCustomRepository userCustomRepository;
     private final RedisService redisService;
 
     private final JwtProviderService jwtProviderService;
 
 
     public KakaoLoginServiceImpl(RestTemplate restTemplate, JPAQueryFactory queryFactory,
-                                 UserCustomRepository userCustomRepository, RedisService redisService,
-                                 JwtProviderService jwtProviderService) {
+                                 RedisService redisService, JwtProviderService jwtProviderService) {
         this.restTemplate = restTemplate;
         this.queryFactory = queryFactory;
-        this.userCustomRepository = userCustomRepository;
         this.redisService = redisService;
         this.jwtProviderService = jwtProviderService;
     }
@@ -315,9 +312,9 @@ public class KakaoLoginServiceImpl implements LoginService {
         return token_obj;
     }
 
-    public List<UserProfileDto> getUserDetailInfo(String loginChannel, String tokenId) {
-        return userCustomRepository.GetUserInfo(loginChannel, tokenId);
-    }
+//    public List<UserProfileDto> getUserDetailInfo(String loginChannel, String tokenId) {
+//        return userCustomRepository.GetUserInfo(loginChannel, tokenId);
+//    }
 
     /**
      * 토큰을 쿠키, Redis 모두에서 삭제해주는 함수

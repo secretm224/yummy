@@ -2,6 +2,7 @@ package com.cho_co_song_i.yummy.yummy.controller;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.cho_co_song_i.yummy.yummy.dto.ErrorResponse;
 import com.cho_co_song_i.yummy.yummy.dto.LoginDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserOAuthInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
@@ -47,28 +48,33 @@ public class LoginController {
         model.addAttribute("title", "로그인페이지");
         return "login";
     }
-
+    
+    // TODO: 4/5/25
     @PostMapping("/auth/callback")
     @ResponseBody
-    public ResponseEntity<UserOAuthInfoDto> OAuthLogin(@RequestBody LoginDto loginDto, HttpServletResponse res , HttpServletRequest req) {
+    public ResponseEntity<?> OAuthLogin(@RequestBody LoginDto loginDto, HttpServletResponse res , HttpServletRequest req) {
 
-        if (loginDto.getOauthType().equals("kakao")) {
-
-        } else if (loginDto.getOauthType().equals("naver")) {
-
-        } else if (loginDto.getOauthType().equals("google")) {
-
-        } else {
-            /* 프로젝트에서 지원하지 않는 Oauth 를 사용한 경우 */
-            return ResponseEntity
-                    .status(HttpStatus.BAD_REQUEST)
-                    .body(null);
-        }
+        return ResponseEntity.ok("test");
         
-        //return 없어서 error 발생
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(null);
+//        if (loginDto == null || loginDto.getOauthType() == null) {
+//            return ResponseEntity
+//                    .status(HttpStatus.BAD_REQUEST)
+//                    .body(new ErrorResponse("LOGINDTO_EMPTY", "Login information is null."));
+//        } else {
+//
+//            if (loginDto.getOauthType().equals("kakao")) {
+//
+//            } else if (loginDto.getOauthType().equals("naver")) {
+//
+//            } else if (loginDto.getOauthType().equals("google")) {
+//
+//            }
+//
+//            /* 프로젝트에서 지원하지 않는 Oauth 를 사용한 경우 */
+//            return ResponseEntity
+//                    .status(HttpStatus.BAD_REQUEST)
+//                    .body(new ErrorResponse("OAUTH_UNSUPPORTED", "Unsupported OAuth type."));
+//        }
     }
     
 

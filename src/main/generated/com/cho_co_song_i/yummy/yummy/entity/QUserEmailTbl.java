@@ -26,15 +26,13 @@ public class QUserEmailTbl extends EntityPathBase<UserEmailTbl> {
 
     public final StringPath chgId = createString("chgId");
 
+    public final QUserEmailTblId id;
+
     public final DateTimePath<java.util.Date> regDt = createDateTime("regDt", java.util.Date.class);
 
     public final StringPath regId = createString("regId");
 
     public final QUserTbl user;
-
-    public final StringPath userEmailAddress = createString("userEmailAddress");
-
-    public final NumberPath<Long> userNo = createNumber("userNo", Long.class);
 
     public QUserEmailTbl(String variable) {
         this(UserEmailTbl.class, forVariable(variable), INITS);
@@ -54,6 +52,7 @@ public class QUserEmailTbl extends EntityPathBase<UserEmailTbl> {
 
     public QUserEmailTbl(Class<? extends UserEmailTbl> type, PathMetadata metadata, PathInits inits) {
         super(type, metadata, inits);
+        this.id = inits.isInitialized("id") ? new QUserEmailTblId(forProperty("id")) : null;
         this.user = inits.isInitialized("user") ? new QUserTbl(forProperty("user")) : null;
     }
 

@@ -43,8 +43,9 @@ public class UserAuthTbl implements Persistable<UserAuthTblId> {
     /* ✅ 새로운 엔티티를 표시하는 메서드 */
     public void markAsNew() { this.isNew = true; }
 
-    @ManyToOne
-    @JoinColumn(name="user_no")
+    @MapsId("userNo")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_no")
     private UserTbl user;
 
 }
