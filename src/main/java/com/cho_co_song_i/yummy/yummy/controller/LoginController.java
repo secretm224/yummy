@@ -1,18 +1,10 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.cho_co_song_i.yummy.yummy.dto.ErrorResponse;
-import com.cho_co_song_i.yummy.yummy.dto.LoginDto;
-import com.cho_co_song_i.yummy.yummy.dto.UserOAuthInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
-import com.cho_co_song_i.yummy.yummy.service.GoogleLoginServiceImpl;
-import com.cho_co_song_i.yummy.yummy.service.KakaoLoginServiceImpl;
+import com.cho_co_song_i.yummy.yummy.service.*;
 
-import com.cho_co_song_i.yummy.yummy.service.LoginService;
-import com.cho_co_song_i.yummy.yummy.service.NaverLoginServiceImpl;
-import com.fasterxml.jackson.databind.JsonNode;
-import jakarta.servlet.http.Cookie;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -22,10 +14,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Optional;
+
 
 @Controller
 @RequestMapping("/login")
@@ -35,26 +25,55 @@ public class LoginController {
     private final LoginService kakoLoginService;
     private final LoginService naverLoginService;
     private final LoginService googleLoginService;
+    private final YummyLoginService yummyLoginService;
 
     public LoginController(KakaoLoginServiceImpl kakoLoginService, NaverLoginServiceImpl naverLoginService,
-                           GoogleLoginServiceImpl googleLoginService){
+                           GoogleLoginServiceImpl googleLoginService, YummyLoginService yummyLoginService){
         this.kakoLoginService = kakoLoginService;
         this.naverLoginService = naverLoginService;
         this.googleLoginService = googleLoginService;
-
+        this.yummyLoginService = yummyLoginService;
     }
+
     @GetMapping
     public String Login(Model model) {
         model.addAttribute("title", "로그인페이지");
         return "login";
     }
-    
+
+    @GetMapping("/hahatest")
+    public ResponseEntity<?> CheckingTest(HttpServletResponse res , HttpServletRequest req) {
+
+        yummyLoginService.checkLoginUser(res, req);
+
+        return ResponseEntity.ok(true);
+    }
+
+    @PostMapping("/auth/loginCheck")
+    @ResponseBody
+    public ResponseEntity<?> LoginCheck(HttpServletResponse res , HttpServletRequest req) {
+
+        /* 로그인 체크 처리 */
+        Optional<UserProfileDto> result = yummyLoginService.checkLoginUser(res, req);
+
+        if (result.isEmpty()) {
+            // 로그인 안 된 경우 → 401 Unauthorized + 에러 메시지
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse("AUTH_ERROR", "Your login information is invalid."));
+        }
+
+        return ResponseEntity.ok(result.get());
+    }
+
+
     // TODO: 4/5/25
     @PostMapping("/auth/callback")
     @ResponseBody
-    public ResponseEntity<?> OAuthLogin(@RequestBody LoginDto loginDto, HttpServletResponse res , HttpServletRequest req) {
+    public ResponseEntity<?> OAuthLogin(HttpServletResponse res , HttpServletRequest req) {
+        //@RequestBody LoginDto loginDto,
 
-        return ResponseEntity.ok("test");
+        return ResponseEntity.ok(true);
         
 //        if (loginDto == null || loginDto.getOauthType() == null) {
 //            return ResponseEntity

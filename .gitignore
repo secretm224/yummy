@@ -1,6 +1,8 @@
 ### Application Configuration ###
 *.properties
 *.log
+*.pem
+src/main/generated/
 
 HELP.md
 .gradle
