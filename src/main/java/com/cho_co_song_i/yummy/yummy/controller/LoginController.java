@@ -5,6 +5,7 @@ import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
 import com.cho_co_song_i.yummy.yummy.service.*;
 
 
+import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -41,13 +42,21 @@ public class LoginController {
         return "login";
     }
 
-    @GetMapping("/hahatest")
-    public ResponseEntity<?> CheckingTest(HttpServletResponse res , HttpServletRequest req) {
-
-        yummyLoginService.checkLoginUser(res, req);
-
-        return ResponseEntity.ok(true);
-    }
+//    @GetMapping("/hashtest")
+//    public ResponseEntity<?> HashTest(
+//            @RequestParam(value = "text", required = false) String text,
+//    ) {
+//
+//        try {
+//
+//            String hashVal = HashUtil.hash()
+//
+//
+//        } catch(Exception e) {
+//            return ResponseEntity.ok(false)
+//        }
+//
+//    }
 
     // TODO: 4/5/25
     @PostMapping("/auth/loginCheck")
@@ -58,7 +67,7 @@ public class LoginController {
         Optional<UserProfileDto> result = yummyLoginService.checkLoginUser(res, req);
 
         if (result.isEmpty()) {
-            // 로그인 안 된 경우 → 401 Unauthorized + 에러 메시지
+            /* 로그인 안 된 경우 → 401 Unauthorized + 에러 메시지 */
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
                     .body(new ErrorResponse("AUTH_ERROR", "Your login information is invalid."));
