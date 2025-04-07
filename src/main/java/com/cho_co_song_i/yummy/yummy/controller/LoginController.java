@@ -49,6 +49,7 @@ public class LoginController {
         return ResponseEntity.ok(true);
     }
 
+    // TODO: 4/5/25
     @PostMapping("/auth/loginCheck")
     @ResponseBody
     public ResponseEntity<?> LoginCheck(HttpServletResponse res , HttpServletRequest req) {
