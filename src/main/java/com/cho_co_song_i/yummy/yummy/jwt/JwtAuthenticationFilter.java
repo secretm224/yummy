@@ -22,21 +22,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        String swaggerHeader = request.getHeader("X-SWAGGER-CALL");
+        String referer = request.getHeader("referer");
+        String requestUrl = request.getRequestURL().toString();
+        boolean isSwaggerCall = (referer != null && referer.contains("swagger") && requestUrl != null && requestUrl.contains("login"));
 
-        if (!"true".equalsIgnoreCase(swaggerHeader)) {
-            // Swagger 요청이 아닌 경우는 필터 무시
+        if (!isSwaggerCall) {
+            // Swagger UI가 아닌 요청은 필터 무시
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Swagger에서 온 요청이라면 JWT 검증 진행
+        // Swagger UI 요청일 경우 JWT 검증 진행
         String token = jwtTokenProvider.resolveToken(request);
-        if (token != null && jwtTokenProvider.validateToken(token)) {
-            Authentication auth = jwtTokenProvider.getAuthentication(token);
-            SecurityContextHolder.getContext().setAuthentication(auth);
+        if (token == null || !jwtTokenProvider.validateToken(token)) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized: Invalid or missing token.");
+            return;
         }
 
+        Authentication auth = jwtTokenProvider.getAuthentication(token);
+        SecurityContextHolder.getContext().setAuthentication(auth);
         filterChain.doFilter(request, response);
     }
 }
