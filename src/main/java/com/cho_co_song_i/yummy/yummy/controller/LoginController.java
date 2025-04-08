@@ -42,21 +42,23 @@ public class LoginController {
         return "login";
     }
 
-//    @GetMapping("/hashtest")
-//    public ResponseEntity<?> HashTest(
-//            @RequestParam(value = "text", required = false) String text,
-//    ) {
-//
-//        try {
-//
-//            String hashVal = HashUtil.hash()
-//
-//
-//        } catch(Exception e) {
-//            return ResponseEntity.ok(false)
-//        }
-//
-//    }
+    @GetMapping("/hashtest")
+    public ResponseEntity<?> HashTest(
+            @RequestParam(value = "text", required = false) String text
+    ) {
+
+        try {
+
+            String saltValue = HashUtil.generateSalt();
+            String hashVal = HashUtil.hashWithSalt(text, saltValue);
+
+            return ResponseEntity.ok(hashVal);
+
+        } catch(Exception e) {
+            return ResponseEntity.ok(false);
+        }
+
+    }
 
     // TODO: 4/5/25
     @PostMapping("/auth/loginCheck")
