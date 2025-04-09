@@ -1,6 +1,8 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
 import com.cho_co_song_i.yummy.yummy.dto.ErrorResponse;
+import com.cho_co_song_i.yummy.yummy.dto.StandardLoginDto;
+import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
 import com.cho_co_song_i.yummy.yummy.service.*;
 
@@ -42,6 +44,13 @@ public class LoginController {
         return "login";
     }
 
+    @PostMapping("/standardLogin")
+    public ResponseEntity<?> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res , HttpServletRequest req) {
+
+        Optional<UserBasicInfoDto> result = yummyLoginService.standardLoginUser(standardLoginDto, res, req);
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/hashtest")
     public ResponseEntity<?> HashTest(
             @RequestParam(value = "text", required = false) String text
@@ -57,7 +66,6 @@ public class LoginController {
         } catch(Exception e) {
             return ResponseEntity.ok(false);
         }
-
     }
 
     // TODO: 4/5/25
@@ -66,7 +74,7 @@ public class LoginController {
     public ResponseEntity<?> LoginCheck(HttpServletResponse res , HttpServletRequest req) {
 
         /* 로그인 체크 처리 */
-        Optional<UserProfileDto> result = yummyLoginService.checkLoginUser(res, req);
+        Optional<UserBasicInfoDto> result = yummyLoginService.checkLoginUser(res, req);
 
         if (result.isEmpty()) {
             /* 로그인 안 된 경우 → 401 Unauthorized + 에러 메시지 */

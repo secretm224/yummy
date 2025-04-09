@@ -32,12 +32,12 @@ public class JwtProviderService {
 
     /**
      * Access Token 을 발급해주는 함수
-     * @param userId
+     * @param userHashedId
      * @return
      */
-    public String generateAccessToken(String userId) {
+    public String generateAccessToken(String userHashedId) {
         return Jwts.builder()
-                .subject(userId)
+                .subject(userHashedId)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION))
                 .signWith(key) /* 알고리즘은 키에서 자동 추론됨 */
@@ -46,12 +46,12 @@ public class JwtProviderService {
 
     /**
      * Refresh Token 을 발급해주는 함수
-     * @param userId
+     * @param userHashedId
      * @return
      */
-    public String generateRefreshToken(String userId) {
+    public String generateRefreshToken(String userHashedId) {
         return Jwts.builder()
-                .subject(userId)
+                .subject(userHashedId)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))
                 .signWith(key) /* 알고리즘은 키에서 자동 추론됨 */

@@ -30,10 +30,9 @@ public class HashUtil {
      * @throws Exception
      */
     public static String hashWithSalt(String password, String base64Salt) throws Exception {
-        String combined = password + base64Salt;
-        byte[] saltBytes = base64Salt.getBytes(); /* salt 자체도 key 역할 */
+        byte[] saltBytes = Base64.getDecoder().decode(base64Salt); /* Base64 → 원래 salt */
 
-        KeySpec spec = new PBEKeySpec(combined.toCharArray(), saltBytes, ITERATIONS, KEY_LENGTH);
+        KeySpec spec = new PBEKeySpec(password.toCharArray(), saltBytes, ITERATIONS, KEY_LENGTH);
         SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
         byte[] hashed = factory.generateSecret(spec).getEncoded();
         return Base64.getEncoder().encodeToString(hashed);
