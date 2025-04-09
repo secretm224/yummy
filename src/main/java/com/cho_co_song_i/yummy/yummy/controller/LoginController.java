@@ -44,13 +44,7 @@ public class LoginController {
         return "login";
     }
 
-    @PostMapping("/standardLogin")
-    public ResponseEntity<?> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res , HttpServletRequest req) {
-
-        Optional<UserBasicInfoDto> result = yummyLoginService.standardLoginUser(standardLoginDto, res, req);
-        return ResponseEntity.ok(result);
-    }
-
+    //Test Code
     @GetMapping("/hashtest")
     public ResponseEntity<?> HashTest(
             @RequestParam(value = "text", required = false) String text
@@ -68,7 +62,34 @@ public class LoginController {
         }
     }
 
+    /**
+     * 기본적으로 아이디/비밀번호 입력하고 로그인 시도하는 경우.
+     * @param standardLoginDto
+     * @param res
+     * @param req
+     * @return
+     */
+    @PostMapping("/standardLogin")
+    public ResponseEntity<?> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res , HttpServletRequest req) {
+
+        Optional<UserBasicInfoDto> result = yummyLoginService.standardLoginUser(standardLoginDto, res, req);
+
+        if (result.isEmpty()) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse("AUTH_ERROR", "Your login information is invalid."));
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
     // TODO: 4/5/25
+    /**
+     *
+     * @param res
+     * @param req
+     * @return
+     */
     @PostMapping("/auth/loginCheck")
     @ResponseBody
     public ResponseEntity<?> LoginCheck(HttpServletResponse res , HttpServletRequest req) {

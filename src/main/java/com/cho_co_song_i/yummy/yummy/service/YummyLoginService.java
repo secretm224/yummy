@@ -123,6 +123,9 @@ public class YummyLoginService {
         String accessToken = getCookieValue(req, "yummy-access-token");
         String userIdHash = getCookieValue(req, "yummy-user-id");
 
+        System.out.println("accessToken:" + accessToken);
+        System.out.println("userIdHash:" + userIdHash);
+
         if (accessToken == null || userIdHash == null) {
             return Optional.empty();
         }
@@ -171,6 +174,7 @@ public class YummyLoginService {
         String refreshKey = String.format("%s:%s", refreshKeyPrefix, userIdHash);
         String refreshToken = redisService.getValue(refreshKey, new TypeReference<String>() {});
 
+        /* Refresh Token 도 존재하지 않는 경우 -> 로그인 창으로 보내준다. */
         if (refreshToken == null) {
             return false;
         }
