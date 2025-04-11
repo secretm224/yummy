@@ -5,7 +5,7 @@ import com.cho_co_song_i.yummy.yummy.service.SearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.graphql.data.method.annotation.Argument;
-import org.springframework.graphql.data.method.annotation.SchemaMapping;
+import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
@@ -20,27 +20,23 @@ public class QueryResolver {
     @Autowired
     private Environment env;
 
-    @SchemaMapping(typeName = "Query", field = "hello")
-    public String getHello() {
+    @QueryMapping
+    public String hello() {
         return "안녕하세요, GraphQL!";
     }
 
-    @SchemaMapping(typeName = "Query", field = "helloWithName")
-    public String getHelloWithName(@Argument("name") String name) {
+    @QueryMapping
+    public String helloWithName(@Argument("name") String name) {
         return "안녕하세요, " + (name != null ? name : "손님") + "!";
     }
 
-    @SchemaMapping(typeName = "Query", field = "SearchStoreAllData")
-    public CompletableFuture<List<SearchStoreDto>> GetSearchAllStores() {
-
-        CompletableFuture<List<SearchStoreDto>> data = new CompletableFuture<>();
+    @QueryMapping(name = "SearchStoreAllData")
+    public CompletableFuture<List<SearchStoreDto>> getSearchAllStores() {
         String store_index = env.getProperty("spring.elasticsearch.index.store");
-
-        if(store_index != null && !store_index.isEmpty()){
-            data = _searchService.getSearchAllStores(store_index);
+        if (store_index != null && !store_index.isEmpty()) {
+            return _searchService.getSearchAllStores(store_index);
         }
-
-        return data;
+        return CompletableFuture.completedFuture(List.of());
     }
 
 //    @GetMapping("allData")

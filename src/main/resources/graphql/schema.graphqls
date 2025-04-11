@@ -4,6 +4,8 @@ type Query {
     SearchStoreAllData: [SearchStoreDto]
 }
 
+#scalar DateTime
+
 type SearchStoreDto {
     address: String
     lat: String
@@ -16,7 +18,7 @@ type SearchStoreDto {
     recommendNames: [String]
     seq: Int
     subType: [Int]
-#    timestamp: DateTime  # 별도의 DateTime 스칼라 정의가 필요할 수 있습니다.
+#    timestamp: DateTime
     type: String
     zeroPossible: Boolean
 }
