@@ -96,8 +96,8 @@ public class YummyLoginService {
             redisService.set(refreshKey, refreshToken);
 
             /* 6. accessToken && 해시화된 아이디를 쿠키에 저장해준다. */
-            CookieUtil.addCookie(res, "yummy-access-token", accessToken, 1000 * 60 * 60 * 2);
-            CookieUtil.addCookie(res, "yummy-user-id", hashedId, 1000 * 60 * 60 * 2);
+            CookieUtil.addCookie(res, "yummy-access-token", accessToken, 7200);
+            CookieUtil.addCookie(res, "yummy-user-id", hashedId, 7200);
 
             UserBasicInfoDto userBasicInfo = convertUserToBassicInfo(user);
 
@@ -122,9 +122,6 @@ public class YummyLoginService {
 
         String accessToken = getCookieValue(req, "yummy-access-token");
         String userIdHash = getCookieValue(req, "yummy-user-id");
-
-        System.out.println("accessToken:" + accessToken);
-        System.out.println("userIdHash:" + userIdHash);
 
         if (accessToken == null || userIdHash == null) {
             return Optional.empty();
