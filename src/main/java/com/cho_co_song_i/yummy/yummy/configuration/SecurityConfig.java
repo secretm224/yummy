@@ -32,17 +32,19 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable) /* 해당 설정이 없으면 Post 요청을 기본적으로 차단함 */
                 .cors(cors -> cors.configurationSource(corsConfigurationSource())) /* CORS 설정 추가 */
                 .authorizeHttpRequests(auth -> auth
-                    .requestMatchers(
-                        "/auth/token", // 토큰 발급 API는 허용
-                        "/error",      // 오류 페이지 허용
-                        "/favicon.ico",
-                        "/graphiql",
-                        "/graphiql/**",
-                        "/vendor/**",
-                        "/static/**",
-                        "/webjars/**"
-                    ).permitAll()
-                    .anyRequest().permitAll() // 모든 요청은 허용 → 실제 인증은 필터에서만 Swagger에 대해 수행
+//                    .requestMatchers(
+////                        "/auth/token", // 토큰 발급 API는 허용
+////                        "/error",      // 오류 페이지 허용
+////                        "/favicon.ico",
+////                        "/graphiql",
+////                        "/graphiql/**",
+////                        "/vendor/**",
+////                        "/static/**",
+////                        "/webjars/**"
+//                    ).permitAll()
+//                    .anyRequest().permitAll() // 모든 요청은 허용 → 실제 인증은 필터에서만 Swagger에 대해 수행
+                       .requestMatchers("/**").permitAll()
+
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
                  //  .requestMatchers("/**").permitAll()  /* 모든 요청 허용 */
