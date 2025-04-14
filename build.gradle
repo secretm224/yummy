@@ -80,6 +80,8 @@ dependencies {
 	// GraphQL
 	implementation 'org.springframework.boot:spring-boot-starter-graphql'
 	implementation 'com.graphql-java:graphql-java-extended-scalars:19.0'
+	implementation 'com.graphql-java-kickstart:graphql-spring-boot-starter:15.0.0'
+	implementation 'com.graphql-java-kickstart:graphiql-spring-boot-starter:11.1.0'
 }
 
 tasks.named('test') {
