@@ -64,12 +64,12 @@ public class JwtTokenProvider {
 
     public String createToken(String username, String role) {
         Date now = new Date();
-        Date validity = new Date(now.getTime() + 1000 * 60 * 60); // 1시간
+       // Date validity = new Date(now.getTime() + 1000 * 60 * 60); // 1시간
 
         return Jwts.builder()
                 .subject(username)
                 .issuedAt(now)
-                .expiration(validity)
+                //.expiration(validity)
                 .claims(Map.of("auth", role))
                 .signWith(Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS256)
                 .compact();

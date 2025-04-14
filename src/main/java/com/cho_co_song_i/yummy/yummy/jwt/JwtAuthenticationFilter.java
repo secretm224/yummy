@@ -25,8 +25,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String referer = request.getHeader("referer");
         String requestUrl = request.getRequestURL().toString();
         boolean isSwaggerCall = (referer != null && referer.contains("swagger") && requestUrl != null && requestUrl.contains("login"));
+        boolean isGraphQLCall = requestUrl != null && requestUrl.contains("/graphql");
 
-        if (!isSwaggerCall) {
+        if (!isSwaggerCall && !isGraphQLCall) {
             // Swagger UI가 아닌 요청은 필터 무시
             filterChain.doFilter(request, response);
             return;
