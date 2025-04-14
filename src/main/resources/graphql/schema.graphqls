@@ -1,5 +1,24 @@
 type Query {
     hello: String
     helloWithName(name: String): String
+    SearchStoreAllData: [SearchStoreDto]
+}
 
+#scalar DateTime
+
+type SearchStoreDto {
+    address: String
+    lat: String
+    lng: String
+    locationCity: String
+    locationCounty: String
+    locationDistrict: String
+    majorType: [Int]
+    name: String
+    recommendNames: [String]
+    seq: Int
+    subType: [Int]
+#    timestamp: DateTime
+    type: String
+    zeroPossible: Boolean
 }

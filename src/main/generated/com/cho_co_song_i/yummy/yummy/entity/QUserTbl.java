@@ -31,11 +31,15 @@ public class QUserTbl extends EntityPathBase<UserTbl> {
 
     public final StringPath userId = createString("userId");
 
+    public final StringPath userIdHash = createString("userIdHash");
+
     public final StringPath userNm = createString("userNm");
 
     public final NumberPath<Long> userNo = createNumber("userNo", Long.class);
 
     public final StringPath userPw = createString("userPw");
+
+    public final StringPath userPwSalt = createString("userPwSalt");
 
     public QUserTbl(String variable) {
         super(UserTbl.class, forVariable(variable));
