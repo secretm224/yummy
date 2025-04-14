@@ -11,26 +11,24 @@ import com.querydsl.core.types.dsl.PathInits;
 
 
 /**
- * QUserDetailTbl is a Querydsl query type for UserDetailTbl
+ * QUserLocationDetailTbl is a Querydsl query type for UserLocationDetailTbl
  */
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
-public class QUserDetailTbl extends EntityPathBase<UserDetailTbl> {
+public class QUserLocationDetailTbl extends EntityPathBase<UserLocationDetailTbl> {
 
-    private static final long serialVersionUID = 612230871L;
+    private static final long serialVersionUID = 2067101858L;
 
     private static final PathInits INITS = PathInits.DIRECT2;
 
-    public static final QUserDetailTbl userDetailTbl = new QUserDetailTbl("userDetailTbl");
+    public static final QUserLocationDetailTbl userLocationDetailTbl = new QUserLocationDetailTbl("userLocationDetailTbl");
 
     public final StringPath addr = createString("addr");
-
-    public final StringPath addrType = createString("addrType");
 
     public final DateTimePath<java.util.Date> chgDt = createDateTime("chgDt", java.util.Date.class);
 
     public final StringPath chgId = createString("chgId");
 
-    public final NumberPath<Long> detailNo = createNumber("detailNo", Long.class);
+    public final QUserLocationDetailTblId id;
 
     public final NumberPath<java.math.BigDecimal> latY = createNumber("latY", java.math.BigDecimal.class);
 
@@ -42,26 +40,25 @@ public class QUserDetailTbl extends EntityPathBase<UserDetailTbl> {
 
     public final QUserTbl user;
 
-    public final NumberPath<Long> userNo = createNumber("userNo", Long.class);
-
-    public QUserDetailTbl(String variable) {
-        this(UserDetailTbl.class, forVariable(variable), INITS);
+    public QUserLocationDetailTbl(String variable) {
+        this(UserLocationDetailTbl.class, forVariable(variable), INITS);
     }
 
-    public QUserDetailTbl(Path<? extends UserDetailTbl> path) {
+    public QUserLocationDetailTbl(Path<? extends UserLocationDetailTbl> path) {
         this(path.getType(), path.getMetadata(), PathInits.getFor(path.getMetadata(), INITS));
     }
 
-    public QUserDetailTbl(PathMetadata metadata) {
+    public QUserLocationDetailTbl(PathMetadata metadata) {
         this(metadata, PathInits.getFor(metadata, INITS));
     }
 
-    public QUserDetailTbl(PathMetadata metadata, PathInits inits) {
-        this(UserDetailTbl.class, metadata, inits);
+    public QUserLocationDetailTbl(PathMetadata metadata, PathInits inits) {
+        this(UserLocationDetailTbl.class, metadata, inits);
     }
 
-    public QUserDetailTbl(Class<? extends UserDetailTbl> type, PathMetadata metadata, PathInits inits) {
+    public QUserLocationDetailTbl(Class<? extends UserLocationDetailTbl> type, PathMetadata metadata, PathInits inits) {
         super(type, metadata, inits);
+        this.id = inits.isInitialized("id") ? new QUserLocationDetailTblId(forProperty("id")) : null;
         this.user = inits.isInitialized("user") ? new QUserTbl(forProperty("user")) : null;
     }
 

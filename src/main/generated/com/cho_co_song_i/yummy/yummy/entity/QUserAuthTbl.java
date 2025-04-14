@@ -22,23 +22,17 @@ public class QUserAuthTbl extends EntityPathBase<UserAuthTbl> {
 
     public static final QUserAuthTbl userAuthTbl = new QUserAuthTbl("userAuthTbl");
 
-    public final NumberPath<Long> authNo = createNumber("authNo", Long.class);
-
     public final DateTimePath<java.util.Date> chg_dt = createDateTime("chg_dt", java.util.Date.class);
 
     public final StringPath chg_id = createString("chg_id");
 
-    public final StringPath login_channel = createString("login_channel");
+    public final QUserAuthTblId id;
 
     public final DateTimePath<java.util.Date> reg_dt = createDateTime("reg_dt", java.util.Date.class);
 
     public final StringPath reg_id = createString("reg_id");
 
-    public final StringPath token_id = createString("token_id");
-
     public final QUserTbl user;
-
-    public final NumberPath<Long> userNo = createNumber("userNo", Long.class);
 
     public QUserAuthTbl(String variable) {
         this(UserAuthTbl.class, forVariable(variable), INITS);
@@ -58,6 +52,7 @@ public class QUserAuthTbl extends EntityPathBase<UserAuthTbl> {
 
     public QUserAuthTbl(Class<? extends UserAuthTbl> type, PathMetadata metadata, PathInits inits) {
         super(type, metadata, inits);
+        this.id = inits.isInitialized("id") ? new QUserAuthTblId(forProperty("id")) : null;
         this.user = inits.isInitialized("user") ? new QUserTbl(forProperty("user")) : null;
     }
 
