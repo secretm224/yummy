@@ -58,7 +58,6 @@ dependencies {
 	testImplementation 'org.springframework.kafka:spring-kafka-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	implementation 'org.apache.httpcomponents:httpclient:4.5.13'
-	implementation 'io.jsonwebtoken:jjwt:0.12.6'
 
 	// Elasticsearch
 	implementation 'co.elastic.clients:elasticsearch-java:8.17.3'
@@ -72,7 +71,15 @@ dependencies {
 
 	// Spring Security
 	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
 
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+	// GraphQL
+	implementation 'org.springframework.boot:spring-boot-starter-graphql'
+	implementation 'com.graphql-java:graphql-java-extended-scalars:19.0'
 }
 
 tasks.named('test') {
@@ -97,3 +104,8 @@ sourceSets {
 clean {
 	delete file(generated)
 }
+//
+tasks.withType(JavaCompile) {
+	options.compilerArgs += ['-parameters']
+}
+

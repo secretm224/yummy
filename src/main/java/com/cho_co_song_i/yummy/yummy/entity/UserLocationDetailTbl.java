@@ -12,26 +12,14 @@ import java.util.Date;
 
 
 @Entity
-@Table(name = "user_detail_tbl")
+@Table(name = "user_location_detail_tbl")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserDetailTbl implements Persistable<Long> {
+public class UserLocationDetailTbl implements Persistable<UserLocationDetailTblId> {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "detail_no")
-    private Long detailNo;
-
-    @ManyToOne
-    @JoinColumn(name="user_no")
-    private UserTbl user;
-
-    @Column(name = "user_no", nullable = false, insertable = false, updatable = false)
-    private Long userNo;
-
-    @Column(name = "addr_type", length = 2, nullable = false)
-    private String addrType;
+    @EmbeddedId
+    private UserLocationDetailTblId id;
 
     @Column(name = "addr", length = 255, nullable = false)
     private String addr;
@@ -56,18 +44,22 @@ public class UserDetailTbl implements Persistable<Long> {
     @Column(name = "chg_id", length = 25)
     private String chgId;
 
+    /* ✅ Hibernate 에게 신규 엔티티임을 알려주기 위해 사용 */
     @Transient
-    private boolean isNew = true;
+    private boolean isNew = false;
 
-    public Long getId(){
-        return this.detailNo;
-    }
+    @Override
+    public UserLocationDetailTblId getId() { return this.id; }
 
-    public boolean isNew(){
-        return this.detailNo == null || isNew;
-    }
+    @Override
+    public boolean isNew() { return isNew || this.id == null; }
 
-    public void markNotNew(){
-        this.isNew = false;
-    }
+    /* ✅ 새로운 엔티티를 표시하는 메서드 */
+    public void markAsNew() { this.isNew = true; }
+
+
+    @MapsId("userNo")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_no")
+    private UserTbl user;
 }

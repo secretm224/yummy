@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.domain.Persistable;
 
 import java.util.Date;
 
@@ -12,56 +13,57 @@ import java.util.Date;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserTbl {
+public class UserTbl implements Persistable<Long> {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_no")
-    private Long user_no;
+    private Long userNo;
+
+    @Column(name = "user_id", nullable = false, length = 100)
+    private String userId;
+
+    @Column(name = "user_id_hash", nullable = false, columnDefinition = "CHAR(44)", unique = true)
+    private String userIdHash;
+
+    @Column(name = "user_pw", nullable = false, columnDefinition = "CHAR(44)")
+    private String userPw;
+
+    @Column(name = "user_pw_salt", nullable = false, columnDefinition = "CHAR(24)")
+    private String userPwSalt;
 
     @Column(name = "user_nm", nullable = false, length = 100)
-    private String user_nm;
+    private String userNm;
+
+    @Column(name = "user_birth", nullable = false, length = 8)
+    private String userBirth;
 
     @Column(name = "reg_dt", nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
-    private Date reg_dt;
+    private Date regDt;
 
     @Column(name = "reg_id", nullable = false, length = 25)
-    private String reg_id;
+    private String regId;
 
-    @Column(name = "chg_dt", nullable = false)
+    @Column(name = "chg_dt", nullable = true)
     @Temporal(TemporalType.TIMESTAMP)
-    private Date chg_dt;
+    private Date chgDt;
 
-    @Column(name = "chg_id", nullable = false, length = 25)
-    private String chg_id;
+    @Column(name = "chg_id", nullable = true, length = 25)
+    private String chgId;
+
+    @Transient
+    private boolean isNew = true;
+
+    public Long getId(){
+        return this.userNo;
+    }
+
+    public boolean isNew(){
+        return this.userNo == null || isNew;
+    }
+
+    public void markNotNew(){
+        this.isNew = false;
+    }
+
 }
-
-
-
-
-//@Entity('user_tbl')
-//export class User {
-//    @PrimaryGeneratedColumn()
-//    user_no: number;
-//
-//    @Column({ type: 'varchar', length: 100, nullable: false })
-//user_nm: string;
-//
-//@Column({ type: 'timestamp', nullable: true })
-//reg_dt: Date;
-//
-//@Column({ type: 'varchar', length: 25, nullable: true })
-//reg_id: string;
-//
-//@Column({ type: 'timestamp', nullable: true })
-//chg_dt: Date;
-//
-//@Column({ type: 'varchar', length: 25, nullable: true })
-//chg_id: string;
-//
-//@OneToMany(() => UserAuth, (userAuth) => userAuth.user)
-//auths: UserAuth[];
-//
-//@OneToMany(() => UserDetail, (userDetail) => userDetail.user)
-//details: UserDetail[];
-//}

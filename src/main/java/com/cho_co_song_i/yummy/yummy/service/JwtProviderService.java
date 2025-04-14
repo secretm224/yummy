@@ -1,5 +1,8 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
+import com.cho_co_song_i.yummy.yummy.dto.ErrorResponse;
+import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
+import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +14,9 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -26,12 +32,12 @@ public class JwtProviderService {
 
     /**
      * Access Token 을 발급해주는 함수
-     * @param userId
+     * @param userHashedId
      * @return
      */
-    public String generateAccessToken(String userId) {
+    public String generateAccessToken(String userHashedId) {
         return Jwts.builder()
-                .subject(userId)
+                .subject(userHashedId)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION))
                 .signWith(key) /* 알고리즘은 키에서 자동 추론됨 */
@@ -40,12 +46,12 @@ public class JwtProviderService {
 
     /**
      * Refresh Token 을 발급해주는 함수
-     * @param userId
+     * @param userHashedId
      * @return
      */
-    public String generateRefreshToken(String userId) {
+    public String generateRefreshToken(String userHashedId) {
         return Jwts.builder()
-                .subject(userId)
+                .subject(userHashedId)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))
                 .signWith(key) /* 알고리즘은 키에서 자동 추론됨 */
@@ -57,39 +63,35 @@ public class JwtProviderService {
      * @param token
      * @return
      */
-    public String validateTokenAndGetSubject(String token) throws Exception {
-        return Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .getSubject();
+    public JwtValidationResult validateTokenAndGetSubject(String token) {
 
-//        try {
-//
-//            return Jwts.parser()
-//                    .verifyWith(key)
-//                    .build()
-//                    .parseSignedClaims(token)
-//                    .getPayload()
-//                    .getSubject();
-//
-//        } catch (ExpiredJwtException e) {
-//            log.warn("⏰ JWT 토큰 만료됨: {}", e.getMessage());
-//            throw new JwtValidationException("만료된 토큰입니다.", e);
-//        } catch (UnsupportedJwtException e) {
-//            log.warn("❌ 지원하지 않는 JWT 형식: {}", e.getMessage());
-//            throw new JwtValidationException("지원되지 않는 토큰입니다.", e);
-//        } catch (MalformedJwtException e) {
-//            log.warn("❗ 잘못된 JWT 형식: {}", e.getMessage());
-//            throw new JwtValidationException("잘못된 형식의 토큰입니다.", e);
-//        } catch (SecurityException | SignatureException e) {
-//            log.warn("🔐 서명 검증 실패: {}", e.getMessage());
-//            throw new JwtValidationException("위조된 토큰입니다.", e);
-//        } catch (IllegalArgumentException e) {
-//            log.warn("❓ 토큰이 비어 있거나 null임: {}", e.getMessage());
-//            throw new JwtValidationException("잘못된 요청입니다.", e);
-//        }
+        try {
+
+            String jwtParser = Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .getSubject();
+
+            return new JwtValidationResult(JwtValidationStatus.SUCCESS, jwtParser);
+
+        } catch (ExpiredJwtException e) {
+            log.warn("JJWT token expired: {}", e.getMessage());
+            return new JwtValidationResult(JwtValidationStatus.EXPIRED, null);
+        } catch (UnsupportedJwtException e) {
+            log.error("JWT format not supported: {}", e.getMessage());
+            return new JwtValidationResult(JwtValidationStatus.INVALID, null);
+        } catch (MalformedJwtException e) {
+            log.error("Invalid JWT format: {}", e.getMessage());
+            return new JwtValidationResult(JwtValidationStatus.INVALID, null);
+        } catch (SecurityException e) {
+            log.error("Signature Verification Failed: {}", e.getMessage());
+            return new JwtValidationResult(JwtValidationStatus.INVALID, null);
+        } catch (IllegalArgumentException e) {
+            log.error("Token is empty or null: {}", e.getMessage());
+            return new JwtValidationResult(JwtValidationStatus.INVALID, null);
+        }
     }
 
 }
