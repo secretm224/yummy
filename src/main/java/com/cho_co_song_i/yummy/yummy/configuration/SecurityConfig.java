@@ -58,7 +58,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         /* 허용할 Origin URL 설정 */
-        configuration.setAllowedOrigins(accessOriginUrls);
+        configuration.setAllowedOriginPatterns(accessOriginUrls);
 
         /* 허용할 HTTP 메서드 */
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
