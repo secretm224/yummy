@@ -2,6 +2,7 @@ package com.cho_co_song_i.yummy.yummy.configuration;
 
 import com.cho_co_song_i.yummy.yummy.jwt.JwtAuthenticationFilter;
 import com.cho_co_song_i.yummy.yummy.jwt.JwtTokenProvider;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +16,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 @Configuration
+@Slf4j
 public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
@@ -60,6 +62,11 @@ public class SecurityConfig {
         /* 허용할 Origin URL -> 공백제거!! */
         List<String> trimmedOrigins = accessOriginUrls.stream()
                 .map(String::trim).toList();
+
+        for (String elem : trimmedOrigins) {
+            log.info("elem:" + elem + ".");
+        }
+        
         /* 허용할 Origin URL 설정 */
         configuration.setAllowedOrigins(trimmedOrigins);
 
