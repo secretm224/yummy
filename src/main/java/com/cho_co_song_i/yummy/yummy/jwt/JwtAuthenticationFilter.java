@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
-
 import java.io.IOException;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -27,8 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         boolean isSwaggerCall = (referer != null && referer.contains("swagger") && requestUrl != null && requestUrl.contains("login"));
         boolean isGraphQLCall = requestUrl != null && requestUrl.contains("/graphql");
 
-//        if (!isSwaggerCall && !isGraphQLCall) {
-        if (!isSwaggerCall){
+        if (!isSwaggerCall && !isGraphQLCall) {
             // Swagger UI가 아닌 요청은 필터 무시
             filterChain.doFilter(request, response);
             return;
