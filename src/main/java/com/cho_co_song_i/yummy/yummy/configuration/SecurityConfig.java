@@ -59,7 +59,8 @@ public class SecurityConfig {
 
         /* 허용할 Origin URL 설정 */
         //configuration.setAllowedOriginPatterns(accessOriginUrls);
-        configuration.setAllowedOrigins(accessOriginUrls);
+        //configuration.setAllowedOrigins(accessOriginUrls);
+        configuration.setAllowedOrigins(List.of("http://www.seunghwan-dev.kro.kr:5176","http://www.seunghwan-dev.kro.kr:15176"));
 
         /* 허용할 HTTP 메서드 */
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
