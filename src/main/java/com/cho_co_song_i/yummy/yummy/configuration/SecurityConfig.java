@@ -2,6 +2,7 @@ package com.cho_co_song_i.yummy.yummy.configuration;
 
 import com.cho_co_song_i.yummy.yummy.jwt.JwtAuthenticationFilter;
 import com.cho_co_song_i.yummy.yummy.jwt.JwtTokenProvider;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +16,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 @Configuration
+@Slf4j
 public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
@@ -35,9 +37,11 @@ public class SecurityConfig {
                     .requestMatchers(
                         "/auth/token", // 토큰 발급 API는 허용
                         "/error",      // 오류 페이지 허용
-                        "/favicon.ico" // 기타 정적 자원
+                        "/favicon.ico"
                     ).permitAll()
                     .anyRequest().permitAll() // 모든 요청은 허용 → 실제 인증은 필터에서만 Swagger에 대해 수행
+                       //.requestMatchers("/**").permitAll()
+
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
                  //  .requestMatchers("/**").permitAll()  /* 모든 요청 허용 */
@@ -50,6 +54,14 @@ public class SecurityConfig {
     public UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
+//        /* 허용할 Origin URL -> 공백제거!! */
+//        List<String> trimmedOrigins = accessOriginUrls.stream()
+//                .map(String::trim).toList();
+//
+//        for (String elem : trimmedOrigins) {
+//            log.info("elem:" + elem + ".");
+//        }
+        
         /* 허용할 Origin URL 설정 */
         //configuration.setAllowedOriginPatterns(accessOriginUrls);
         configuration.setAllowedOriginPatterns(List.of("http://*.seunghwan-dev.kro.kr:*"));

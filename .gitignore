@@ -49,3 +49,4 @@ out/
 
 ### VS Code ###
 .vscode/
+/src/main/generated/com/cho_co_song_i/yummy/yummy/entity/QStoreRecommendTbl.java
