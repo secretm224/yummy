@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -11,4 +13,6 @@ public class UserBasicInfoDto {
     private String userId;
     private String userNm;
     private String userBirth;
+    private BigDecimal lngX;
+    private BigDecimal latY;
 }

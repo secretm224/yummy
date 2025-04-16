@@ -1,6 +1,7 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
 import com.cho_co_song_i.yummy.yummy.dto.*;
+import com.cho_co_song_i.yummy.yummy.entity.UserLocationDetailTbl;
 import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
 import com.cho_co_song_i.yummy.yummy.utils.AesUtil;
@@ -21,6 +22,7 @@ import java.util.Optional;
 
 import static com.cho_co_song_i.yummy.yummy.utils.CookieUtil.getCookieValue;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
+import static com.cho_co_song_i.yummy.yummy.entity.QUserLocationDetailTbl.userLocationDetailTbl;
 
 @Service
 @Slf4j
@@ -36,7 +38,6 @@ public class YummyLoginService {
     private final JwtProviderService jwtProviderService;
     private final JPAQueryFactory queryFactory;
 
-
     public YummyLoginService(RedisService redisService, JwtProviderService jwtProviderService,
                              JPAQueryFactory queryFactory) {
         this.redisService = redisService;
@@ -45,11 +46,13 @@ public class YummyLoginService {
     }
 
     /* Entity -> DTO 변환 (UserTbl) */
-    private UserBasicInfoDto convertUserToBassicInfo(UserTbl userTbl) {
+    private UserBasicInfoDto convertUserToBasicInfo(UserTbl userTbl, UserLocationDetailTbl userLocationDetail) {
         return new UserBasicInfoDto(
                 userTbl.getUserId(),
                 userTbl.getUserNm(),
-                userTbl.getUserBirth()
+                userTbl.getUserBirth(),
+                userLocationDetail.getLngX(),
+                userLocationDetail.getLatY()
         );
     }
 
@@ -99,7 +102,15 @@ public class YummyLoginService {
             CookieUtil.addCookie(res, "yummy-access-token", accessToken, 7200);
             CookieUtil.addCookie(res, "yummy-user-id", hashedId, 7200);
 
-            UserBasicInfoDto userBasicInfo = convertUserToBassicInfo(user);
+            /* 7. 기본적인 유저의 정보를 가져와준다. */
+            /* 7-1. 회원의 집 정보 */
+            UserLocationDetailTbl userLocationDetail = queryFactory
+                    .selectFrom(userLocationDetailTbl)
+                    .where(userLocationDetailTbl.id.userNo.eq(user.getUserNo()))
+                    .fetchFirst();
+
+            /* 기본 회원 정보 - 브라우저 돌아다니면서 사용할 수 있는 정보 - private 한 정보같은건 넣으면 안된다. */
+            UserBasicInfoDto userBasicInfo = convertUserToBasicInfo(user, userLocationDetail);
 
             /* 7. 기본 회원정보를 Redis 에 저장한다. */
             String basicUserInfo = String.format("%s:%s", userInfoKey, hashedId);

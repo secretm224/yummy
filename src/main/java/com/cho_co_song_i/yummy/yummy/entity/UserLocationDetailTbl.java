@@ -24,10 +24,10 @@ public class UserLocationDetailTbl implements Persistable<UserLocationDetailTblI
     @Column(name = "addr", length = 255, nullable = false)
     private String addr;
 
-    @Column(name = "lng_x", precision = 10, scale = 7, nullable = false)
+    @Column(name = "lngx", precision = 10, scale = 7, nullable = false)
     private BigDecimal lngX;
 
-    @Column(name = "lat_y", precision = 10, scale = 7, nullable = false)
+    @Column(name = "laty", precision = 10, scale = 7, nullable = false)
     private BigDecimal latY;
 
     @Column(name = "reg_dt")

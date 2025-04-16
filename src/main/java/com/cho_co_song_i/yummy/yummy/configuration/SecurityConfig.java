@@ -54,17 +54,8 @@ public class SecurityConfig {
     public UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-//        /* 허용할 Origin URL -> 공백제거!! */
-//        List<String> trimmedOrigins = accessOriginUrls.stream()
-//                .map(String::trim).toList();
-//
-//        for (String elem : trimmedOrigins) {
-//            log.info("elem:" + elem + ".");
-//        }
-        
         /* 허용할 Origin URL 설정 */
-        //configuration.setAllowedOriginPatterns(accessOriginUrls);
-        configuration.setAllowedOriginPatterns(List.of("http://*.seunghwan-dev.kro.kr:*"));
+        configuration.setAllowedOrigins(accessOriginUrls);
 
         /* 허용할 HTTP 메서드 */
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));

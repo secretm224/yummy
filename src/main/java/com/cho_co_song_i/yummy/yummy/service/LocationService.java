@@ -84,7 +84,6 @@ public class LocationService {
                 System.out.println("LocationCity: " + city.getLocationCity() + ", County: " + countyName);
             }
 
-
         } catch(Exception e) {
             log.error("[Error][LocationService->getLocationCities] {}", e.getMessage(), e);
         }
