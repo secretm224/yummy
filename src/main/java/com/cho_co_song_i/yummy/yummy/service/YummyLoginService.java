@@ -51,8 +51,8 @@ public class YummyLoginService {
                 userTbl.getUserId(),
                 userTbl.getUserNm(),
                 userTbl.getUserBirth(),
-                userLocationDetail.getLngX(),
-                userLocationDetail.getLatY()
+                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLngX).orElse(null),
+                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLatY).orElse(null)
         );
     }
 
