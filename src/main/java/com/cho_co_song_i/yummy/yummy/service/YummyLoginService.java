@@ -189,7 +189,7 @@ public class YummyLoginService {
 
         /* 새 access 토큰 발급 후 쿠키 저장 */
         String newAccessToken = jwtProviderService.generateAccessToken(userIdHash);
-        CookieUtil.addCookie(res, "yummy-access-token", newAccessToken, 1000 * 60 * 60 * 2);
+        CookieUtil.addCookie(res, "yummy-access-token", newAccessToken, 7200);
         return true;
     }
 

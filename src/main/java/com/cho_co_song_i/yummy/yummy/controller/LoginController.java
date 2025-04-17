@@ -3,7 +3,6 @@ package com.cho_co_song_i.yummy.yummy.controller;
 import com.cho_co_song_i.yummy.yummy.dto.ErrorResponse;
 import com.cho_co_song_i.yummy.yummy.dto.StandardLoginDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
-import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
 import com.cho_co_song_i.yummy.yummy.service.*;
 
 
@@ -44,7 +43,11 @@ public class LoginController {
         return "login";
     }
 
-    //Test Code
+    /**
+     * [Test Code]
+     * @param text
+     * @return
+     */
     @GetMapping("/hashtest")
     public ResponseEntity<?> HashTest(
             @RequestParam(value = "text", required = false) String text
