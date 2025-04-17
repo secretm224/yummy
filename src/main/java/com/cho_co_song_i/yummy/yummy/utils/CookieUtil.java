@@ -29,6 +29,15 @@ public class CookieUtil {
         response.addCookie(cookie);
     }
 
+    /* 여러개의 쿠키를 삭제해주는 함수*/
+    public static void clearCookies(HttpServletResponse response, String... cookieName) {
+
+        for (String name : cookieName) {
+            clearCookie(response, name);
+        }
+
+    }
+
     /* 쿠키 생성 */
     public static void addCookie(HttpServletResponse response, String name, String value, int maxAgeInSeconds) {
 

@@ -193,6 +193,13 @@ public class YummyLoginService {
         return true;
     }
 
+    /**
+     * 유저의 로그아웃을 위해서 로그인관련 인증 토큰을 다 제거해주는 함수
+     * @param res
+     */
+    public void standardLogoutUser(HttpServletResponse res) {
+        CookieUtil.clearCookies(res, "yummy-access-token", "yummy-user-id");
+    }
 
 
 }

@@ -83,9 +83,19 @@ public class LoginController {
         return ResponseEntity.ok(result);
     }
 
-    // TODO: 4/5/25
     /**
-     *
+     * 로그아웃을 해주는 함수
+     * @param res
+     * @return
+     */
+    @PostMapping("/standardLogout")
+    public ResponseEntity<Void> StandardLogout(HttpServletResponse res) {
+        yummyLoginService.standardLogoutUser(res);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 로그인을 체크해주는 함수
      * @param res
      * @param req
      * @return
@@ -98,14 +108,13 @@ public class LoginController {
         Optional<UserBasicInfoDto> result = yummyLoginService.checkLoginUser(res, req);
 
         if (result.isEmpty()) {
-            /* 로그인 안 된 경우 → 401 Unauthorized + 에러 메시지 */
-            return ResponseEntity
-                    .status(HttpStatus.UNAUTHORIZED)
-                    .body(new ErrorResponse("AUTH_ERROR", "Your login information is invalid."));
+            /* 실제 HTTP 200, 하지만 body에는 명시적인 로그인 실패 코드 포함 */
+            return ResponseEntity.ok(new ErrorResponse("AUTH_ERROR", "Not logged in."));
         }
 
         return ResponseEntity.ok(result.get());
     }
+
 
 
     // TODO: 4/5/25
