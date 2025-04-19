@@ -150,8 +150,8 @@ public class JoinMemberService {
         userEmailTbl.setChgId(null);
 
         userEmailRepository.save(userEmailTbl);
-
-        test();
+        
+        //test();
 
         UserPhoneNumberTblId userPhoneNumberTblId = new UserPhoneNumberTblId(userNo, joinMemberDto.getPhoneNumber());
         UserPhoneNumberTbl userPhoneNumberTbl = new UserPhoneNumberTbl();
