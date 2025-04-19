@@ -38,8 +38,6 @@ public class JoinMemberService {
         this.userEmailRepository = userEmailRepository;
     }
 
-    //private
-
     /**
      * 회원가입 해주는 서비스 함수
      * @param joinMemberDto
@@ -116,6 +114,26 @@ public class JoinMemberService {
     @Transactional(rollbackFor = Exception.class)
     private boolean saveJoinUser(JoinMemberDto joinMemberDto) throws Exception {
 
+        UserTbl user = saveUser(joinMemberDto);
+
+        Long userNo = user.getUserNo();
+        if (userNo == null) {
+            throw new Exception("Unable to obtain userNo after saving User.");
+        }
+
+        saveUserEmail(user, joinMemberDto.getEmail());
+        //test();
+        saveUserPhoneNumber(user, joinMemberDto.getPhoneNumber(), joinMemberDto.getTelecom());
+
+        return true;
+    }
+
+    /**
+     * UserTbl 생성 함수
+     * @param joinMemberDto
+     * @return
+     */
+    private UserTbl saveUser(JoinMemberDto joinMemberDto) throws Exception {
         String saltValue = HashUtil.generateSalt();
         String userIdHash = HashUtil.hashWithSalt(joinMemberDto.getUserId(), saltValue);
         String userPwHash = HashUtil.hashWithSalt(joinMemberDto.getPassword(), saltValue);
@@ -133,14 +151,16 @@ public class JoinMemberService {
         user.setChgDt(null);
         user.setChgId(null);
 
-        userRepository.save(user);
+        return userRepository.save(user);
+    }
 
-        Long userNo = user.getUserNo();
-        if (userNo == null) {
-            throw new Exception("Unable to obtain userNo after saving User.");
-        }
-
-        UserEmailTblId userEmailTblId = new UserEmailTblId(userNo, joinMemberDto.getEmail());
+    /**
+     * UserEmailTbl 생성 함수
+     * @param user
+     * @param email
+     */
+    private void saveUserEmail(UserTbl user, String email) {
+        UserEmailTblId userEmailTblId = new UserEmailTblId(user.getUserNo(), email);
         UserEmailTbl userEmailTbl = new UserEmailTbl();
         userEmailTbl.setUser(user);
         userEmailTbl.setId(userEmailTblId);
@@ -150,23 +170,28 @@ public class JoinMemberService {
         userEmailTbl.setChgId(null);
 
         userEmailRepository.save(userEmailTbl);
+    }
 
-        //test();
-
-        UserPhoneNumberTblId userPhoneNumberTblId = new UserPhoneNumberTblId(userNo, joinMemberDto.getPhoneNumber());
+    /**
+     * userPhoneNumberTbl 생성 함수
+     * @param user
+     * @param phoneNumber
+     * @param telecom
+     */
+    private void saveUserPhoneNumber(UserTbl user, String phoneNumber, String telecom) {
+        UserPhoneNumberTblId userPhoneNumberTblId = new UserPhoneNumberTblId(user.getUserNo(), phoneNumber);
         UserPhoneNumberTbl userPhoneNumberTbl = new UserPhoneNumberTbl();
         userPhoneNumberTbl.setUser(user);
         userPhoneNumberTbl.setId(userPhoneNumberTblId);
-        userPhoneNumberTbl.setTelecomName(joinMemberDto.getTelecom());
+        userPhoneNumberTbl.setTelecomName(telecom);
         userPhoneNumberTbl.setRegDt(new Date());
         userPhoneNumberTbl.setRegId("system");
         userPhoneNumberTbl.setChgDt(null);
         userPhoneNumberTbl.setChgId(null);
 
         userPhoneNumberRepository.save(userPhoneNumberTbl);
-
-        return true;
     }
+
 
     /* 트랜잭션 테스트용 */
     private void test() throws Exception {
