@@ -150,7 +150,7 @@ public class JoinMemberService {
         userEmailTbl.setChgId(null);
 
         userEmailRepository.save(userEmailTbl);
-        
+
         //test();
 
         UserPhoneNumberTblId userPhoneNumberTblId = new UserPhoneNumberTblId(userNo, joinMemberDto.getPhoneNumber());
@@ -185,7 +185,7 @@ public class JoinMemberService {
         }
 
         /* 특수문자가 포함되면 false (문자만 허용) */
-        if (!userId.matches("^[\\p{L}]+$")) {
+        if (!userId.matches("^[\\p{L}0-9]+$")) {
             return false;
         }
 
