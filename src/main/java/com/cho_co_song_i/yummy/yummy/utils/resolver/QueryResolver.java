@@ -1,4 +1,4 @@
-package com.cho_co_song_i.yummy.yummy.resolver;
+package com.cho_co_song_i.yummy.yummy.utils.resolver;
 
 import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;

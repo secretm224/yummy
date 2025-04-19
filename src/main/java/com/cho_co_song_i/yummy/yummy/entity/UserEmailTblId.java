@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode
 @QueryEmbeddable
 public class UserEmailTblId {
-    @Column(name = "user_no", insertable = false, updatable = false)
+    @Column(name = "user_no")
     private Long userNo;
 
     @Column(name = "user_email_address", nullable = false, length = 255)

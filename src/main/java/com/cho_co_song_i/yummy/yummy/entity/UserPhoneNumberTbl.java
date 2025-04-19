@@ -17,6 +17,9 @@ public class UserPhoneNumberTbl implements Persistable<UserPhoneNumberTblId>  {
     @EmbeddedId
     private UserPhoneNumberTblId id;
 
+    @Column(name = "telecom_name", nullable = false, length = 25)
+    private String telecomName;
+
     @Column(name = "reg_dt", nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
     private Date regDt;
