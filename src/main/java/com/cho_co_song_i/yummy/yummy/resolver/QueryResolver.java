@@ -1,4 +1,4 @@
-package com.cho_co_song_i.yummy.yummy.utils.resolver;
+package com.cho_co_song_i.yummy.yummy.resolver;
 
 import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
@@ -39,12 +39,21 @@ public class QueryResolver {
         return CompletableFuture.completedFuture(List.of());
     }
 
-//    @GetMapping("allData")
-//    public CompletableFuture<List<SearchStoreDto>> getAllStores() {
-//        return searchService.getSearchAllStores(storeIndex);
-//    }
+    @QueryMapping(name = "SearchStoreName")
+    public CompletableFuture<SearchStoreDto> GetSearchStoreName(@Argument("SearchStoreName")String SearchStoreName){
+        String store_index = env.getProperty("spring.elasticsearch.index.store");
+        return _searchService.getStoreByName(store_index,SearchStoreName)
+                                 .thenApply(optional -> optional.orElse(null));
 
+    }
 
-
+    @QueryMapping(name = "SearchStoreList")
+    public CompletableFuture<List<SearchStoreDto>> searchStoreList(
+            @Argument("page") int page,
+            @Argument("size") int size
+    ) {
+        String index = env.getProperty("spring.elasticsearch.index.store");
+        return _searchService.getStoresByPage(index, page, size);
+    }
 
 }

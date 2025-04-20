@@ -2,6 +2,7 @@ package com.cho_co_song_i.yummy.yummy.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import co.elastic.clients.elasticsearch._types.FieldValue;
+import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.search.Hit;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -98,6 +100,80 @@ public class SearchService {
         }
     }
 
+    /** secretm test
+     * 가게 이름으로 단건 조회
+     *
+     * @param indexName Elasticsearch 인덱스명
+     * @param storeName 조회할 가게 이름 (match 질의)
+     * @return 이름과 유사한 문서 중 첫 번째를 Optional로 감싸서 반환
+     */
+    public CompletableFuture<Optional<SearchStoreDto>> getStoreByName(
+            String indexName,
+            String storeName
+    ) {
+        SearchRequest searchRequest = SearchRequest.of(s -> s
+                .index(indexName)
+                .size(1)
+                .query(q -> q
+                        .match(m -> m
+                                .field("name")
+                                .query(FieldValue.of(storeName))// 을 쓰면 variant 가 자동 지정됩니다
+                                //.query(FieldValue.of(fv -> fv.stringValue(storeName)))
+                        )
+                )
+        );
+
+        return searchAsyncClient.search(searchRequest, SearchStoreDto.class)
+                .thenApply(resp ->
+                        resp.hits().hits().stream()
+                                .map(hit -> hit.source())
+                                .filter(Objects::nonNull)
+                                .findFirst()
+                )
+                .exceptionally(ex -> {
+                    log.error("[Error][SearchService -> getStoreByName] {}", ex.getMessage());
+                    return Optional.empty();
+                });
+    }
+
+    /**
+     * Elasticsearch 에서 모든 도큐먼트를 페이징 조회
+     *
+     * @param indexName 조회할 인덱스
+     * @param page      1부터 시작하는 페이지 번호
+     * @param size      페이지당 항목 수
+     * @return CompletableFuture<List<SearchStoreDto>>
+     */
+    public CompletableFuture<List<SearchStoreDto>> getStoresByPage(
+            String indexName,
+            int page,
+            int size
+    ) {
+        int from = (page - 1) * size;
+
+        SearchRequest req = SearchRequest.of(s -> s
+                .index(indexName)
+                .from(from)       // 건너뛸 도큐먼트 수
+                .size(size)
+                .sort(so -> so
+                        .field(f -> f
+                                .field("seq")
+                                .order(SortOrder.Asc)
+                        )
+                )// 한 번에 가져올 도큐먼트 수
+                .query(q -> q
+                        .matchAll(ma -> ma)    // 전체 조회, 필요에 따라 필터나 match 쿼리로 대체 가능
+                )
+        );
+
+        return searchAsyncClient.search(req, SearchStoreDto.class)
+                .thenApply(resp ->
+                        resp.hits().hits().stream()
+                                .map(Hit::source)
+                                .filter(Objects::nonNull)
+                                .toList()
+                );
+    }
 
     /**
      * 통함검색 알고리즘
