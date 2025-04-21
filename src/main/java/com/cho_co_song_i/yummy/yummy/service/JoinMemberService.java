@@ -3,6 +3,7 @@ package com.cho_co_song_i.yummy.yummy.service;
 import com.cho_co_song_i.yummy.yummy.dto.JoinMemberDto;
 import com.cho_co_song_i.yummy.yummy.dto.PublicResponse;
 import com.cho_co_song_i.yummy.yummy.entity.*;
+import com.cho_co_song_i.yummy.yummy.enums.JoinMemberIdStatus;
 import com.cho_co_song_i.yummy.yummy.repository.UserEmailRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserPhoneNumberRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserRepository;
@@ -48,10 +49,16 @@ public class JoinMemberService {
 
         /* UserID 확인 */
         try {
-            boolean checkId = checkUserId(joinMemberDto.getUserId());
-            if (!checkId) {
+            JoinMemberIdStatus checkId = checkUserId(joinMemberDto.getUserId());
+
+            if (checkId == JoinMemberIdStatus.NONFORMAT) {
                 return new PublicResponse("ID_ERR","Id does not conform to the rule");
+            } else if (checkId == JoinMemberIdStatus.DUPLICATED) {
+                return new PublicResponse("ID_DUPLICATED","The ID already exists.");
             }
+//            if (!checkId) {
+//                return new PublicResponse("ID_ERR","Id does not conform to the rule");
+//            }
         } catch(Exception e) {
             log.error("[Error][JoinMemberService->joinMember] {}", e.getMessage(), e);
             return new PublicResponse("ID_ERR","Id does not conform to the rule");
@@ -203,23 +210,31 @@ public class JoinMemberService {
      * @param userId
      * @return
      */
-    private boolean checkUserId(String userId) throws Exception {
+    private JoinMemberIdStatus checkUserId(String userId) throws Exception {
 
         if (userId == null || userId.isEmpty()) {
-            return false;
+            return JoinMemberIdStatus.NONFORMAT;
         }
 
-        /* 특수문자가 포함되면 false (문자만 허용) */
-        if (!userId.matches("^[\\p{L}0-9]+$")) {
-            return false;
+        /* 특수문자가 포함되면 false (문자 + 숫자만 허용) */
+        if (!userId.matches("^(?=.*[a-z]{2,})(?=.*[0-9]{2,})[a-z0-9]+$")) {
+            return JoinMemberIdStatus.NONFORMAT;
         }
 
         try {
-           return queryFactory
+
+            var queryCount = queryFactory
                     .selectOne()
                     .from(userTbl)
                     .where(userTbl.userId.eq(userId))
-                    .fetchFirst() == null;
+                    .fetchFirst();
+
+            if (queryCount == null) {
+                return JoinMemberIdStatus.SUCCESS;
+            } else {
+                return JoinMemberIdStatus.DUPLICATED;
+            }
+
         } catch(Exception e) {
             throw new Exception("Error in checkUserId: {}" + e.getMessage(), e);
         }
