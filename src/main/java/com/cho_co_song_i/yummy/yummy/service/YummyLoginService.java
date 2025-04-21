@@ -62,7 +62,7 @@ public class YummyLoginService {
      * @param req
      * @return
      */
-    public Optional<UserBasicInfoDto> standardLoginUser(StandardLoginDto standardLoginDto,
+    public Boolean standardLoginUser(StandardLoginDto standardLoginDto,
                                                         HttpServletResponse res,
                                                         HttpServletRequest req) {
         try {
@@ -75,7 +75,8 @@ public class YummyLoginService {
 
             if (user == null) {
                 log.info("[YummyLoginService->standardLoginUser][Login] No User: {}", standardLoginDto.getUserId());
-                return Optional.empty();
+                //return Optional.empty();
+                return false;
             }
 
             /* 2. 비밀번호 해시 비교 */
@@ -83,7 +84,8 @@ public class YummyLoginService {
 
             if (!hashedInput.equals(user.getUserPw())) {
                 log.info("[YummyLoginService->standardLoginUser][Login] password mismatch: {}", standardLoginDto.getUserId());
-                return Optional.empty();
+                //return Optional.empty();
+                return false;
             }
 
             /* 3. 로그인 성공 */
@@ -116,10 +118,12 @@ public class YummyLoginService {
             String basicUserInfo = String.format("%s:%s", userInfoKey, hashedId);
             redisService.set(basicUserInfo, userBasicInfo);
 
-            return Optional.of(userBasicInfo);
+            //return Optional.of(userBasicInfo);
+            return true;
         } catch (Exception e) {
             log.error("[Error][YummyLoginService->standardLoginUser] {}", e.getMessage(), e);
-            return Optional.empty();
+            //return Optional.empty();
+            return false;
         }
     }
 

@@ -66,24 +66,22 @@ public class LoginController {
     }
 
     /**
-     * 기본적으로 아이디/비밀번호 입력하고 로그인 시도하는 경우.
+     * 기본적으로 아이디/비밀번호 입력하고 로그인 시도하는 경우 처리해주는 함수.
      * @param standardLoginDto
      * @param res
      * @param req
      * @return
      */
     @PostMapping("/standardLogin")
-    public ResponseEntity<?> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res , HttpServletRequest req) {
+    public ResponseEntity<ErrorResponse> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res , HttpServletRequest req) {
 
-        Optional<UserBasicInfoDto> result = yummyLoginService.standardLoginUser(standardLoginDto, res, req);
+        Boolean result = yummyLoginService.standardLoginUser(standardLoginDto, res, req);
 
-        if (result.isEmpty()) {
-            return ResponseEntity
-                    .status(HttpStatus.UNAUTHORIZED)
-                    .body(new ErrorResponse("AUTH_ERROR", "Your login information is invalid."));
+        if (!result) {
+            return ResponseEntity.ok(new ErrorResponse("AUTH_ERROR", "Your login information is invalid."));
         }
 
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(new ErrorResponse("SUCCESS", ""));
     }
 
     /**
