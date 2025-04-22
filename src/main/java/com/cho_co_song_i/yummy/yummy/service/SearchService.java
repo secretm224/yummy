@@ -10,7 +10,6 @@ import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -25,7 +24,7 @@ public class SearchService {
     public SearchService(ElasticsearchAsyncClient searchAsyncClient) {
         this.searchAsyncClient = searchAsyncClient;
     }
-
+   // master merge test
     public CompletableFuture<List<SearchStoreDto>> searchDocuments(String index, String field, String query) {
 
         SearchRequest searchRequest = new SearchRequest.Builder()
