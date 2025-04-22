@@ -35,7 +35,7 @@ public class StoreService {
     private final LocationService locationService;
     private final StoreRepository storeRepository;
     private final RedisService redisService;
-
+    //commit test
     /* Redis Cache 관련 필드 */
     @Value("${spring.redis.category_main}")
     private String categoryMain;
