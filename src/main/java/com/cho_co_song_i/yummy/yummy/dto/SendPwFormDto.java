@@ -7,8 +7,8 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class SendIdFormDto {
+public class SendPwFormDto {
     private String msgType;
-    private String userId;
     private String userEmail;
+    private String userTempPw;
 }
