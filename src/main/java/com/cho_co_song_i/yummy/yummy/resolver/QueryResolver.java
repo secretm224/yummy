@@ -30,6 +30,35 @@ public class QueryResolver {
         return "안녕하세요, " + (name != null ? name : "손님") + "!";
     }
 
+
+
+    /*
+        header 추가
+            {
+                "Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiLtirjrn7ztlIQiLCJpYXQiOjE3NDQ2MTEzNTcsImF1dGgiOiJVU0VSIn0.b8NvXWTAYTCswEefXzucvOI_3k-tAVbRyA_Pnye__dQ"
+            }
+     */
+
+    /*
+     query {
+            SearchStoreAllData {
+                address
+                lat
+                lng
+                locationCity
+                locationCounty
+                locationDistrict
+                majorType
+                name
+                recommendNames
+                seq
+                subType
+                timestamp
+                type
+                zeroPossible
+            }
+        }
+     */
     @QueryMapping(name = "SearchStoreAllData")
     public CompletableFuture<List<SearchStoreDto>> getSearchAllStores() {
         String store_index = env.getProperty("spring.elasticsearch.index.store");
@@ -39,14 +68,104 @@ public class QueryResolver {
         return CompletableFuture.completedFuture(List.of());
     }
 
+    /*
+        단일 상점 조회
+        query{
+          SearchStoreName(SearchStoreName: "맘스터치"){
+            address
+            lat
+            lng
+            locationCity
+            locationCounty
+            locationDistrict
+            majorType
+            name
+            recommendNames
+            seq
+            subType
+            timestamp
+            type
+            zeroPossible
+          }
+        }
+        여러개의 지점 조회
+        query {
+          store1:SearchStoreName(SearchStoreName: "별양집") {
+             address
+            lat
+            lng
+            locationCity
+            locationCounty
+            locationDistrict
+            majorType
+            name
+            recommendNames
+            seq
+            subType
+            type
+            zeroPossible
+          }
+          store2:SearchStoreName(SearchStoreName: "모쿠") {
+            address
+            lat
+            lng
+            locationCity
+            locationCounty
+            locationDistrict
+            majorType
+            name
+            recommendNames
+            seq
+            subType
+            type
+            zeroPossible
+          }
+          store3:SearchStoreName(SearchStoreName: "소코아") {
+           address
+            lat
+            lng
+            locationCity
+            locationCounty
+            locationDistrict
+            majorType
+            name
+            recommendNames
+            seq
+            subType
+            timestamp
+            type
+            zeroPossible
+          }
+        }
+
+     */
     @QueryMapping(name = "SearchStoreName")
     public CompletableFuture<SearchStoreDto> GetSearchStoreName(@Argument("SearchStoreName")String SearchStoreName){
         String store_index = env.getProperty("spring.elasticsearch.index.store");
         return _searchService.getStoreByName(store_index,SearchStoreName)
                                  .thenApply(optional -> optional.orElse(null));
-
     }
 
+    /*
+        query {
+            SearchStoreList(page: 2, size: 5) {
+                seq
+                address
+                lat
+                lng
+                locationCity
+                locationCounty
+                locationDistrict
+                majorType
+                name
+                recommendNames
+                subType
+                timestamp
+                type
+                zeroPossible
+            }
+        }
+     */
     @QueryMapping(name = "SearchStoreList")
     public CompletableFuture<List<SearchStoreDto>> searchStoreList(
             @Argument("page") int page,
