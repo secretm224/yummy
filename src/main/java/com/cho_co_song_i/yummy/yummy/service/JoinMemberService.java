@@ -1,7 +1,9 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
+import com.cho_co_song_i.yummy.yummy.dto.FindIdDto;
 import com.cho_co_song_i.yummy.yummy.dto.JoinMemberDto;
 import com.cho_co_song_i.yummy.yummy.dto.PublicResponse;
+import com.cho_co_song_i.yummy.yummy.dto.SendIdFormDto;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JoinMemberIdStatus;
 import com.cho_co_song_i.yummy.yummy.repository.UserEmailRepository;
@@ -19,6 +21,8 @@ import java.time.format.DateTimeParseException;
 import java.util.Date;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
+import static com.cho_co_song_i.yummy.yummy.entity.QUserEmailTbl.userEmailTbl;
+import static com.cho_co_song_i.yummy.yummy.entity.QUserPhoneNumberTbl.userPhoneNumberTbl;
 
 @Service
 @Slf4j
@@ -28,15 +32,84 @@ public class JoinMemberService {
     private final UserRepository userRepository;
     private final UserPhoneNumberRepository userPhoneNumberRepository;
     private final UserEmailRepository userEmailRepository;
+    private final KafkaProducerService kafkaProducerService;
 
 
     public JoinMemberService(JPAQueryFactory queryFactory, UserRepository userRepository,
-                             UserPhoneNumberRepository userPhoneNumberRepository, UserEmailRepository userEmailRepository
+                             UserPhoneNumberRepository userPhoneNumberRepository, UserEmailRepository userEmailRepository,
+                             KafkaProducerService kafkaProducerService
     ) {
         this.queryFactory = queryFactory;
         this.userRepository = userRepository;
         this.userPhoneNumberRepository = userPhoneNumberRepository;
         this.userEmailRepository = userEmailRepository;
+        this.kafkaProducerService = kafkaProducerService;
+    }
+
+    /**
+     * 회원의 아이디를 찾아주는 함수
+     * @param findIdDto
+     * @return
+     */
+    public PublicResponse findId(FindIdDto findIdDto) {
+
+        /* 이름 검사 */
+        boolean checkUserName = checkUserName(findIdDto.getUserNm());
+        if (!checkUserName) {
+            return new PublicResponse("NAME_ERR", "Invalid name form");
+        }
+
+        /* 통신사 검사 */
+        boolean checkUserTelecom = checkUserMobileCarrier(findIdDto.getTelecom());
+        if (!checkUserTelecom) {
+            return new PublicResponse("TELECOM_ERR", "Invalid birthday form");
+        }
+
+        /* 휴대폰 번호 검사 */
+        boolean checkUserPhoneNumber = checkUserPhoneNumber(findIdDto.getPhoneNumber());
+        if (!checkUserPhoneNumber) {
+            return new PublicResponse("PHONE_ERR", "Invalid phone number form");
+        }
+
+        /* 이메일 검사 */
+        boolean checkEmail = checkUserEmail(findIdDto.getEmail());
+        if (!checkEmail) {
+            return new PublicResponse("EMAIL_ERR", "Email does not conform to the rules");
+        }
+
+        /**
+         * 문제가 없다면, 회원 아이디를 회원의 이메일에 전송하는 로직을 짜준다.
+         * 여기서 JAVA에서 SMTP 로 바로 쏴주는게 아닌, Kafka 토픽으로 회원의 아이디 정보를 보내주면 된다.
+         */
+        try {
+
+            String findUserId = queryFactory
+                    .select(userTbl.userId)
+                    .from(userTbl)
+                    .join(userEmailTbl).on(userEmailTbl.user.eq(userTbl))
+                    .join(userPhoneNumberTbl).on(userPhoneNumberTbl.user.eq(userTbl))
+                    .where(
+                            userTbl.userNm.eq(findIdDto.getUserNm()),
+                            userPhoneNumberTbl.id.phoneNumber.eq(findIdDto.getPhoneNumber()),
+                            userPhoneNumberTbl.telecomName.eq(findIdDto.getTelecom()),
+                            userEmailTbl.id.userEmailAddress.eq(findIdDto.getEmail())
+                    )
+                    .fetchFirst();
+
+            /* 입력한 정보를 토대로 회원정보가 존재하지 않음 */
+            if (findUserId == null || findUserId.isEmpty()) {
+                return new PublicResponse("ID_FIND_ERR", "There are no membership records.");
+            }
+
+            /* 회원정보가 존재하는 경우 -> Kafka Producing */
+            SendIdFormDto sendIdFormDto = new SendIdFormDto(findUserId, findIdDto.getEmail());
+            kafkaProducerService.sendMessageJson(sendIdFormDto);
+
+        } catch(Exception e) {
+            log.error("[Error][JoinMemberService->findId] {}", e.getMessage(), e);
+        }
+
+        return new PublicResponse("SUCCESS", "");
     }
 
     /**
@@ -56,9 +129,7 @@ public class JoinMemberService {
             } else if (checkId == JoinMemberIdStatus.DUPLICATED) {
                 return new PublicResponse("ID_DUPLICATED","The ID already exists.");
             }
-//            if (!checkId) {
-//                return new PublicResponse("ID_ERR","Id does not conform to the rule");
-//            }
+
         } catch(Exception e) {
             log.error("[Error][JoinMemberService->joinMember] {}", e.getMessage(), e);
             return new PublicResponse("ID_ERR","Id does not conform to the rule");
@@ -373,5 +444,7 @@ public class JoinMemberService {
 
         return phoneNumber.matches("^010\\d{8}$");
     }
+
+
 
 }
