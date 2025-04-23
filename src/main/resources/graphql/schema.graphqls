@@ -20,7 +20,7 @@ type SearchStoreDto {
     recommendNames: [String]
     seq: Int
     subType: [Int]
-#    timestamp: DateTime
+    timestamp: String
     type: String
     zeroPossible: Boolean
 }
