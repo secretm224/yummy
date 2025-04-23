@@ -1,5 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
+import com.cho_co_song_i.yummy.yummy.dto.FindIdDto;
 import com.cho_co_song_i.yummy.yummy.dto.JoinMemberDto;
 import com.cho_co_song_i.yummy.yummy.dto.PublicResponse;
 import com.cho_co_song_i.yummy.yummy.service.JoinMemberService;
@@ -38,6 +39,14 @@ public class JoinMemberController {
             return ResponseEntity.ok(new PublicResponse("SERVER_ERR", "API server encountered an error."));
         }
 
+    }
+
+    @PostMapping("/findId")
+    @ResponseBody
+    public ResponseEntity<PublicResponse> findId(@RequestBody FindIdDto findIdDto) {
+
+        PublicResponse result = joinMemberService.findId(findIdDto);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/test")
