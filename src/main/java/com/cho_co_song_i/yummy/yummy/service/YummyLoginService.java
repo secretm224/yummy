@@ -1,9 +1,10 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
-import com.cho_co_song_i.yummy.yummy.dto.*;
+import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
+import com.cho_co_song_i.yummy.yummy.dto.StandardLoginDto;
+import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.UserLocationDetailTbl;
 import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
-import com.cho_co_song_i.yummy.yummy.entity.UserTempPwHistoryTbl;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
@@ -19,10 +20,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
-import static com.cho_co_song_i.yummy.yummy.utils.CookieUtil.getCookieValue;
-import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserLocationDetailTbl.userLocationDetailTbl;
-import static com.cho_co_song_i.yummy.yummy.entity.QUserTempPwHistoryTbl.userTempPwHistoryTbl;
+import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
+import static com.cho_co_song_i.yummy.yummy.utils.CookieUtil.getCookieValue;
+//import static com.cho_co_song_i.yummy.yummy.entity.QUserTempPwHistoryTbl.userTempPwHistoryTbl;
 
 @Service
 @Slf4j
@@ -66,51 +67,51 @@ public class YummyLoginService {
      * @param req
      * @return
      */
-    public Boolean tempLoginUser(StandardLoginDto standardLoginDto,
-                                 HttpServletResponse res,
-                                 HttpServletRequest req) {
+//    public Boolean tempLoginUser(StandardLoginDto standardLoginDto,
+//                                 HttpServletResponse res,
+//                                 HttpServletRequest req) {
+//
+//        try {
+//
+//            UserTbl user = queryFactory
+//                    .selectFrom(userTbl)
+//                    .where(userTbl.userId.eq(standardLoginDto.getUserId()))
+//                    .fetchFirst();
+//
+//            /* 임시비밀번호를 발급받지 않은 사용자 */
+//            if (user == null) {
+//                return false;
+//            }
+//
+//            Long userNo = user.getUserNo();
+//
+////
+////            UserTempPwHistoryTbl userTempPwHistory = queryFactory
+////                    .selectFrom(userTempPwHistoryTbl)
+////                    .where(
+////                            userTempPwHistoryTbl.userNo.eq(userNo),
+////                            userTempPwHistoryTbl.endYn.eq("N")
+////                    )
+////                    .fetchFirst();
+//
+////            if (HashUtil.verify(standardLoginDto.getUserPw(), userTempPwHistory.getTempPwSalt(), userTempPwHistory.getTempPw())) {
+////
+////
+////            }
+//
+//
+////            UserTempPwHistoryTbl userTempPwHistoryTbl = queryFactory
+////                    .selectFrom(userTempPwHistoryTbl)
+////                    .where(userTempPwHistoryTbl.get)
+//
+//
+//        } catch (Exception e) {
+//            log.error("[Error][YummyLoginService->tempLoginUser] {}", e.getMessage(), e);
+//            return false;
+//        }
+//    }
 
-        try {
 
-            UserTbl user = queryFactory
-                    .selectFrom(userTbl)
-                    .where(userTbl.userId.eq(standardLoginDto.getUserId()))
-                    .fetchFirst();
-
-            /* 임시비밀번호를 발급받지 않은 사용자 */
-            if (user == null) {
-                return false;
-            }
-
-            Long userNo = user.getUserNo();
-
-
-            UserTempPwHistoryTbl userTempPwHistory = queryFactory
-                    .selectFrom(userTempPwHistoryTbl)
-                    .where(
-                            userTempPwHistoryTbl.userNo.eq(userNo),
-                            userTempPwHistoryTbl.endYn.eq("N")
-                    )
-                    .fetchFirst();
-
-            if (HashUtil.verify(standardLoginDto.getUserPw(), userTempPwHistory.getTempPwSalt(), userTempPwHistory.getTempPw())) {
-
-
-
-            }
-
-
-//            UserTempPwHistoryTbl userTempPwHistoryTbl = queryFactory
-//                    .selectFrom(userTempPwHistoryTbl)
-//                    .where(userTempPwHistoryTbl.get)
-
-
-        } catch(Exception e) {
-            log.error("[Error][YummyLoginService->tempLoginUser] {}", e.getMessage(), e);
-            return false;
-        }
-
-    }
 
     /**
      * 정석적인 방법으로 로그인하는 경우 -> 아이디/비밀번호 입력해서 로그인 시도
