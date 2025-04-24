@@ -9,12 +9,9 @@ import java.util.Date;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserTempPwHistoryDto {
-    private Long histNo;
+public class UserTempPwDto {
     private Long userNo;
-    private String tempPw;
-    private String tempPwSalt;
-    private String endYn;
+    private String userId;
     private Date regDt;
     private String regId;
     private Date chgDt;

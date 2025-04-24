@@ -15,7 +15,7 @@ import java.util.Date;
 public class UserDto {
     private Long userNo;
     private String userId;
-    private String userIdHash;
+//    private String userIdHash;
     private String userPw;
     private String userPwSalt;
     private String userNm;

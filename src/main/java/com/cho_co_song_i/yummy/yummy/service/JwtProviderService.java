@@ -32,26 +32,34 @@ public class JwtProviderService {
 
     /**
      * Access Token 을 발급해주는 함수
-     * @param userHashedId
+     * @param userNo
+     * @param isTempPw
+     * @param tokenId
      * @return
      */
-    public String generateAccessToken(String userHashedId) {
+    public String generateAccessToken(String userNo, boolean isTempPw, String tokenId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("isTempPw", isTempPw);
+        claims.put("tokenId", tokenId);
+
         return Jwts.builder()
-                .subject(userHashedId)
+                .claims(claims)
+                .subject(userNo)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION))
                 .signWith(key) /* 알고리즘은 키에서 자동 추론됨 */
                 .compact();
     }
 
+
     /**
      * Refresh Token 을 발급해주는 함수
-     * @param userHashedId
+     * @param userNo
      * @return
      */
-    public String generateRefreshToken(String userHashedId) {
+    public String generateRefreshToken(String userNo) {
         return Jwts.builder()
-                .subject(userHashedId)
+                .subject(userNo)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))
                 .signWith(key) /* 알고리즘은 키에서 자동 추론됨 */
@@ -67,18 +75,17 @@ public class JwtProviderService {
 
         try {
 
-            String jwtParser = Jwts.parser()
+            Claims claims = Jwts.parser()
                     .verifyWith(key)
                     .build()
                     .parseSignedClaims(token)
-                    .getPayload()
-                    .getSubject();
+                    .getPayload();
 
-            return new JwtValidationResult(JwtValidationStatus.SUCCESS, jwtParser);
+            return new JwtValidationResult(JwtValidationStatus.SUCCESS, claims);
 
         } catch (ExpiredJwtException e) {
             log.warn("JJWT token expired: {}", e.getMessage());
-            return new JwtValidationResult(JwtValidationStatus.EXPIRED, null);
+            return new JwtValidationResult(JwtValidationStatus.EXPIRED, e.getClaims());
         } catch (UnsupportedJwtException e) {
             log.error("JWT format not supported: {}", e.getMessage());
             return new JwtValidationResult(JwtValidationStatus.INVALID, null);

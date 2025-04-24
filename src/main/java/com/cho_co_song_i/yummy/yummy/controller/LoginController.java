@@ -1,6 +1,7 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
 import com.cho_co_song_i.yummy.yummy.dto.ErrorResponse;
+import com.cho_co_song_i.yummy.yummy.dto.PublicResponse;
 import com.cho_co_song_i.yummy.yummy.dto.StandardLoginDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.service.*;

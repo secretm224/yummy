@@ -3,9 +3,10 @@ package com.cho_co_song_i.yummy.yummy.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.data.redis.core.RedisTemplate;
+
+
 
 @Service
 public class RedisService {

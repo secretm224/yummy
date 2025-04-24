@@ -13,7 +13,6 @@ import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -21,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.Date;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
@@ -90,16 +88,15 @@ public class JoinMemberService {
             return new PublicResponse("EMAIL_ERR", "Email does not conform to the rules.");
         }
 
-
         /* 2.사용자 조회 */
-        UserDto userDto = fetchUserInfo(findPwDto);
+        UserTbl userTbl = fetchUserInfo(findPwDto);
 
-        if (userDto == null || userDto.getUserNo() == null || userDto.getUserNo() <= 0) {
+        if (userTbl == null) {
             return new PublicResponse("PW_FIND_ERR", "There are no membership records.");
         }
 
-        /* 3. 임시 비밀번호 생성 및 저장 */
-        String tempPw = issueAndSaveTempPassword(userDto.getUserNo());
+        /* 3. 임시 비밀번호 생성 && 유저의 hashid 변경 및 저장 */
+        String tempPw = issueAndSaveTempPasswordAndHashId(userTbl);
 
         /* 4. Kafka를 통해 전송 */
         kafkaProducerService.sendMessageJson(
@@ -107,8 +104,7 @@ public class JoinMemberService {
         );
 
         /* 5. Refresh Token 제거 및 user_id_hash 재설정 */
-        deleteRefreshToken(userDto);
-        resetUserIdHash(userDto);
+        //deleteRefreshToken(userTbl.getUserNo());
 
         return new PublicResponse("SUCCESS", "");
     }
@@ -118,26 +114,10 @@ public class JoinMemberService {
      * @param dto
      * @return
      */
-    private UserDto fetchUserInfo(FindPwDto dto) {
+    private UserTbl fetchUserInfo(FindPwDto dto) {
+
         return queryFactory
-                .select(
-                        Projections.constructor(
-                                UserDto.class,
-                                userTbl.userNo,
-                                userTbl.userId,
-                                userTbl.userIdHash,
-                                userTbl.userPw,
-                                userTbl.userPwSalt,
-                                userTbl.userNm,
-                                userTbl.userBirth,
-                                userTbl.userGender,
-                                userTbl.regDt,
-                                userTbl.regId,
-                                userTbl.chgDt,
-                                userTbl.chgId
-                        )
-                )
-                .from(userTbl)
+                .selectFrom(userTbl)
                 .join(userEmailTbl).on(userEmailTbl.user.eq(userTbl))
                 .where(
                         userTbl.userNm.eq(dto.getUserNm()),
@@ -147,54 +127,41 @@ public class JoinMemberService {
                 .fetchFirst();
     }
 
+
     /**
      * 새로운 비밀번호를 생성하고 저장해주는 함수
-     * @param userNo
+     * @param userTbl
      * @return
      * @throws Exception
      */
-    private String issueAndSaveTempPassword(Long userNo) throws Exception {
+    private String issueAndSaveTempPasswordAndHashId(UserTbl userTbl) throws Exception {
+
         String tempPw = PasswdUtil.makeTempPw();
-        String salt = HashUtil.generateSalt();
-        String hash = HashUtil.hashWithSalt(tempPw, salt);
+        String pwSalt = HashUtil.generateSalt();
+        String hashedPw = HashUtil.hashWithSalt(tempPw, pwSalt);
 
-        UserTempPwHistoryTbl history = new UserTempPwHistoryTbl();
-        history.setUserNo(userNo);
-        history.setTempPw(hash);
-        history.setTempPwSalt(salt);
-        history.setEndYn("N");
-        history.setRegDt(new Date());
-        history.setRegId("system");
+        UserTempPwTbl userTempPwTbl = new UserTempPwTbl();
+        userTempPwTbl.setUserNo(userTbl.getUserNo());
+        userTempPwTbl.setUserId(userTbl.getUserId());
+        userTempPwTbl.setRegDt(new Date());
+        userTempPwTbl.setRegId("system");
 
-        userTempPwHistoryRepository.save(history);
+        userTempPwHistoryRepository.save(userTempPwTbl);
+
+        userTbl.setUserPwSalt(pwSalt);
+        userTbl.setUserPw(hashedPw);
+
         return tempPw;
     }
 
+
     /**
      * 유저 리프레시 토큰을 삭제해주는 함수
-     * @param userDto
+     * @param userNo
      */
-    private void deleteRefreshToken(UserDto userDto) {
-        String refreshKey = String.format("%s:%s", refreshKeyPrefix, userDto.getUserIdHash());
-        redisService.deleteKey(refreshKey);
-    }
-
-    /**
-     * 유저 아이디 해쉬정보를 바꿔주는 함수
-     * @param userDto
-     * @throws Exception
-     */
-    private void resetUserIdHash(UserDto userDto) throws Exception {
-
-        UserTbl user = entityManager.find(UserTbl.class, userDto.getUserNo());
-
-        if (user == null) {
-            throw new RuntimeException("[Error][JoinMemberService->findPw] User not found. userNo=" + userDto.getUserNo());
-        }
-
-        String newSalt = HashUtil.generateSalt();
-        String newHash = HashUtil.hashWithSalt(user.getUserId(), newSalt);
-        user.setUserIdHash(newHash);
+    private void deleteRefreshToken(String userNo) {
+        //String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNo, tokenId);
+        //redisService.deleteKey(refreshKey);
     }
 
     /**

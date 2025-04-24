@@ -9,27 +9,17 @@ import lombok.NoArgsConstructor;
 import java.util.Date;
 
 @Entity
-@Table(name = "user_temp_pw_history_tbl")
+@Table(name = "user_temp_pw_tbl")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserTempPwHistoryTbl {
+public class UserTempPwTbl {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "hist_no")
-    private Long histNo;
-
     @Column(name = "user_no", nullable = false)
     private Long userNo;
 
-    @Column(name = "temp_pw", nullable = false, columnDefinition = "CHAR(44)")
-    private String tempPw;
-
-    @Column(name = "temp_pw_salt", nullable = false, columnDefinition = "CHAR(24)")
-    private String tempPwSalt;
-
-    @Column(name = "end_yn", nullable = true, columnDefinition = "CHAR(1)")
-    private String endYn;
+    @Column(name = "user_id", nullable = false, length = 100)
+    private String userId;
 
     @Column(name = "reg_dt", nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
@@ -45,16 +35,15 @@ public class UserTempPwHistoryTbl {
     @Column(name = "chg_id", nullable = true, length = 25)
     private String chgId;
 
-
     @Transient
     private boolean isNew = true;
 
     public Long getId(){
-        return this.histNo;
+        return this.userNo;
     }
 
     public boolean isNew(){
-        return this.histNo == null || isNew;
+        return this.userNo == null || isNew;
     }
 
     public void markNotNew(){
