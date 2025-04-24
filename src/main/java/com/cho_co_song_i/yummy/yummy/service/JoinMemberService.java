@@ -1,17 +1,21 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
-import com.cho_co_song_i.yummy.yummy.dto.FindIdDto;
-import com.cho_co_song_i.yummy.yummy.dto.JoinMemberDto;
-import com.cho_co_song_i.yummy.yummy.dto.PublicResponse;
-import com.cho_co_song_i.yummy.yummy.dto.SendIdFormDto;
+import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JoinMemberIdStatus;
 import com.cho_co_song_i.yummy.yummy.repository.UserEmailRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserPhoneNumberRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserRepository;
+import com.cho_co_song_i.yummy.yummy.repository.UserTempPwHistoryRepository;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
+import com.cho_co_song_i.yummy.yummy.utils.PasswdUtil;
+import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,22 +32,169 @@ import static com.cho_co_song_i.yummy.yummy.entity.QUserPhoneNumberTbl.userPhone
 @Slf4j
 public class JoinMemberService {
 
+
     private final JPAQueryFactory queryFactory;
     private final UserRepository userRepository;
     private final UserPhoneNumberRepository userPhoneNumberRepository;
     private final UserEmailRepository userEmailRepository;
+    private final UserTempPwHistoryRepository userTempPwHistoryRepository;
     private final KafkaProducerService kafkaProducerService;
+    private final RedisService redisService;
+
+    @PersistenceContext
+    private final EntityManager entityManager;
+
+    @Value("${spring.redis.refresh-key-prefix}")
+    private String refreshKeyPrefix;
 
 
     public JoinMemberService(JPAQueryFactory queryFactory, UserRepository userRepository,
                              UserPhoneNumberRepository userPhoneNumberRepository, UserEmailRepository userEmailRepository,
-                             KafkaProducerService kafkaProducerService
+                             KafkaProducerService kafkaProducerService, UserTempPwHistoryRepository userTempPwHistoryRepository,
+                             RedisService redisService, EntityManager entityManager
     ) {
         this.queryFactory = queryFactory;
         this.userRepository = userRepository;
         this.userPhoneNumberRepository = userPhoneNumberRepository;
         this.userEmailRepository = userEmailRepository;
         this.kafkaProducerService = kafkaProducerService;
+        this.userTempPwHistoryRepository = userTempPwHistoryRepository;
+        this.redisService = redisService;
+        this.entityManager = entityManager;
+    }
+
+    /**
+     * 회원의 비밀번호를 찾아주는 함수
+     * @param findPwDto
+     * @return
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public PublicResponse findPw(FindPwDto findPwDto) throws Exception {
+
+        /* 1. 유효성 검사 */
+        /* 이름 검사 */
+        boolean checkUserName = checkUserName(findPwDto.getUserNm());
+        if (!checkUserName) {
+            return new PublicResponse("NAME_ERR", "Invalid name form.");
+        }
+
+        /* 아이디 검사 */
+        boolean checkId = checkIdFormat(findPwDto.getUserId());
+        if (!checkId) {
+            return new PublicResponse("ID_ERR", "Invalid ID format.");
+        }
+
+        /* 이메일 검사 */
+        boolean checkEmail = checkUserEmail(findPwDto.getEmail());
+        if (!checkEmail) {
+            return new PublicResponse("EMAIL_ERR", "Email does not conform to the rules.");
+        }
+
+
+        /* 2.사용자 조회 */
+        UserDto userDto = fetchUserInfo(findPwDto);
+
+        if (userDto == null || userDto.getUserNo() == null || userDto.getUserNo() <= 0) {
+            return new PublicResponse("PW_FIND_ERR", "There are no membership records.");
+        }
+
+        /* 3. 임시 비밀번호 생성 및 저장 */
+        String tempPw = issueAndSaveTempPassword(userDto.getUserNo());
+
+        /* 4. Kafka를 통해 전송 */
+        kafkaProducerService.sendMessageJson(
+                new SendPwFormDto("TEMP_PW", findPwDto.getEmail(), tempPw)
+        );
+
+        /* 5. Refresh Token 제거 및 user_id_hash 재설정 */
+        deleteRefreshToken(userDto);
+        resetUserIdHash(userDto);
+
+        return new PublicResponse("SUCCESS", "");
+    }
+
+    /**
+     * 유저정보를 가져와주는 함수
+     * @param dto
+     * @return
+     */
+    private UserDto fetchUserInfo(FindPwDto dto) {
+        return queryFactory
+                .select(
+                        Projections.constructor(
+                                UserDto.class,
+                                userTbl.userNo,
+                                userTbl.userId,
+                                userTbl.userIdHash,
+                                userTbl.userPw,
+                                userTbl.userPwSalt,
+                                userTbl.userNm,
+                                userTbl.userBirth,
+                                userTbl.userGender,
+                                userTbl.regDt,
+                                userTbl.regId,
+                                userTbl.chgDt,
+                                userTbl.chgId
+                        )
+                )
+                .from(userTbl)
+                .join(userEmailTbl).on(userEmailTbl.user.eq(userTbl))
+                .where(
+                        userTbl.userNm.eq(dto.getUserNm()),
+                        userTbl.userId.eq(dto.getUserId()),
+                        userEmailTbl.id.userEmailAddress.eq(dto.getEmail())
+                )
+                .fetchFirst();
+    }
+
+    /**
+     * 새로운 비밀번호를 생성하고 저장해주는 함수
+     * @param userNo
+     * @return
+     * @throws Exception
+     */
+    private String issueAndSaveTempPassword(Long userNo) throws Exception {
+        String tempPw = PasswdUtil.makeTempPw();
+        String salt = HashUtil.generateSalt();
+        String hash = HashUtil.hashWithSalt(tempPw, salt);
+
+        UserTempPwHistoryTbl history = new UserTempPwHistoryTbl();
+        history.setUserNo(userNo);
+        history.setTempPw(hash);
+        history.setTempPwSalt(salt);
+        history.setEndYn("N");
+        history.setRegDt(new Date());
+        history.setRegId("system");
+
+        userTempPwHistoryRepository.save(history);
+        return tempPw;
+    }
+
+    /**
+     * 유저 리프레시 토큰을 삭제해주는 함수
+     * @param userDto
+     */
+    private void deleteRefreshToken(UserDto userDto) {
+        String refreshKey = String.format("%s:%s", refreshKeyPrefix, userDto.getUserIdHash());
+        redisService.deleteKey(refreshKey);
+    }
+
+    /**
+     * 유저 아이디 해쉬정보를 바꿔주는 함수
+     * @param userDto
+     * @throws Exception
+     */
+    private void resetUserIdHash(UserDto userDto) throws Exception {
+
+        UserTbl user = entityManager.find(UserTbl.class, userDto.getUserNo());
+
+        if (user == null) {
+            throw new RuntimeException("[Error][JoinMemberService->findPw] User not found. userNo=" + userDto.getUserNo());
+        }
+
+        String newSalt = HashUtil.generateSalt();
+        String newHash = HashUtil.hashWithSalt(user.getUserId(), newSalt);
+        user.setUserIdHash(newHash);
     }
 
     /**
@@ -102,7 +253,7 @@ public class JoinMemberService {
             }
 
             /* 회원정보가 존재하는 경우 -> Kafka Producing */
-            SendIdFormDto sendIdFormDto = new SendIdFormDto(findUserId, findIdDto.getEmail());
+            SendIdFormDto sendIdFormDto = new SendIdFormDto("FIND_ID", findUserId, findIdDto.getEmail());
             kafkaProducerService.sendMessageJson(sendIdFormDto);
 
         } catch(Exception e) {
@@ -200,7 +351,6 @@ public class JoinMemberService {
         }
 
         saveUserEmail(user, joinMemberDto.getEmail());
-        //test();
         saveUserPhoneNumber(user, joinMemberDto.getPhoneNumber(), joinMemberDto.getTelecom());
 
         return true;
@@ -277,18 +427,28 @@ public class JoinMemberService {
     }
 
     /**
+     * 유저의 아이디 포멧을 확인해주는 함수
+     * @param userId
+     * @return
+     */
+    private Boolean checkIdFormat(String userId) {
+
+        if (userId == null || userId.isEmpty()) {
+            return false;
+        }
+
+        /* 특수문자가 포함되면 false */
+        return userId.matches("^(?!\\d+$)[a-z0-9]+$");
+    }
+
+    /**
      * 아이디가 존재하는지 확인
      * @param userId
      * @return
      */
     private JoinMemberIdStatus checkUserId(String userId) throws Exception {
 
-        if (userId == null || userId.isEmpty()) {
-            return JoinMemberIdStatus.NONFORMAT;
-        }
-
-        /* 특수문자가 포함되면 false (문자 + 숫자만 허용) */
-        if (!userId.matches("^(?=.*[a-z]{2,})(?=.*[0-9]{2,})[a-z0-9]+$")) {
+        if (!checkIdFormat(userId)) {
             return JoinMemberIdStatus.NONFORMAT;
         }
 

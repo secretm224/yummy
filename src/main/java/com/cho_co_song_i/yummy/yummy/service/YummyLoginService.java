@@ -1,28 +1,29 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
-import com.cho_co_song_i.yummy.yummy.dto.*;
+import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
+import com.cho_co_song_i.yummy.yummy.dto.StandardLoginDto;
+import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.UserLocationDetailTbl;
 import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
-import com.cho_co_song_i.yummy.yummy.utils.AesUtil;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
 
-import java.util.List;
 import java.util.Optional;
 
-import static com.cho_co_song_i.yummy.yummy.utils.CookieUtil.getCookieValue;
-import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserLocationDetailTbl.userLocationDetailTbl;
+import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
+import static com.cho_co_song_i.yummy.yummy.utils.CookieUtil.getCookieValue;
+//import static com.cho_co_song_i.yummy.yummy.entity.QUserTempPwHistoryTbl.userTempPwHistoryTbl;
 
 @Service
 @Slf4j
@@ -34,15 +35,18 @@ public class YummyLoginService {
     @Value("${spring.redis.refresh-key-prefix}")
     private String refreshKeyPrefix;
 
+    @PersistenceContext
+    private final EntityManager entityManager;
     private final RedisService redisService;
     private final JwtProviderService jwtProviderService;
     private final JPAQueryFactory queryFactory;
 
     public YummyLoginService(RedisService redisService, JwtProviderService jwtProviderService,
-                             JPAQueryFactory queryFactory) {
+                             JPAQueryFactory queryFactory, EntityManager entityManager) {
         this.redisService = redisService;
         this.jwtProviderService = jwtProviderService;
         this.queryFactory = queryFactory;
+        this.entityManager = entityManager;
     }
 
     /* Entity -> DTO 변환 (UserTbl) */
@@ -75,7 +79,6 @@ public class YummyLoginService {
 
             if (user == null) {
                 log.info("[YummyLoginService->standardLoginUser][Login] No User: {}", standardLoginDto.getUserId());
-                //return Optional.empty();
                 return false;
             }
 
@@ -84,7 +87,6 @@ public class YummyLoginService {
 
             if (!hashedInput.equals(user.getUserPw())) {
                 log.info("[YummyLoginService->standardLoginUser][Login] password mismatch: {}", standardLoginDto.getUserId());
-                //return Optional.empty();
                 return false;
             }
 
@@ -118,7 +120,6 @@ public class YummyLoginService {
             String basicUserInfo = String.format("%s:%s", userInfoKey, hashedId);
             redisService.set(basicUserInfo, userBasicInfo);
 
-            //return Optional.of(userBasicInfo);
             return true;
         } catch (Exception e) {
             log.error("[Error][YummyLoginService->standardLoginUser] {}", e.getMessage(), e);

@@ -30,8 +30,7 @@ public class QueryResolver {
         return "안녕하세요, " + (name != null ? name : "손님") + "!";
     }
 
-    //test
-    //test2
+
 
     /*
         header 추가
