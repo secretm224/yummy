@@ -22,9 +22,6 @@ public class UserTbl implements Persistable<Long> {
     @Column(name = "user_id", nullable = false, length = 100)
     private String userId;
 
-//    @Column(name = "user_id_hash", nullable = false, columnDefinition = "CHAR(44)", unique = true)
-//    private String userIdHash;
-
     @Column(name = "user_pw", nullable = false, columnDefinition = "CHAR(44)")
     private String userPw;
 

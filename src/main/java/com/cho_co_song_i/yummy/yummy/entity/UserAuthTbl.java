@@ -27,7 +27,7 @@ public class UserAuthTbl implements Persistable<UserAuthTblId> {
     @Column(name="chg_dt", nullable = true)
     private Date chg_dt;
 
-    @Column(name="chg_id",length = 25,nullable = true)
+    @Column(name="chg_id",length = 25, nullable = true)
     private String chg_id;
 
     /* ✅ Hibernate 에게 신규 엔티티임을 알려주기 위해 사용 */

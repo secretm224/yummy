@@ -1,25 +1,23 @@
 package com.cho_co_song_i.yummy.yummy.entity;
 
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import org.springframework.data.domain.Persistable;
+
 import java.util.Date;
 
 @Entity
-@Table(name = "user_temp_pw_tbl")
+@Table(name = "user_token_id_tbl")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserTempPwTbl {
-    @Id
-    @Column(name = "user_no", nullable = false)
-    private Long userNo;
+public class UserTokenIdTbl implements Persistable<UserTokenIdTblId>{
 
-    @Column(name = "user_id", nullable = false, length = 100)
-    private String userId;
+    @EmbeddedId
+    private UserTokenIdTblId id;
 
     @Column(name = "reg_dt", nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
@@ -35,19 +33,24 @@ public class UserTempPwTbl {
     @Column(name = "chg_id", nullable = true, length = 25)
     private String chgId;
 
+
+    /* ✅ Hibernate 에게 신규 엔티티임을 알려주기 위해 사용 */
     @Transient
-    private boolean isNew = true;
+    private boolean isNew = false;
 
-    public Long getId(){
-        return this.userNo;
+    @Override
+    public UserTokenIdTblId getId() {
+        return this.id;
     }
 
-    public boolean isNew(){
-        return this.userNo == null || isNew;
+    @Override
+    public boolean isNew() {
+        return isNew || this.id == null;
     }
 
-    public void markNotNew(){
-        this.isNew = false;
+    /* ✅ 새로운 엔티티를 표시하는 메서드 */
+    public void markAsNew() {
+        this.isNew = true;
     }
 
     @MapsId("userNo")

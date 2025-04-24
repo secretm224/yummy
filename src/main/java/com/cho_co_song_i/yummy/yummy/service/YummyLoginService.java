@@ -1,10 +1,9 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
 import com.cho_co_song_i.yummy.yummy.dto.*;
-import com.cho_co_song_i.yummy.yummy.entity.UserLocationDetailTbl;
-import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
-import com.cho_co_song_i.yummy.yummy.entity.UserTempPwTbl;
+import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
+import com.cho_co_song_i.yummy.yummy.repository.UserTokenIdRepository;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -16,7 +15,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -40,13 +42,16 @@ public class YummyLoginService {
     private final RedisService redisService;
     private final JwtProviderService jwtProviderService;
     private final JPAQueryFactory queryFactory;
+    private final UserTokenIdRepository userTokenIdRepository;
 
     public YummyLoginService(RedisService redisService, JwtProviderService jwtProviderService,
-                             JPAQueryFactory queryFactory, EntityManager entityManager) {
+                             JPAQueryFactory queryFactory, EntityManager entityManager,
+                             UserTokenIdRepository userTokenIdRepository) {
         this.redisService = redisService;
         this.jwtProviderService = jwtProviderService;
         this.queryFactory = queryFactory;
         this.entityManager = entityManager;
+        this.userTokenIdRepository = userTokenIdRepository;
     }
 
     /* Entity -> DTO 변환 (UserTbl) */
@@ -81,72 +86,86 @@ public class YummyLoginService {
      * @param req
      * @return
      */
+    @Transactional(rollbackFor = Exception.class)
     public Boolean standardLoginUser(StandardLoginDto standardLoginDto,
                                                         HttpServletResponse res,
-                                                        HttpServletRequest req) {
-        try {
+                                                        HttpServletRequest req) throws Exception {
 
-            /* 0. 사용자가 임시비밀번호를 발급받은 사용자인지 체크 */
-            boolean tempUserYn = tempLoginUserCheck(standardLoginDto);
+        /* 0. 사용자가 임시비밀번호를 발급받은 사용자인지 체크 */
+        boolean tempUserYn = tempLoginUserCheck(standardLoginDto);
 
-            /* 1. 사용자 조회 */
-            UserTbl user = queryFactory
-                    .selectFrom(userTbl)
-                    .where(userTbl.userId.eq(standardLoginDto.getUserId()))
-                    .fetchFirst();
+        /* 1. 사용자 조회 */
+        UserTbl user = queryFactory
+                .selectFrom(userTbl)
+                .where(userTbl.userId.eq(standardLoginDto.getUserId()))
+                .fetchFirst();
 
-            if (user == null) {
-                log.info("[YummyLoginService->standardLoginUser][Login] No User: {}", standardLoginDto.getUserId());
-                return false;
-            }
-
-            /* 2. 비밀번호 해시 비교 */
-            String hashedInput = HashUtil.hashWithSalt(standardLoginDto.getUserPw(), user.getUserPwSalt());
-
-            if (!hashedInput.equals(user.getUserPw())) {
-                log.info("[YummyLoginService->standardLoginUser][Login] password mismatch: {}", standardLoginDto.getUserId());
-                return false;
-            }
-
-            /**
-             * 3. 로그인 성공
-             * 임시비밀번호를 발급받은 상태인디
-             * 임시비밀번호를 발급받지 않은 상태인지 확인해줘야 한다.
-             */
-            log.info("[YummyLoginService->standardLoginUser][Login] Login successful: {}", standardLoginDto.getUserId());
-
-            /* 4. 로그인 성공시 JWT 토큰을 발급한다. */
-            String tokenId = UUID.randomUUID().toString();
-            String accessToken = jwtProviderService.generateAccessToken(user.getUserNo().toString(), tempUserYn, tokenId);
-            String refreshToken = jwtProviderService.generateRefreshToken(user.getUserNo().toString());
-
-            /* 5. Refresh Token 을 Redis 에 넣어준다. */
-            String refreshKey = String.format("%s:%s", refreshKeyPrefix, user.getUserNo().toString());
-            redisService.set(refreshKey, refreshToken);
-
-            /* 6. accessToken && 해시화된 아이디를 쿠키에 저장해준다. */
-            CookieUtil.addCookie(res, "yummy-access-token", accessToken, 7200);
-
-            /* 7. 기본적인 유저의 정보를 가져와준다. */
-            /* 회원의 집 정보 */
-            UserLocationDetailTbl userLocationDetail = queryFactory
-                    .selectFrom(userLocationDetailTbl)
-                    .where(userLocationDetailTbl.id.userNo.eq(user.getUserNo()))
-                    .fetchFirst();
-
-            /* 기본 회원 정보 - 브라우저 돌아다니면서 사용할 수 있는 정보 - private 한 정보같은건 넣으면 안된다. */
-            UserBasicInfoDto userBasicInfo = convertUserToBasicInfo(user, userLocationDetail);
-
-            /* 8. 기본 회원정보를 Redis 에 저장한다. */
-            String basicUserInfo = String.format("%s:%s:%s", userInfoKey, user.getUserNo().toString(), tokenId);
-            redisService.set(basicUserInfo, userBasicInfo);
-
-            return true;
-        } catch (Exception e) {
-            log.error("[Error][YummyLoginService->standardLoginUser] {}", e.getMessage(), e);
+        if (user == null) {
+            log.info("[YummyLoginService->standardLoginUser][Login] No User: {}", standardLoginDto.getUserId());
             return false;
         }
+
+        /* 2. 비밀번호 해시 비교 */
+        String hashedInput = HashUtil.hashWithSalt(standardLoginDto.getUserPw(), user.getUserPwSalt());
+
+        if (!hashedInput.equals(user.getUserPw())) {
+            log.info("[YummyLoginService->standardLoginUser][Login] password mismatch: {}", standardLoginDto.getUserId());
+            return false;
+        }
+
+        /**
+         * 3. 로그인 성공
+         * 임시비밀번호를 발급받은 상태인디
+         * 임시비밀번호를 발급받지 않은 상태인지 확인해줘야 한다.
+         */
+        log.info("[YummyLoginService->standardLoginUser][Login] Login successful: {}", standardLoginDto.getUserId());
+
+        /* 4. 로그인 성공시 JWT 토큰을 발급한다. */
+        String tokenId = UUID.randomUUID().toString();
+        String accessToken = jwtProviderService.generateAccessToken(user.getUserNo().toString(), tempUserYn, tokenId);
+        String refreshToken = jwtProviderService.generateRefreshToken(user.getUserNo().toString());
+
+        /* 5. Refresh Token 을 Redis 에 넣어준다. && DB 에는 Tokenid 를 넣어준다. */
+        insertUserTokenId(user.getUserNo(), tokenId);
+        String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, user.getUserNo().toString(), tokenId);
+        redisService.set(refreshKey, refreshToken, Duration.ofDays(7));
+
+        /* 6. accessToken && 해시화된 아이디를 쿠키에 저장해준다. */
+        CookieUtil.addCookie(res, "yummy-access-token", accessToken, 7200);
+
+        /* 7. 기본적인 유저의 정보를 가져와준다. */
+        /* 회원의 집 정보 */
+        UserLocationDetailTbl userLocationDetail = queryFactory
+                .selectFrom(userLocationDetailTbl)
+                .where(userLocationDetailTbl.id.userNo.eq(user.getUserNo()))
+                .fetchFirst();
+
+        /* 기본 회원 정보 - 브라우저 돌아다니면서 사용할 수 있는 정보 - private 한 정보같은건 넣으면 안된다. */
+        UserBasicInfoDto userBasicInfo = convertUserToBasicInfo(user, userLocationDetail);
+
+        /* 8. 기본 회원정보를 Redis 에 저장한다. */
+        String basicUserInfo = String.format("%s:%s:%s", userInfoKey, user.getUserNo().toString(), tokenId);
+        redisService.set(basicUserInfo, userBasicInfo);
+
+        return true;
     }
+
+    /**
+     * 로그인에 성공한 유제의 토큰 아이디를 디비에 넣어준다.
+     * @param userNo
+     * @param tokenId
+     * @throws Exception
+     */
+    private void insertUserTokenId(Long userNo, String tokenId) throws Exception {
+        UserTokenIdTbl userTokenIdTbl = new UserTokenIdTbl();
+        UserTokenIdTblId userTokenIdTblId = new UserTokenIdTblId(tokenId, userNo);
+        userTokenIdTbl.setId(userTokenIdTblId);
+        userTokenIdTbl.setRegDt(new Date());
+        userTokenIdTbl.setRegId("system");
+
+        userTokenIdRepository.save(userTokenIdTbl);
+    }
+
 
     /**
      * 해당 브라우저가 로그인을 했는지 체크해준다. -> Optional.empty() 라면 다시 로그인 해줘야 한다는 의미.

@@ -76,13 +76,19 @@ public class LoginController {
     @PostMapping("/standardLogin")
     public ResponseEntity<ErrorResponse> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res , HttpServletRequest req) {
 
-        Boolean result = yummyLoginService.standardLoginUser(standardLoginDto, res, req);
+        try {
+            Boolean result = yummyLoginService.standardLoginUser(standardLoginDto, res, req);
 
-        if (!result) {
+            if (!result) {
+                return ResponseEntity.ok(new ErrorResponse("AUTH_ERROR", "Your login information is invalid."));
+            }
+
+            return ResponseEntity.ok(new ErrorResponse("SUCCESS", ""));
+
+        } catch(Exception e) {
+            log.error("[Error][LoginController->StandardLogin] {}", e.getMessage(), e);
             return ResponseEntity.ok(new ErrorResponse("AUTH_ERROR", "Your login information is invalid."));
         }
-
-        return ResponseEntity.ok(new ErrorResponse("SUCCESS", ""));
     }
 
     /**

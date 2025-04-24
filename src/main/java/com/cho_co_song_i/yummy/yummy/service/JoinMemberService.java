@@ -21,10 +21,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
+import java.util.List;
+import java.util.Optional;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserEmailTbl.userEmailTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserPhoneNumberTbl.userPhoneNumberTbl;
+import static com.cho_co_song_i.yummy.yummy.entity.QUserTokenIdTbl.userTokenIdTbl;
 
 @Service
 @Slf4j
@@ -95,19 +98,44 @@ public class JoinMemberService {
             return new PublicResponse("PW_FIND_ERR", "There are no membership records.");
         }
 
-        /* 3. 임시 비밀번호 생성 && 유저의 hashid 변경 및 저장 */
-        String tempPw = issueAndSaveTempPasswordAndHashId(userTbl);
+        /* 3. 임시 비밀번호 생성 및 기존 토큰 모두 제거 */
+        String tempPw = issueAndSaveTempPassword(userTbl);
 
-        /* 4. Kafka를 통해 전송 */
+        /* 4. 기존 유저의 토큰 아이디 모두 제거 */
+        deleteUserTokenIds(userTbl.getUserNo());
+
+        /* 5. Kafka를 통해 전송 */
         kafkaProducerService.sendMessageJson(
                 new SendPwFormDto("TEMP_PW", findPwDto.getEmail(), tempPw)
         );
 
-        /* 5. Refresh Token 제거 및 user_id_hash 재설정 */
-        //deleteRefreshToken(userTbl.getUserNo());
 
         return new PublicResponse("SUCCESS", "");
     }
+
+    /**
+     * 특정 유저가 가지고 있는 토큰 키 모두 제거
+     * @param userNo
+     */
+    private void deleteUserTokenIds(Long userNo) {
+
+        List<UserTokenIdTbl> userTokens = queryFactory
+                .selectFrom(userTokenIdTbl)
+                .where(userTokenIdTbl.id.userNo.eq(userNo))
+                .fetch();
+
+        /* 레디스에 존재하는 토큰 모두 제거 */
+        for (UserTokenIdTbl tokenTbl : userTokens) {
+            Optional.ofNullable(tokenTbl.getId().getTokenId())
+                    .ifPresent(token -> {
+                        String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNo.toString(), token);
+                        redisService.deleteKey(refreshKey);
+                        entityManager.remove(tokenTbl);
+                    });
+        }
+
+    }
+
 
     /**
      * 유저정보를 가져와주는 함수
@@ -134,7 +162,7 @@ public class JoinMemberService {
      * @return
      * @throws Exception
      */
-    private String issueAndSaveTempPasswordAndHashId(UserTbl userTbl) throws Exception {
+    private String issueAndSaveTempPassword(UserTbl userTbl) throws Exception {
 
         String tempPw = PasswdUtil.makeTempPw();
         String pwSalt = HashUtil.generateSalt();
@@ -335,7 +363,6 @@ public class JoinMemberService {
 
         UserTbl user = new UserTbl();
         user.setUserId(joinMemberDto.getUserId());
-        user.setUserIdHash(userIdHash);
         user.setUserPw(userPwHash);
         user.setUserPwSalt(saltValue);
         user.setUserNm(joinMemberDto.getName());
