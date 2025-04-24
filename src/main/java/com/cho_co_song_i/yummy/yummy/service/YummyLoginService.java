@@ -100,6 +100,9 @@ public class YummyLoginService {
                 .where(userTbl.userId.eq(standardLoginDto.getUserId()))
                 .fetchFirst();
 
+        System.out.println("====================================");
+        System.out.println(user);
+
         if (user == null) {
             log.info("[YummyLoginService->standardLoginUser][Login] No User: {}", standardLoginDto.getUserId());
             return false;
@@ -126,11 +129,11 @@ public class YummyLoginService {
         String refreshToken = jwtProviderService.generateRefreshToken(user.getUserNo().toString());
 
         /* 5. Refresh Token 을 Redis 에 넣어준다. && DB 에는 Tokenid 를 넣어준다. */
-        insertUserTokenId(user.getUserNo(), tokenId);
+        insertUserTokenId(user, tokenId);
         String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, user.getUserNo().toString(), tokenId);
         redisService.set(refreshKey, refreshToken, Duration.ofDays(7));
 
-        /* 6. accessToken && 해시화된 아이디를 쿠키에 저장해준다. */
+        /* 6. accessToken을 쿠키에 저장해준다. */
         CookieUtil.addCookie(res, "yummy-access-token", accessToken, 7200);
 
         /* 7. 기본적인 유저의 정보를 가져와준다. */
@@ -144,7 +147,7 @@ public class YummyLoginService {
         UserBasicInfoDto userBasicInfo = convertUserToBasicInfo(user, userLocationDetail);
 
         /* 8. 기본 회원정보를 Redis 에 저장한다. */
-        String basicUserInfo = String.format("%s:%s:%s", userInfoKey, user.getUserNo().toString(), tokenId);
+        String basicUserInfo = String.format("%s:%s", userInfoKey, user.getUserNo().toString());
         redisService.set(basicUserInfo, userBasicInfo);
 
         return true;
@@ -156,9 +159,11 @@ public class YummyLoginService {
      * @param tokenId
      * @throws Exception
      */
-    private void insertUserTokenId(Long userNo, String tokenId) throws Exception {
+    private void insertUserTokenId(UserTbl user, String tokenId) throws Exception {
         UserTokenIdTbl userTokenIdTbl = new UserTokenIdTbl();
-        UserTokenIdTblId userTokenIdTblId = new UserTokenIdTblId(tokenId, userNo);
+        userTokenIdTbl.setUser(user);
+
+        UserTokenIdTblId userTokenIdTblId = new UserTokenIdTblId(tokenId, user.getUserNo());
         userTokenIdTbl.setId(userTokenIdTblId);
         userTokenIdTbl.setRegDt(new Date());
         userTokenIdTbl.setRegId("system");

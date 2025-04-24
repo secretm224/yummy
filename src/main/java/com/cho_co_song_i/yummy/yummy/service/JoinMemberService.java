@@ -32,8 +32,6 @@ import static com.cho_co_song_i.yummy.yummy.entity.QUserTokenIdTbl.userTokenIdTb
 @Service
 @Slf4j
 public class JoinMemberService {
-
-
     private final JPAQueryFactory queryFactory;
     private final UserRepository userRepository;
     private final UserPhoneNumberRepository userPhoneNumberRepository;
@@ -47,7 +45,6 @@ public class JoinMemberService {
 
     @Value("${spring.redis.refresh-key-prefix}")
     private String refreshKeyPrefix;
-
 
     public JoinMemberService(JPAQueryFactory queryFactory, UserRepository userRepository,
                              UserPhoneNumberRepository userPhoneNumberRepository, UserEmailRepository userEmailRepository,
@@ -133,7 +130,6 @@ public class JoinMemberService {
                         entityManager.remove(tokenTbl);
                     });
         }
-
     }
 
 
@@ -358,7 +354,6 @@ public class JoinMemberService {
      */
     private UserTbl saveUser(JoinMemberDto joinMemberDto) throws Exception {
         String saltValue = HashUtil.generateSalt();
-        String userIdHash = HashUtil.hashWithSalt(joinMemberDto.getUserId(), saltValue);
         String userPwHash = HashUtil.hashWithSalt(joinMemberDto.getPassword(), saltValue);
 
         UserTbl user = new UserTbl();
@@ -370,8 +365,6 @@ public class JoinMemberService {
         user.setUserGender(joinMemberDto.getGender());
         user.setRegDt(new Date());
         user.setRegId("system");
-        user.setChgDt(null);
-        user.setChgId(null);
 
         return userRepository.save(user);
     }

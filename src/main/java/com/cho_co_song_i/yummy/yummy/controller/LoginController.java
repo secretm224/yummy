@@ -110,17 +110,19 @@ public class LoginController {
      */
     @PostMapping("/auth/loginCheck")
     @ResponseBody
-    public ResponseEntity<?> LoginCheck(HttpServletResponse res , HttpServletRequest req) {
+    public ResponseEntity<PublicResponse> LoginCheck(HttpServletResponse res , HttpServletRequest req) {
 
+        System.out.println("!!!!!!!");
         /* 로그인 체크 처리 */
         Optional<UserBasicInfoDto> result = yummyLoginService.checkLoginUser(res, req);
 
         if (result.isEmpty()) {
             /* 실제 HTTP 200, 하지만 body에는 명시적인 로그인 실패 코드 포함 */
-            return ResponseEntity.ok(new ErrorResponse("AUTH_ERROR", "Not logged in."));
+            return ResponseEntity.ok(new PublicResponse("AUTH_ERROR", "Not logged in."));
         }
 
-        return ResponseEntity.ok(result.get());
+        System.out.println("@@@@");
+        return ResponseEntity.ok(new PublicResponse("SUCCESS", ""));
     }
 
 
