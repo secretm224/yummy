@@ -1,7 +1,10 @@
 package com.cho_co_song_i.yummy.yummy.resolver;
 
 import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
+import com.cho_co_song_i.yummy.yummy.dto.StoreTypeMajorDto;
+import com.cho_co_song_i.yummy.yummy.dto.StoreTypeSubDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
+import com.cho_co_song_i.yummy.yummy.service.StoreService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.graphql.data.method.annotation.Argument;
@@ -11,11 +14,15 @@ import org.springframework.stereotype.Controller;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+
 @Controller
 public class QueryResolver {
 
     @Autowired
     private SearchService _searchService;
+
+    @Autowired
+    private StoreService _storeService;
 
     @Autowired
     private Environment env;
@@ -174,5 +181,32 @@ public class QueryResolver {
         String index = env.getProperty("spring.elasticsearch.index.store");
         return _searchService.getStoresByPage(index, page, size);
     }
+
+
+    //    query{
+//        StoreMajorsTypeList{
+//            majorType
+//                    typeName
+//
+//        }
+//    }
+    @QueryMapping(name="StoreMajorsTypeList")
+    public List<StoreTypeMajorDto> GetStoreMajorsType(){
+        return _storeService.getStoreTypeMajors();
+    }
+
+    //    query{
+//        StoreSubMajorsTypeList(major_code:1){
+//            subType
+//                    majorType
+//            typeName
+//        }
+//
+//    }
+    @QueryMapping(name="StoreSubMajorsTypeList")
+    public List<StoreTypeSubDto>GetStoreSubMajorsType(@Argument("major_code") int major_code){
+        return _storeService.getStoreTypeSubs((long)major_code);
+    }
+
 
 }
