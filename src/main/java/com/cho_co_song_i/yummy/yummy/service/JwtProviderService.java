@@ -27,7 +27,8 @@ public class JwtProviderService {
     public JwtProviderService(@Value("${spring.redis.jwt.secret_key}") String secretKey) {
         this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
-    private final long ACCESS_TOKEN_EXPIRATION = 1000 * 60 * 60 * 3; /* 3시간 */
+
+    private final long ACCESS_TOKEN_EXPIRATION = 1000 * 60 * 60; /* 1시간 */
     private final long REFRESH_TOKEN_EXPIRATION = 1000L * 60 * 60 * 24 * 7; /* 7일 */
 
     /**

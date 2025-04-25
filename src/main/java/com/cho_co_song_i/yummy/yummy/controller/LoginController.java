@@ -4,6 +4,7 @@ import com.cho_co_song_i.yummy.yummy.dto.ErrorResponse;
 import com.cho_co_song_i.yummy.yummy.dto.PublicResponse;
 import com.cho_co_song_i.yummy.yummy.dto.StandardLoginDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
+import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.service.*;
 
 
@@ -74,20 +75,20 @@ public class LoginController {
      * @return
      */
     @PostMapping("/standardLogin")
-    public ResponseEntity<ErrorResponse> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res , HttpServletRequest req) {
+    public ResponseEntity<PublicResponse> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res , HttpServletRequest req) {
 
         try {
             Boolean result = yummyLoginService.standardLoginUser(standardLoginDto, res, req);
 
             if (!result) {
-                return ResponseEntity.ok(new ErrorResponse("AUTH_ERROR", "Your login information is invalid."));
+                return ResponseEntity.ok(new PublicResponse(PublicStatus.AUTH_ERROR, "Your login information is invalid."));
             }
 
-            return ResponseEntity.ok(new ErrorResponse("SUCCESS", ""));
+            return ResponseEntity.ok(new PublicResponse(PublicStatus.SUCCESS, ""));
 
         } catch(Exception e) {
             log.error("[Error][LoginController->StandardLogin] {}", e.getMessage(), e);
-            return ResponseEntity.ok(new ErrorResponse("AUTH_ERROR", "Your login information is invalid."));
+            return ResponseEntity.ok(new PublicResponse(PublicStatus.AUTH_ERROR, "Your login information is invalid."));
         }
     }
 
@@ -110,19 +111,17 @@ public class LoginController {
      */
     @PostMapping("/auth/loginCheck")
     @ResponseBody
-    public ResponseEntity<PublicResponse> LoginCheck(HttpServletResponse res , HttpServletRequest req) {
+    public ResponseEntity<?> LoginCheck(HttpServletResponse res , HttpServletRequest req) {
 
-        System.out.println("!!!!!!!");
         /* 로그인 체크 처리 */
         Optional<UserBasicInfoDto> result = yummyLoginService.checkLoginUser(res, req);
 
         if (result.isEmpty()) {
             /* 실제 HTTP 200, 하지만 body에는 명시적인 로그인 실패 코드 포함 */
-            return ResponseEntity.ok(new PublicResponse("AUTH_ERROR", "Not logged in."));
+            return ResponseEntity.ok(new PublicResponse(PublicStatus.AUTH_ERROR, "Not logged in."));
         }
 
-        System.out.println("@@@@");
-        return ResponseEntity.ok(new PublicResponse("SUCCESS", ""));
+        return ResponseEntity.ok(result);
     }
 
 

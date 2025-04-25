@@ -3,13 +3,13 @@ package com.cho_co_song_i.yummy.yummy.service;
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JoinMemberIdStatus;
+import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.repository.UserEmailRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserPhoneNumberRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserTempPwHistoryRepository;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
 import com.cho_co_song_i.yummy.yummy.utils.PasswdUtil;
-import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -73,26 +73,26 @@ public class JoinMemberService {
         /* 이름 검사 */
         boolean checkUserName = checkUserName(findPwDto.getUserNm());
         if (!checkUserName) {
-            return new PublicResponse("NAME_ERR", "Invalid name form.");
+            return new PublicResponse(PublicStatus.NAME_ERR, "Invalid name form.");
         }
 
         /* 아이디 검사 */
         boolean checkId = checkIdFormat(findPwDto.getUserId());
         if (!checkId) {
-            return new PublicResponse("ID_ERR", "Invalid ID format.");
+            return new PublicResponse(PublicStatus.ID_ERR, "Invalid ID format.");
         }
 
         /* 이메일 검사 */
         boolean checkEmail = checkUserEmail(findPwDto.getEmail());
         if (!checkEmail) {
-            return new PublicResponse("EMAIL_ERR", "Email does not conform to the rules.");
+            return new PublicResponse(PublicStatus.EMAIL_ERR, "Email does not conform to the rules.");
         }
 
         /* 2.사용자 조회 */
         UserTbl userTbl = fetchUserInfo(findPwDto);
 
         if (userTbl == null) {
-            return new PublicResponse("PW_FIND_ERR", "There are no membership records.");
+            return new PublicResponse(PublicStatus.PW_FIND_ERR, "There are no membership records.");
         }
 
         /* 3. 임시 비밀번호 생성 및 기존 토큰 모두 제거 */
@@ -107,7 +107,7 @@ public class JoinMemberService {
         );
 
 
-        return new PublicResponse("SUCCESS", "");
+        return new PublicResponse(PublicStatus.SUCCESS, "");
     }
 
     /**
@@ -198,25 +198,25 @@ public class JoinMemberService {
         /* 이름 검사 */
         boolean checkUserName = checkUserName(findIdDto.getUserNm());
         if (!checkUserName) {
-            return new PublicResponse("NAME_ERR", "Invalid name form");
+            return new PublicResponse(PublicStatus.NAME_ERR, "Invalid name form");
         }
 
         /* 통신사 검사 */
         boolean checkUserTelecom = checkUserMobileCarrier(findIdDto.getTelecom());
         if (!checkUserTelecom) {
-            return new PublicResponse("TELECOM_ERR", "Invalid birthday form");
+            return new PublicResponse(PublicStatus.TELECOM_ERR, "Invalid birthday form");
         }
 
         /* 휴대폰 번호 검사 */
         boolean checkUserPhoneNumber = checkUserPhoneNumber(findIdDto.getPhoneNumber());
         if (!checkUserPhoneNumber) {
-            return new PublicResponse("PHONE_ERR", "Invalid phone number form");
+            return new PublicResponse(PublicStatus.PHONE_ERR, "Invalid phone number form");
         }
 
         /* 이메일 검사 */
         boolean checkEmail = checkUserEmail(findIdDto.getEmail());
         if (!checkEmail) {
-            return new PublicResponse("EMAIL_ERR", "Email does not conform to the rules");
+            return new PublicResponse(PublicStatus.EMAIL_ERR, "Email does not conform to the rules");
         }
 
         /**
@@ -240,7 +240,7 @@ public class JoinMemberService {
 
             /* 입력한 정보를 토대로 회원정보가 존재하지 않음 */
             if (findUserId == null || findUserId.isEmpty()) {
-                return new PublicResponse("ID_FIND_ERR", "There are no membership records.");
+                return new PublicResponse(PublicStatus.ID_FIND_ERR, "There are no membership records.");
             }
 
             /* 회원정보가 존재하는 경우 -> Kafka Producing */
@@ -251,7 +251,7 @@ public class JoinMemberService {
             log.error("[Error][JoinMemberService->findId] {}", e.getMessage(), e);
         }
 
-        return new PublicResponse("SUCCESS", "");
+        return new PublicResponse(PublicStatus.SUCCESS, "");
     }
 
     /**
@@ -267,63 +267,63 @@ public class JoinMemberService {
             JoinMemberIdStatus checkId = checkUserId(joinMemberDto.getUserId());
 
             if (checkId == JoinMemberIdStatus.NONFORMAT) {
-                return new PublicResponse("ID_ERR","Id does not conform to the rule");
+                return new PublicResponse(PublicStatus.ID_ERR,"Id does not conform to the rule");
             } else if (checkId == JoinMemberIdStatus.DUPLICATED) {
-                return new PublicResponse("ID_DUPLICATED","The ID already exists.");
+                return new PublicResponse(PublicStatus.ID_DUPLICATED,"The ID already exists.");
             }
 
         } catch(Exception e) {
             log.error("[Error][JoinMemberService->joinMember] {}", e.getMessage(), e);
-            return new PublicResponse("ID_ERR","Id does not conform to the rule");
+            return new PublicResponse(PublicStatus.ID_ERR,"Id does not conform to the rule");
         }
 
 
         /* UserPasswd 확인 */
         boolean checkPw = checkUserPw(joinMemberDto.getPassword());
         if (!checkPw) {
-            return new PublicResponse("PW_ERR","Password does not conform to the rule");
+            return new PublicResponse(PublicStatus.PW_ERR,"Password does not conform to the rule");
         }
 
         /* Email 검사 */
         boolean checkEmail = checkUserEmail(joinMemberDto.getEmail());
         if (!checkEmail) {
-            return new PublicResponse("EMAIL_ERR", "Email does not conform to the rules");
+            return new PublicResponse(PublicStatus.EMAIL_ERR, "Email does not conform to the rules");
         }
 
         /* 이름 검사 */
         boolean checkUserName = checkUserName(joinMemberDto.getName());
         if (!checkUserName) {
-            return new PublicResponse("NAME_ERR", "Invalid name form");
+            return new PublicResponse(PublicStatus.NAME_ERR, "Invalid name form");
         }
 
         /* 생년월일 검사 */
         boolean checkUserBirthday = checkUserBirthday(joinMemberDto.getBirthDate());
         if (!checkUserBirthday) {
-            return new PublicResponse("BIRTH_ERR", "Invalid birthday form");
+            return new PublicResponse(PublicStatus.BIRTH_ERR, "Invalid birthday form");
         }
 
         /* 통신사 검사 */
         boolean checkUserTelecom = checkUserMobileCarrier(joinMemberDto.getTelecom());
         if (!checkUserTelecom) {
-            return new PublicResponse("TELECOM_ERR", "Invalid birthday form");
+            return new PublicResponse(PublicStatus.TELECOM_ERR, "Invalid birthday form");
         }
 
         /* 성별 검사 */
         boolean checkUserGender = checkUserGender(joinMemberDto.getGender());
         if (!checkUserGender) {
-            return new PublicResponse("GENDER_ERR", "Invalid gender form");
+            return new PublicResponse(PublicStatus.GENDER_ERR, "Invalid gender form");
         }
 
         /* 휴대전화번호 검사 */
         boolean checkUserPhoneNumber = checkUserPhoneNumber(joinMemberDto.getPhoneNumber());
         if (!checkUserPhoneNumber) {
-            return new PublicResponse("PHONE_ERR", "Invalid phone number form");
+            return new PublicResponse(PublicStatus.PHONE_ERR, "Invalid phone number form");
         }
 
         /* 검사가 문제가 없다면 DB 에 저장을 해준다. */
         boolean saveJoinUser = saveJoinUser(joinMemberDto);
 
-        return new PublicResponse("SUCCESS", "");
+        return new PublicResponse(PublicStatus.SUCCESS, "");
     }
 
     /**

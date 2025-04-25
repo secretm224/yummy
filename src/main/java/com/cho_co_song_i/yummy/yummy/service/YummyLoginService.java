@@ -100,9 +100,6 @@ public class YummyLoginService {
                 .where(userTbl.userId.eq(standardLoginDto.getUserId()))
                 .fetchFirst();
 
-        System.out.println("====================================");
-        System.out.println(user);
-
         if (user == null) {
             log.info("[YummyLoginService->standardLoginUser][Login] No User: {}", standardLoginDto.getUserId());
             return false;
@@ -155,7 +152,7 @@ public class YummyLoginService {
 
     /**
      * 로그인에 성공한 유제의 토큰 아이디를 디비에 넣어준다.
-     * @param userNo
+     * @param user
      * @param tokenId
      * @throws Exception
      */
@@ -235,7 +232,7 @@ public class YummyLoginService {
      * @return
      */
     private boolean tryRefreshAccessToken(HttpServletResponse res, String userNo, String tokenId) {
-        String refreshKey = String.format("%s:%s", refreshKeyPrefix, userNo);
+        String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNo, tokenId);
         String refreshToken = redisService.getValue(refreshKey, new TypeReference<String>() {});
 
         /* Refresh Token 도 존재하지 않는 경우 -> 로그인 창으로 보내준다. */
