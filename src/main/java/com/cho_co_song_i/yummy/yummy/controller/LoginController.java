@@ -1,8 +1,10 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
 import com.cho_co_song_i.yummy.yummy.dto.ErrorResponse;
+import com.cho_co_song_i.yummy.yummy.dto.PublicResponse;
 import com.cho_co_song_i.yummy.yummy.dto.StandardLoginDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
+import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.service.*;
 
 
@@ -73,15 +75,21 @@ public class LoginController {
      * @return
      */
     @PostMapping("/standardLogin")
-    public ResponseEntity<ErrorResponse> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res , HttpServletRequest req) {
+    public ResponseEntity<PublicResponse> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res , HttpServletRequest req) {
 
-        Boolean result = yummyLoginService.standardLoginUser(standardLoginDto, res, req);
+        try {
+            Boolean result = yummyLoginService.standardLoginUser(standardLoginDto, res, req);
 
-        if (!result) {
-            return ResponseEntity.ok(new ErrorResponse("AUTH_ERROR", "Your login information is invalid."));
+            if (!result) {
+                return ResponseEntity.ok(new PublicResponse(PublicStatus.AUTH_ERROR, "Your login information is invalid."));
+            }
+
+            return ResponseEntity.ok(new PublicResponse(PublicStatus.SUCCESS, ""));
+
+        } catch(Exception e) {
+            log.error("[Error][LoginController->StandardLogin] {}", e.getMessage(), e);
+            return ResponseEntity.ok(new PublicResponse(PublicStatus.AUTH_ERROR, "Your login information is invalid."));
         }
-
-        return ResponseEntity.ok(new ErrorResponse("SUCCESS", ""));
     }
 
     /**
@@ -110,10 +118,10 @@ public class LoginController {
 
         if (result.isEmpty()) {
             /* 실제 HTTP 200, 하지만 body에는 명시적인 로그인 실패 코드 포함 */
-            return ResponseEntity.ok(new ErrorResponse("AUTH_ERROR", "Not logged in."));
+            return ResponseEntity.ok(new PublicResponse(PublicStatus.AUTH_ERROR, "Not logged in."));
         }
 
-        return ResponseEntity.ok(result.get());
+        return ResponseEntity.ok(result);
     }
 
 

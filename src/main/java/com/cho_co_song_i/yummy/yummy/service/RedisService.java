@@ -3,9 +3,11 @@ package com.cho_co_song_i.yummy.yummy.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.data.redis.core.RedisTemplate;
+
+import java.time.Duration;
+
 
 @Service
 public class RedisService {
@@ -62,6 +64,24 @@ public class RedisService {
             return true;
         } catch (Exception e) {
             throw new RuntimeException("[Error][RedisService->set] {} ", e);
+        }
+    }
+
+    /**
+     * Redis 에서 특정 키에 특정 DTO 를 JSON으로 직렬화 한다음 저장해주는 함수 (ttl 추가)
+     * @param key
+     * @param value
+     * @param ttl
+     * @return
+     * @param <T>
+     */
+    public <T> Boolean set(String key, T value, Duration ttl) {
+        try {
+            String json = objectMapper.writeValueAsString(value);
+            redisTemplate.opsForValue().set(key, json, ttl);
+            return true;
+        } catch (Exception e) {
+            throw new RuntimeException("[Error][RedisService->set] Failed to set Redis value", e);
         }
     }
 }

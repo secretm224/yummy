@@ -11,7 +11,6 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 !build.gradle
-!gradle/wrapper/gradle-wrapper.properties
 
 gradle/.tmp/
 gradle/caches/

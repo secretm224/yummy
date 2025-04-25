@@ -4,8 +4,6 @@ type Query {
     SearchStoreAllData: [SearchStoreDto]
     SearchStoreName(SearchStoreName: String): SearchStoreDto
     SearchStoreList(page: Int!, size: Int!): [SearchStoreDto]
-    StoreMajorsTypeList:[StoreTypeMajorDto!]!
-    StoreSubMajorsTypeList(major_code:Int!):[StoreTypeSubDto!]!
 }
 
 #scalar DateTime
@@ -25,15 +23,4 @@ type SearchStoreDto {
     timestamp: String
     type: String
     zeroPossible: Boolean
-}
-
-type StoreTypeMajorDto{
-    majorType:Int
-    typeName:String
-}
-
-type StoreTypeSubDto{
-    subType:Int
-    majorType:Int
-    typeName:String
 }

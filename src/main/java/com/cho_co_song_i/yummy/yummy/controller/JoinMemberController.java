@@ -4,6 +4,7 @@ import com.cho_co_song_i.yummy.yummy.dto.FindIdDto;
 import com.cho_co_song_i.yummy.yummy.dto.FindPwDto;
 import com.cho_co_song_i.yummy.yummy.dto.JoinMemberDto;
 import com.cho_co_song_i.yummy.yummy.dto.PublicResponse;
+import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.service.JoinMemberService;
 import com.cho_co_song_i.yummy.yummy.service.KafkaProducerService;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +38,7 @@ public class JoinMemberController {
             return ResponseEntity.ok(result);
         } catch(Exception e) {
             log.error("{}", e.getMessage(), e);
-            return ResponseEntity.ok(new PublicResponse("SERVER_ERR", "API server encountered an error."));
+            return ResponseEntity.ok(new PublicResponse(PublicStatus.SERVER_ERR, "API server encountered an error."));
         }
 
     }
@@ -58,7 +59,7 @@ public class JoinMemberController {
             return ResponseEntity.ok(result);
         } catch(Exception e) {
             log.error("{}", e.getMessage(), e);
-            return ResponseEntity.ok(new PublicResponse("SERVER_ERR", "API server encountered an error."));
+            return ResponseEntity.ok(new PublicResponse(PublicStatus.SERVER_ERR, "API server encountered an error."));
         }
     }
 

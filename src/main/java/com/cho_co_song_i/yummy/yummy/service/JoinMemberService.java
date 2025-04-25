@@ -3,17 +3,16 @@ package com.cho_co_song_i.yummy.yummy.service;
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JoinMemberIdStatus;
+import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.repository.UserEmailRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserPhoneNumberRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserTempPwHistoryRepository;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
 import com.cho_co_song_i.yummy.yummy.utils.PasswdUtil;
-import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -21,18 +20,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.Date;
+import java.util.List;
+import java.util.Optional;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserEmailTbl.userEmailTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserPhoneNumberTbl.userPhoneNumberTbl;
+import static com.cho_co_song_i.yummy.yummy.entity.QUserTokenIdTbl.userTokenIdTbl;
 
 @Service
 @Slf4j
 public class JoinMemberService {
-
-
     private final JPAQueryFactory queryFactory;
     private final UserRepository userRepository;
     private final UserPhoneNumberRepository userPhoneNumberRepository;
@@ -46,7 +45,6 @@ public class JoinMemberService {
 
     @Value("${spring.redis.refresh-key-prefix}")
     private String refreshKeyPrefix;
-
 
     public JoinMemberService(JPAQueryFactory queryFactory, UserRepository userRepository,
                              UserPhoneNumberRepository userPhoneNumberRepository, UserEmailRepository userEmailRepository,
@@ -75,69 +73,75 @@ public class JoinMemberService {
         /* 이름 검사 */
         boolean checkUserName = checkUserName(findPwDto.getUserNm());
         if (!checkUserName) {
-            return new PublicResponse("NAME_ERR", "Invalid name form.");
+            return new PublicResponse(PublicStatus.NAME_ERR, "Invalid name form.");
         }
 
         /* 아이디 검사 */
         boolean checkId = checkIdFormat(findPwDto.getUserId());
         if (!checkId) {
-            return new PublicResponse("ID_ERR", "Invalid ID format.");
+            return new PublicResponse(PublicStatus.ID_ERR, "Invalid ID format.");
         }
 
         /* 이메일 검사 */
         boolean checkEmail = checkUserEmail(findPwDto.getEmail());
         if (!checkEmail) {
-            return new PublicResponse("EMAIL_ERR", "Email does not conform to the rules.");
+            return new PublicResponse(PublicStatus.EMAIL_ERR, "Email does not conform to the rules.");
         }
-
 
         /* 2.사용자 조회 */
-        UserDto userDto = fetchUserInfo(findPwDto);
+        UserTbl userTbl = fetchUserInfo(findPwDto);
 
-        if (userDto == null || userDto.getUserNo() == null || userDto.getUserNo() <= 0) {
-            return new PublicResponse("PW_FIND_ERR", "There are no membership records.");
+        if (userTbl == null) {
+            return new PublicResponse(PublicStatus.PW_FIND_ERR, "There are no membership records.");
         }
 
-        /* 3. 임시 비밀번호 생성 및 저장 */
-        String tempPw = issueAndSaveTempPassword(userDto.getUserNo());
+        /* 3. 임시 비밀번호 생성 및 기존 토큰 모두 제거 */
+        String tempPw = issueAndSaveTempPassword(userTbl);
 
-        /* 4. Kafka를 통해 전송 */
+        /* 4. 기존 유저의 토큰 아이디 모두 제거 */
+        deleteUserTokenIds(userTbl.getUserNo());
+
+        /* 5. Kafka를 통해 전송 */
         kafkaProducerService.sendMessageJson(
                 new SendPwFormDto("TEMP_PW", findPwDto.getEmail(), tempPw)
         );
 
-        /* 5. Refresh Token 제거 및 user_id_hash 재설정 */
-        deleteRefreshToken(userDto);
-        resetUserIdHash(userDto);
 
-        return new PublicResponse("SUCCESS", "");
+        return new PublicResponse(PublicStatus.SUCCESS, "");
     }
+
+    /**
+     * 특정 유저가 가지고 있는 토큰 키 모두 제거
+     * @param userNo
+     */
+    private void deleteUserTokenIds(Long userNo) {
+
+        List<UserTokenIdTbl> userTokens = queryFactory
+                .selectFrom(userTokenIdTbl)
+                .where(userTokenIdTbl.id.userNo.eq(userNo))
+                .fetch();
+
+        /* 레디스에 존재하는 토큰 모두 제거 */
+        for (UserTokenIdTbl tokenTbl : userTokens) {
+            Optional.ofNullable(tokenTbl.getId().getTokenId())
+                    .ifPresent(token -> {
+                        String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNo.toString(), token);
+                        redisService.deleteKey(refreshKey);
+                        entityManager.remove(tokenTbl);
+                    });
+        }
+    }
+
 
     /**
      * 유저정보를 가져와주는 함수
      * @param dto
      * @return
      */
-    private UserDto fetchUserInfo(FindPwDto dto) {
+    private UserTbl fetchUserInfo(FindPwDto dto) {
+
         return queryFactory
-                .select(
-                        Projections.constructor(
-                                UserDto.class,
-                                userTbl.userNo,
-                                userTbl.userId,
-                                userTbl.userIdHash,
-                                userTbl.userPw,
-                                userTbl.userPwSalt,
-                                userTbl.userNm,
-                                userTbl.userBirth,
-                                userTbl.userGender,
-                                userTbl.regDt,
-                                userTbl.regId,
-                                userTbl.chgDt,
-                                userTbl.chgId
-                        )
-                )
-                .from(userTbl)
+                .selectFrom(userTbl)
                 .join(userEmailTbl).on(userEmailTbl.user.eq(userTbl))
                 .where(
                         userTbl.userNm.eq(dto.getUserNm()),
@@ -147,54 +151,41 @@ public class JoinMemberService {
                 .fetchFirst();
     }
 
+
     /**
      * 새로운 비밀번호를 생성하고 저장해주는 함수
-     * @param userNo
+     * @param userTbl
      * @return
      * @throws Exception
      */
-    private String issueAndSaveTempPassword(Long userNo) throws Exception {
+    private String issueAndSaveTempPassword(UserTbl userTbl) throws Exception {
+
         String tempPw = PasswdUtil.makeTempPw();
-        String salt = HashUtil.generateSalt();
-        String hash = HashUtil.hashWithSalt(tempPw, salt);
+        String pwSalt = HashUtil.generateSalt();
+        String hashedPw = HashUtil.hashWithSalt(tempPw, pwSalt);
 
-        UserTempPwHistoryTbl history = new UserTempPwHistoryTbl();
-        history.setUserNo(userNo);
-        history.setTempPw(hash);
-        history.setTempPwSalt(salt);
-        history.setEndYn("N");
-        history.setRegDt(new Date());
-        history.setRegId("system");
+        UserTempPwTbl userTempPwTbl = new UserTempPwTbl();
+        userTempPwTbl.setUserNo(userTbl.getUserNo());
+        userTempPwTbl.setUserId(userTbl.getUserId());
+        userTempPwTbl.setRegDt(new Date());
+        userTempPwTbl.setRegId("system");
 
-        userTempPwHistoryRepository.save(history);
+        userTempPwHistoryRepository.save(userTempPwTbl);
+
+        userTbl.setUserPwSalt(pwSalt);
+        userTbl.setUserPw(hashedPw);
+
         return tempPw;
     }
 
+
     /**
      * 유저 리프레시 토큰을 삭제해주는 함수
-     * @param userDto
+     * @param userNo
      */
-    private void deleteRefreshToken(UserDto userDto) {
-        String refreshKey = String.format("%s:%s", refreshKeyPrefix, userDto.getUserIdHash());
-        redisService.deleteKey(refreshKey);
-    }
-
-    /**
-     * 유저 아이디 해쉬정보를 바꿔주는 함수
-     * @param userDto
-     * @throws Exception
-     */
-    private void resetUserIdHash(UserDto userDto) throws Exception {
-
-        UserTbl user = entityManager.find(UserTbl.class, userDto.getUserNo());
-
-        if (user == null) {
-            throw new RuntimeException("[Error][JoinMemberService->findPw] User not found. userNo=" + userDto.getUserNo());
-        }
-
-        String newSalt = HashUtil.generateSalt();
-        String newHash = HashUtil.hashWithSalt(user.getUserId(), newSalt);
-        user.setUserIdHash(newHash);
+    private void deleteRefreshToken(String userNo) {
+        //String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNo, tokenId);
+        //redisService.deleteKey(refreshKey);
     }
 
     /**
@@ -207,25 +198,25 @@ public class JoinMemberService {
         /* 이름 검사 */
         boolean checkUserName = checkUserName(findIdDto.getUserNm());
         if (!checkUserName) {
-            return new PublicResponse("NAME_ERR", "Invalid name form");
+            return new PublicResponse(PublicStatus.NAME_ERR, "Invalid name form");
         }
 
         /* 통신사 검사 */
         boolean checkUserTelecom = checkUserMobileCarrier(findIdDto.getTelecom());
         if (!checkUserTelecom) {
-            return new PublicResponse("TELECOM_ERR", "Invalid birthday form");
+            return new PublicResponse(PublicStatus.TELECOM_ERR, "Invalid birthday form");
         }
 
         /* 휴대폰 번호 검사 */
         boolean checkUserPhoneNumber = checkUserPhoneNumber(findIdDto.getPhoneNumber());
         if (!checkUserPhoneNumber) {
-            return new PublicResponse("PHONE_ERR", "Invalid phone number form");
+            return new PublicResponse(PublicStatus.PHONE_ERR, "Invalid phone number form");
         }
 
         /* 이메일 검사 */
         boolean checkEmail = checkUserEmail(findIdDto.getEmail());
         if (!checkEmail) {
-            return new PublicResponse("EMAIL_ERR", "Email does not conform to the rules");
+            return new PublicResponse(PublicStatus.EMAIL_ERR, "Email does not conform to the rules");
         }
 
         /**
@@ -249,7 +240,7 @@ public class JoinMemberService {
 
             /* 입력한 정보를 토대로 회원정보가 존재하지 않음 */
             if (findUserId == null || findUserId.isEmpty()) {
-                return new PublicResponse("ID_FIND_ERR", "There are no membership records.");
+                return new PublicResponse(PublicStatus.ID_FIND_ERR, "There are no membership records.");
             }
 
             /* 회원정보가 존재하는 경우 -> Kafka Producing */
@@ -260,7 +251,7 @@ public class JoinMemberService {
             log.error("[Error][JoinMemberService->findId] {}", e.getMessage(), e);
         }
 
-        return new PublicResponse("SUCCESS", "");
+        return new PublicResponse(PublicStatus.SUCCESS, "");
     }
 
     /**
@@ -276,63 +267,63 @@ public class JoinMemberService {
             JoinMemberIdStatus checkId = checkUserId(joinMemberDto.getUserId());
 
             if (checkId == JoinMemberIdStatus.NONFORMAT) {
-                return new PublicResponse("ID_ERR","Id does not conform to the rule");
+                return new PublicResponse(PublicStatus.ID_ERR,"Id does not conform to the rule");
             } else if (checkId == JoinMemberIdStatus.DUPLICATED) {
-                return new PublicResponse("ID_DUPLICATED","The ID already exists.");
+                return new PublicResponse(PublicStatus.ID_DUPLICATED,"The ID already exists.");
             }
 
         } catch(Exception e) {
             log.error("[Error][JoinMemberService->joinMember] {}", e.getMessage(), e);
-            return new PublicResponse("ID_ERR","Id does not conform to the rule");
+            return new PublicResponse(PublicStatus.ID_ERR,"Id does not conform to the rule");
         }
 
 
         /* UserPasswd 확인 */
         boolean checkPw = checkUserPw(joinMemberDto.getPassword());
         if (!checkPw) {
-            return new PublicResponse("PW_ERR","Password does not conform to the rule");
+            return new PublicResponse(PublicStatus.PW_ERR,"Password does not conform to the rule");
         }
 
         /* Email 검사 */
         boolean checkEmail = checkUserEmail(joinMemberDto.getEmail());
         if (!checkEmail) {
-            return new PublicResponse("EMAIL_ERR", "Email does not conform to the rules");
+            return new PublicResponse(PublicStatus.EMAIL_ERR, "Email does not conform to the rules");
         }
 
         /* 이름 검사 */
         boolean checkUserName = checkUserName(joinMemberDto.getName());
         if (!checkUserName) {
-            return new PublicResponse("NAME_ERR", "Invalid name form");
+            return new PublicResponse(PublicStatus.NAME_ERR, "Invalid name form");
         }
 
         /* 생년월일 검사 */
         boolean checkUserBirthday = checkUserBirthday(joinMemberDto.getBirthDate());
         if (!checkUserBirthday) {
-            return new PublicResponse("BIRTH_ERR", "Invalid birthday form");
+            return new PublicResponse(PublicStatus.BIRTH_ERR, "Invalid birthday form");
         }
 
         /* 통신사 검사 */
         boolean checkUserTelecom = checkUserMobileCarrier(joinMemberDto.getTelecom());
         if (!checkUserTelecom) {
-            return new PublicResponse("TELECOM_ERR", "Invalid birthday form");
+            return new PublicResponse(PublicStatus.TELECOM_ERR, "Invalid birthday form");
         }
 
         /* 성별 검사 */
         boolean checkUserGender = checkUserGender(joinMemberDto.getGender());
         if (!checkUserGender) {
-            return new PublicResponse("GENDER_ERR", "Invalid gender form");
+            return new PublicResponse(PublicStatus.GENDER_ERR, "Invalid gender form");
         }
 
         /* 휴대전화번호 검사 */
         boolean checkUserPhoneNumber = checkUserPhoneNumber(joinMemberDto.getPhoneNumber());
         if (!checkUserPhoneNumber) {
-            return new PublicResponse("PHONE_ERR", "Invalid phone number form");
+            return new PublicResponse(PublicStatus.PHONE_ERR, "Invalid phone number form");
         }
 
         /* 검사가 문제가 없다면 DB 에 저장을 해준다. */
         boolean saveJoinUser = saveJoinUser(joinMemberDto);
 
-        return new PublicResponse("SUCCESS", "");
+        return new PublicResponse(PublicStatus.SUCCESS, "");
     }
 
     /**
@@ -363,12 +354,10 @@ public class JoinMemberService {
      */
     private UserTbl saveUser(JoinMemberDto joinMemberDto) throws Exception {
         String saltValue = HashUtil.generateSalt();
-        String userIdHash = HashUtil.hashWithSalt(joinMemberDto.getUserId(), saltValue);
         String userPwHash = HashUtil.hashWithSalt(joinMemberDto.getPassword(), saltValue);
 
         UserTbl user = new UserTbl();
         user.setUserId(joinMemberDto.getUserId());
-        user.setUserIdHash(userIdHash);
         user.setUserPw(userPwHash);
         user.setUserPwSalt(saltValue);
         user.setUserNm(joinMemberDto.getName());
@@ -376,8 +365,6 @@ public class JoinMemberService {
         user.setUserGender(joinMemberDto.getGender());
         user.setRegDt(new Date());
         user.setRegId("system");
-        user.setChgDt(null);
-        user.setChgId(null);
 
         return userRepository.save(user);
     }
