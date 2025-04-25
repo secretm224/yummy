@@ -6,6 +6,7 @@ public enum PublicStatus {
     ID_ERR,
     EMAIL_ERR,
     PW_FIND_ERR,
+    PW_CHECK_ERR,
     TELECOM_ERR,
     PHONE_ERR,
     ID_FIND_ERR,

@@ -284,6 +284,12 @@ public class JoinMemberService {
             return new PublicResponse(PublicStatus.PW_ERR,"Password does not conform to the rule");
         }
 
+        /* UserPasswd 비밀번호 확인 */
+        boolean checkPwCheck = checkUserPwCheck(joinMemberDto.getPassword(), joinMemberDto.getPasswordCheck());
+        if (!checkPwCheck) {
+            return new PublicResponse(PublicStatus.PW_CHECK_ERR,"Password does not match.");
+        }
+
         /* Email 검사 */
         boolean checkEmail = checkUserEmail(joinMemberDto.getEmail());
         if (!checkEmail) {
@@ -477,6 +483,17 @@ public class JoinMemberService {
 
         return hasUppercase && hasLowercase && hasDigit && hasSpecial && onlyAllowedChars;
     }
+
+    /**
+     * 확인비밀번호가 비밀번호와 같은지 확인해주는 함수.
+     * @param userPw
+     * @param userPwCheck
+     * @return
+     */
+    private boolean checkUserPwCheck(String userPw, String userPwCheck) {
+        return userPw.equals(userPwCheck);
+    }
+
 
     /**
      * 이메일 주소 검증
