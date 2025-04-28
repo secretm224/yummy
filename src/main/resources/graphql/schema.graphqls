@@ -50,13 +50,15 @@ input AddStoreInput {
     name: String!
     type: String!
     isBeefulPay: Boolean = false
-    lat:Int = 0
-    lng:Int = 0
+    lat:Float = 0
+    lng:Float = 0
     locationCounty:String!
     locationCity:String!
     locationDistrict:String!
     subType:Int!
     address:String!
+    tel:String
+    url:String
 }
 
 #Mutation

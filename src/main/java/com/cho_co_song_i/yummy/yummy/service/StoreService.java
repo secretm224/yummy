@@ -162,6 +162,8 @@ public class StoreService {
             newStore.setUseYn('Y');
             newStore.setRegDt(now);
             newStore.setRegId("system");
+            newStore.setTel(addStoreDto.getTel());
+            newStore.setUrl(addStoreDto.getUrl());
             newStore.markAsNew();
 
             Long newStoreSeq = storeRepository.save(newStore).getSeq();

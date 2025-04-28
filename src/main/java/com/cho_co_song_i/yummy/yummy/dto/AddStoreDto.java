@@ -37,4 +37,10 @@ public class AddStoreDto {
     private int subType;
     @JsonProperty("address")
     private String address;
+
+    @JsonProperty("tel")
+    private String tel;
+
+    @JsonProperty("url")
+    private String url;
 }
