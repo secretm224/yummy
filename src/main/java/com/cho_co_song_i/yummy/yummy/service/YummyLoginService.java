@@ -3,6 +3,7 @@ package com.cho_co_song_i.yummy.yummy.service;
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
+import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.repository.UserTokenIdRepository;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
@@ -80,6 +81,59 @@ public class YummyLoginService {
         return userTempPw != null;
     }
 
+
+
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean oauthLogin(Long userNum, String idToken, HttpServletResponse res) throws Exception {
+
+        /* 1. 사용자 조회 */
+        UserTbl user = queryFactory
+                .selectFrom(userTbl)
+                .where(userTbl.userNo.eq(userNum))
+                .fetchFirst();
+
+        if (user == null) {
+            log.info("[YummyLoginService->oauthLogin][Login] No User: {}", userNum);
+            return false;
+        }
+
+        /**
+         * 2. 로그인 성공
+         * 임시비밀번호를 발급받은 상태인디
+         * 임시비밀번호를 발급받지 않은 상태인지 확인해줘야 한다.
+         */
+        log.info("[YummyLoginService->oauthLogin][Login] Login successful: {}", user.getUserId());
+
+        /* 3. 로그인 성공시 JWT 토큰을 발급한다. */
+        String tokenId = UUID.randomUUID().toString();
+        String accessToken = jwtProviderService.generateAccessToken(user.getUserNo().toString(), false, tokenId);
+        String refreshToken = jwtProviderService.generateRefreshToken(user.getUserNo().toString());
+
+        /* 5. Refresh Token 을 Redis 에 넣어준다. && DB 에는 Tokenid 를 넣어준다. */
+        insertUserTokenId(user, tokenId);
+        String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, user.getUserNo().toString(), tokenId);
+        redisService.set(refreshKey, refreshToken, Duration.ofDays(7));
+
+        /* 6. accessToken을 쿠키에 저장해준다. */
+        CookieUtil.addCookie(res, "yummy-access-token", accessToken, 7200);
+
+        /* 7. 기본적인 유저의 정보를 가져와준다. */
+        /* 회원의 집 정보 */
+        UserLocationDetailTbl userLocationDetail = queryFactory
+                .selectFrom(userLocationDetailTbl)
+                .where(userLocationDetailTbl.id.userNo.eq(user.getUserNo()))
+                .fetchFirst();
+
+        /* 기본 회원 정보 - 브라우저 돌아다니면서 사용할 수 있는 정보 - private 한 정보같은건 넣으면 안된다. */
+        UserBasicInfoDto userBasicInfo = convertUserToBasicInfo(user, userLocationDetail);
+
+        /* 8. 기본 회원정보를 Redis 에 저장한다. */
+        String basicUserInfo = String.format("%s:%s", userInfoKey, user.getUserNo().toString());
+        redisService.set(basicUserInfo, userBasicInfo);
+
+        return true;
+    }
+
     /**
      * 정석적인 방법으로 로그인하는 경우 -> 아이디/비밀번호 입력해서 로그인 시도
      * @param res
@@ -93,7 +147,7 @@ public class YummyLoginService {
 
         /* 0. 사용자가 임시비밀번호를 발급받은 사용자인지 체크 */
         boolean tempUserYn = tempLoginUserCheck(standardLoginDto);
-
+        
         /* 1. 사용자 조회 */
         UserTbl user = queryFactory
                 .selectFrom(userTbl)

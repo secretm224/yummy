@@ -15,5 +15,8 @@ public enum PublicStatus {
     BIRTH_ERR,
     GENDER_ERR,
     AUTH_ERROR,
-    SERVER_ERR
+    SERVER_ERR,
+    TOKEN_ERR,
+    JOIN_TARGET_MEMBER,
+    CASE_ERR
 }

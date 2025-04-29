@@ -3,7 +3,10 @@ package com.cho_co_song_i.yummy.yummy.service;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.cho_co_song_i.yummy.yummy.dto.UserOAuthInfoDto;
+import com.cho_co_song_i.yummy.yummy.dto.UserOAuthResponse;
 import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
+import com.cho_co_song_i.yummy.yummy.entity.UserAuthTbl;
+import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +31,8 @@ import java.util.stream.Collectors;
 
 import static com.cho_co_song_i.yummy.yummy.utils.CookieUtil.*;
 import static com.cho_co_song_i.yummy.yummy.utils.JwtUtil.decodeJwtPayload;
+
+import static com.cho_co_song_i.yummy.yummy.entity.QUserAuthTbl.userAuthTbl;
 
 
 @Service
@@ -54,7 +59,7 @@ public class KakaoLoginServiceImpl implements LoginService {
 
     private final RestTemplate restTemplate;
     private final JPAQueryFactory queryFactory;
-//    private final UserCustomRepository userCustomRepository;
+
     private final RedisService redisService;
 
     private final JwtProviderService jwtProviderService;
@@ -75,43 +80,47 @@ public class KakaoLoginServiceImpl implements LoginService {
      * @return
      */
     @Override
-    public UserOAuthInfoDto handleOAuthLogin(String code, HttpServletResponse res) {
+    public UserOAuthResponse handleOAuthLogin(String code, HttpServletResponse res) throws Exception {
         /*
          * OAuth 인증과정에서 받은 code를 이용해서 access_token을 요청하고, 그 결과를 KakaoToken 으로 반환받는다.
-         * */
+         */
         KakaoToken kakaoToken = getKakaoToken(code);
-        String accessToken = kakaoToken.getAccess_token();
-        String refreshToken = kakaoToken.getRefresh_token();
-        String idToken = kakaoToken.getId_token();
-
-        if (accessToken == null || accessToken.isEmpty()) {
-            return null;
+        if (kakaoToken == null) {
+            /* 카카오 토큰이 유효하지 않은 경우 */
+            return new UserOAuthResponse(PublicStatus.TOKEN_ERR, null, null);
         }
 
+        //String accessToken = kakaoToken.getAccess_token();
+        //String refreshToken = kakaoToken.getRefresh_token(); // 필요없을 듯.
+        String idToken = kakaoToken.getId_token();
+
+//        if (accessToken == null || accessToken.isEmpty()) {
+//            return null;
+//        }
+
         Map<String, Object> payload = decodeJwtPayload(idToken);
+
         /* User 정보 */
         UserOAuthInfoDto userKakaoInfo = getKakaoUserInfo(payload);
 
-        if (userKakaoInfo == null) {
-            return null;
+        System.out.println(userKakaoInfo.getUserTokenId());
+
+        /* user_auth_tbl 테이블을 탐색 */
+        UserAuthTbl userAuth = queryFactory
+                .selectFrom(userAuthTbl)
+                .where(
+                        userAuthTbl.id.loginChannel.eq("kakao"),
+                        userAuthTbl.id.tokenId.eq(userKakaoInfo.getUserTokenId())
+                )
+                .fetchFirst();
+
+        if (userAuth == null) {
+            /* 연동한적이 없거나, 가입하지 않은 경우 */
+            return new UserOAuthResponse(PublicStatus.JOIN_TARGET_MEMBER, idToken, null);
         }
 
-        /* Redis 저장 */
-        String redisAccessKeyFormat = String.format("%s:%s", kakaoAccessKeyPrefix, accessToken); /* Kakao accessToken */
-        String redisUserInfoFormat = String.format("%s:%s", kakaoUserInfoPrefix, accessToken); /* user 정보 */
-
-        try {
-            redisService.set(redisAccessKeyFormat, refreshToken);
-            redisService.set(redisUserInfoFormat, userKakaoInfo);
-        } catch(Exception e) {
-            log.error("[Error][LoginService->handleKakaoLogin] {}", e.getMessage(), e);
-            return null;
-        }
-
-        /* 우리 사이트 회원인지 확인 */
-
-
-        return userKakaoInfo;
+        /* 연동 이력이 존쟇하는 경우 -> jwt 토큰 발급 */
+        return new UserOAuthResponse(PublicStatus.SUCCESS, idToken, userAuth.getUser().getUserNo());
     }
 
     /**
@@ -127,7 +136,7 @@ public class KakaoLoginServiceImpl implements LoginService {
             String nickName = (String)payload.get("nickname");
             String userPicture = (String)payload.get("picture");
 
-            return new UserOAuthInfoDto(userTokenId, nickName, userPicture, false);
+            return new UserOAuthInfoDto(userTokenId, nickName, userPicture);
         } catch(Exception e) {
             log.error("[Error][LoginService->getKakaoUserInfo] {}",  e.getMessage(), e);
             return null;
