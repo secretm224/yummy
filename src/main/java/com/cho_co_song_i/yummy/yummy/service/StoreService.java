@@ -1,21 +1,29 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
-import com.cho_co_song_i.yummy.yummy.dto.*;
+import com.cho_co_song_i.yummy.yummy.dto.AddStoreDto;
+import com.cho_co_song_i.yummy.yummy.dto.StoreDto;
+import com.cho_co_song_i.yummy.yummy.dto.StoreTypeMajorDto;
+import com.cho_co_song_i.yummy.yummy.dto.StoreTypeSubDto;
 import com.cho_co_song_i.yummy.yummy.entity.Store;
 import com.cho_co_song_i.yummy.yummy.entity.StoreTypeMajor;
 import com.cho_co_song_i.yummy.yummy.entity.StoreTypeSub;
 import com.cho_co_song_i.yummy.yummy.repository.StoreRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
-
+import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.util.*;
@@ -23,6 +31,7 @@ import java.util.stream.Collectors;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreTypeMajor.storeTypeMajor;
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreTypeSub.storeTypeSub;
+
 
 @Service
 @Slf4j
@@ -35,20 +44,23 @@ public class StoreService {
     private final LocationService locationService;
     private final StoreRepository storeRepository;
     private final RedisService redisService;
-    //commit test
-    //commit test2
+    private final RestTemplate resttemplate;
+
     /* Redis Cache 관련 필드 */
     @Value("${spring.redis.category_main}")
     private String categoryMain;
     @Value("${spring.redis.category_sub}")
     private String categorySub;
 
-    public StoreService(StoreRepository storeRepository,  LocationService locationService,
-                        JPAQueryFactory queryFactory, RedisService redisService) {
+
+
+    public StoreService(StoreRepository storeRepository, LocationService locationService,
+                        JPAQueryFactory queryFactory, RedisService redisService, RestTemplate resttemplate) {
         this.storeRepository = storeRepository;
         this.locationService = locationService;
         this.queryFactory = queryFactory;
         this.redisService = redisService;
+        this.resttemplate = resttemplate;
     }
 
     // Entity -> DTO 변환
@@ -61,7 +73,9 @@ public class StoreService {
                 store.getRegDt(),
                 store.getRegId(),
                 store.getChgDt(),
-                store.getChgId()
+                store.getChgId(),
+                store.getTel(),
+                store.getUrl()
         );
     }
 
@@ -75,6 +89,8 @@ public class StoreService {
         store.setRegId(dto.getRegId());
         store.setChgDt(dto.getChgDt());
         store.setChgId(dto.getChgId());
+        store.setTel(dto.getTel());
+        store.setUrl(dto.getUrl());
         return store;
     }
 
@@ -98,6 +114,10 @@ public class StoreService {
 
     public StoreDto updateStore(Long id, StoreDto dto) {
         Optional<Store> optionalStore = storeRepository.findById(id);
+
+        Instant nowInstant = Instant.now();
+        Date now = Date.from(nowInstant);
+
         if (optionalStore.isPresent()) {
             Store store = optionalStore.get();
             store.setName(dto.getName());
@@ -105,8 +125,11 @@ public class StoreService {
             store.setUseYn(dto.getUseYn());
             store.setRegDt(dto.getRegDt());
             store.setRegId(dto.getRegId());
-            store.setChgDt(dto.getChgDt());
+            store.setChgDt(now);
             store.setChgId(dto.getChgId());
+            store.setTel(dto.getTel());
+            store.setUrl(dto.getUrl());
+
             store = storeRepository.save(store);
             return convertToDto(store);
         } else {
@@ -265,5 +288,41 @@ public class StoreService {
             return storeTypeSubs;
         }
     }
+
+    // 비즈니스 앱 등록 이슈 해결 후 처리 예정
+    public JsonNode UpdateStoreDetail(String store_query)
+    {
+        try{
+            if(!store_query.isEmpty()){
+                String ApiKey = "2fcfa96247ae04a4ad26cd853f1e5551";
+                String category_group_code = "FD6";
+                HttpHeaders headers = new HttpHeaders();
+                headers.add("Authorization","KakaoAK "+ApiKey);
+                String ApiUrl = "https://dapi.kakao.com/v2/local/search/keyword.json?page=1&size=1&category_group_code="+category_group_code+"&query="+store_query;
+
+                HttpEntity<?> requestEntity = new HttpEntity<>(null, headers);
+                ResponseEntity<JsonNode> response = resttemplate.exchange(ApiUrl, HttpMethod.GET,requestEntity, JsonNode.class);
+
+                // if(response.getStatusCode().is2xxSuccessful() && response.getBody() != null){
+                //
+                // }
+                return response.getBody();
+            }
+        }catch (Exception e){
+            return null;
+        }
+
+       return null;
+    }
+
+//    public StoreDto UpdateStoreInfo(int seq , String tel , String url){
+//
+//        if(seq <=0){
+//            return null;
+//        }
+//
+//
+//        return new StoreDto();
+//    }
 
 }

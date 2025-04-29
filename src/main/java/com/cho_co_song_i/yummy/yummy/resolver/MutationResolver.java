@@ -2,6 +2,7 @@ package com.cho_co_song_i.yummy.yummy.resolver;
 
 import com.cho_co_song_i.yummy.yummy.dto.AddStoreDto;
 import com.cho_co_song_i.yummy.yummy.service.StoreService;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -15,5 +16,10 @@ public class MutationResolver {
     @MutationMapping
     public Boolean addStore(@Argument("addStoreDto") AddStoreDto addStoreDto) {
         return storeService.addStore(addStoreDto);
+    }
+
+    @MutationMapping
+    public JsonNode updateStoreDetail(@Argument String storeQuery) {
+        return storeService.UpdateStoreDetail(storeQuery);
     }
 }
