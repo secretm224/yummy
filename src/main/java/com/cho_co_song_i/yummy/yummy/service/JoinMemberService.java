@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
@@ -45,6 +46,14 @@ public class JoinMemberService {
 
     @Value("${spring.redis.refresh-key-prefix}")
     private String refreshKeyPrefix;
+
+    /* 회원의 아이디 찾기 관련 Kafka Topic */
+    @Value("${spring.topic.kafka.find-user-id-info}")
+    private String findIdTopic;
+
+    /* 회원의 비밀번호 찾기 관련 Kafka Topic */
+    @Value("${spring.topic.kafka.find-user-pw-info}")
+    private String findPwTopic;
 
     public JoinMemberService(JPAQueryFactory queryFactory, UserRepository userRepository,
                              UserPhoneNumberRepository userPhoneNumberRepository, UserEmailRepository userEmailRepository,
@@ -103,7 +112,8 @@ public class JoinMemberService {
 
         /* 5. Kafka를 통해 전송 */
         kafkaProducerService.sendMessageJson(
-                new SendPwFormDto("TEMP_PW", findPwDto.getEmail(), tempPw)
+                findPwTopic,
+                new SendPwFormDto(LocalDateTime.now(), findPwDto.getUserId(), findPwDto.getEmail(), tempPw)
         );
 
 
@@ -244,8 +254,8 @@ public class JoinMemberService {
             }
 
             /* 회원정보가 존재하는 경우 -> Kafka Producing */
-            SendIdFormDto sendIdFormDto = new SendIdFormDto("FIND_ID", findUserId, findIdDto.getEmail());
-            kafkaProducerService.sendMessageJson(sendIdFormDto);
+            SendIdFormDto sendIdFormDto = new SendIdFormDto(LocalDateTime.now(), findUserId, findIdDto.getEmail());
+            kafkaProducerService.sendMessageJson(findIdTopic, sendIdFormDto);
 
         } catch(Exception e) {
             log.error("[Error][JoinMemberService->findId] {}", e.getMessage(), e);
