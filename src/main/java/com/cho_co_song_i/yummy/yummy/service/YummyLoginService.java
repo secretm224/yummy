@@ -99,7 +99,7 @@ public class YummyLoginService {
 
         /**
          * 2. 로그인 성공
-         * 임시비밀번호를 발급받은 상태인디
+         * 임시비밀번호를 발급받은 상태인디xz
          * 임시비밀번호를 발급받지 않은 상태인지 확인해줘야 한다.
          */
         log.info("[YummyLoginService->oauthLogin][Login] Login successful: {}", user.getUserId());

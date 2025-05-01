@@ -129,13 +129,16 @@ public class LoginController {
 
             UserOAuthResponse result = kakoLoginService.handleOAuthLogin(loginDto.getCode(), res);
 
-//            if (result.getPublicStatus() == PublicStatus.SUCCESS) {
-//                /* Oauth2 인증 성공해서 유저 정보가 있는 경우 */
-//                Boolean loginRes = yummyLoginService.oauthLogin(result.getUserNum(), result.getIdToken(), res);
-//
-//                if (loginRes) return ResponseEntity.ok(PublicStatus.SUCCESS);
-//                else return ResponseEntity.ok(PublicStatus.AUTH_ERROR);
-//            }
+            if (result.getPublicStatus() == PublicStatus.SUCCESS) {
+                /* Oauth2 인증 성공해서 유저 정보가 있는 경우 */
+                Boolean loginRes = yummyLoginService.oauthLogin(result.getUserNum(), result.getIdToken(), res);
+
+                System.out.println("====================");
+                System.out.println(loginRes);
+
+                if (loginRes) return ResponseEntity.ok(PublicStatus.SUCCESS);
+                else return ResponseEntity.ok(PublicStatus.AUTH_ERROR);
+            }
 //            else if (result.getPublicStatus() == PublicStatus.JOIN_TARGET_MEMBER) {
 //                /*
 //                * 유저에게 신규 가입 또는 기존회원 연동 하게 시킴.

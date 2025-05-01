@@ -85,25 +85,25 @@ public class KakaoLoginServiceImpl implements LoginService {
          * OAuth 인증과정에서 받은 code를 이용해서 access_token을 요청하고, 그 결과를 KakaoToken 으로 반환받는다.
          */
         KakaoToken kakaoToken = getKakaoToken(code);
+
         if (kakaoToken == null) {
             /* 카카오 토큰이 유효하지 않은 경우 */
             return new UserOAuthResponse(PublicStatus.TOKEN_ERR, null, null);
         }
 
         //String accessToken = kakaoToken.getAccess_token();
-        //String refreshToken = kakaoToken.getRefresh_token(); // 필요없을 듯.
+        //String refreshToken = kakaoToken.getRefresh_token();
         String idToken = kakaoToken.getId_token();
 
 //        if (accessToken == null || accessToken.isEmpty()) {
 //            return null;
 //        }
 
+        /* Kakao Payload 정보 */
         Map<String, Object> payload = decodeJwtPayload(idToken);
 
         /* User 정보 */
         UserOAuthInfoDto userKakaoInfo = getKakaoUserInfo(payload);
-
-        System.out.println(userKakaoInfo.getUserTokenId());
 
         /* user_auth_tbl 테이블을 탐색 */
         UserAuthTbl userAuth = queryFactory
@@ -119,7 +119,7 @@ public class KakaoLoginServiceImpl implements LoginService {
             return new UserOAuthResponse(PublicStatus.JOIN_TARGET_MEMBER, idToken, null);
         }
 
-        /* 연동 이력이 존쟇하는 경우 -> jwt 토큰 발급 */
+        /* 연동 이력이 존재하는 경우 -> jwt 토큰 발급 */
         return new UserOAuthResponse(PublicStatus.SUCCESS, idToken, userAuth.getUser().getUserNo());
     }
 
