@@ -8,6 +8,8 @@ import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.stereotype.Controller;
 
+import java.util.Optional;
+
 @Controller
 @RequiredArgsConstructor
 public class MutationResolver {
@@ -18,8 +20,8 @@ public class MutationResolver {
         return storeService.addStore(addStoreDto);
     }
 
-    @MutationMapping
-    public JsonNode updateStoreDetail(@Argument String storeQuery) {
-        return storeService.UpdateStoreDetail(storeQuery);
-    }
+//    @MutationMapping
+//    public Optional<JsonNode> updateStoreDetail(@Argument String storeQuery) {
+//        return storeService.UpdateStoreDetail(storeQuery);
+//    }
 }

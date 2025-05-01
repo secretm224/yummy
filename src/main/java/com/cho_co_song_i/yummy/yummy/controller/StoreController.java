@@ -86,9 +86,12 @@ public class StoreController {
         return ResponseEntity.ok(true);
     }
 
-    @GetMapping("/storyquery")
-    public JsonNode UpdateStoreDetail(@RequestParam(value = "storeQuery", required = false) String storeQuery){
-        return storeService.UpdateStoreDetail(storeQuery);
+    @GetMapping("/StoreDetailQuery")
+    public Optional<JsonNode> StoreDetailQuery(@RequestParam(value = "storeName", required = true) String storeName,
+                                               @RequestParam(value = "lngX", required = false) String lngX,
+                                               @RequestParam(value = "latY", required = false) String latY
+    ){
+        return storeService.StoreDetailQuery(storeName,lngX,latY);
     }
 
     @GetMapping("/UpdateDetailInfo")

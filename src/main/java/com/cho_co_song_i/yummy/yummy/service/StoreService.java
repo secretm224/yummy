@@ -23,8 +23,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -52,6 +55,8 @@ public class StoreService {
     @Value("${spring.redis.category_sub}")
     private String categorySub;
 
+    private static final String KAKAO_SEARCH_API_URL =
+            "https://dapi.kakao.com/v2/local/search/keyword.json";
 
 
     public StoreService(StoreRepository storeRepository, LocationService locationService,
@@ -290,39 +295,60 @@ public class StoreService {
     }
 
     // 비즈니스 앱 등록 이슈 해결 후 처리 예정
-    public JsonNode UpdateStoreDetail(String store_query)
+    public Optional<JsonNode> StoreDetailQuery(String storeName ,String lngX, String latY)
     {
-        try{
-            if(!store_query.isEmpty()){
-                String ApiKey = "2fcfa96247ae04a4ad26cd853f1e5551";
-                String category_group_code = "FD6";
-                HttpHeaders headers = new HttpHeaders();
-                headers.add("Authorization","KakaoAK "+ApiKey);
-                String ApiUrl = "https://dapi.kakao.com/v2/local/search/keyword.json?page=1&size=1&category_group_code="+category_group_code+"&query="+store_query;
-
-                HttpEntity<?> requestEntity = new HttpEntity<>(null, headers);
-                ResponseEntity<JsonNode> response = resttemplate.exchange(ApiUrl, HttpMethod.GET,requestEntity, JsonNode.class);
-
-                // if(response.getStatusCode().is2xxSuccessful() && response.getBody() != null){
-                //
-                // }
-                return response.getBody();
-            }
-        }catch (Exception e){
-            return null;
+        if (storeName == null || storeName.isEmpty()) {
+            return Optional.empty();
         }
 
-       return null;
+        String apiKey = "2fcfa96247ae04a4ad26cd853f1e5551";
+        String categoryGroupCode = "FD6";
+        String page = "1";
+        String size = "1";
+
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromHttpUrl(KAKAO_SEARCH_API_URL)
+                .queryParam("page", page)
+                .queryParam("size", size)
+                .queryParam("category_group_code", categoryGroupCode)
+                .queryParam("query", storeName);
+
+        if (StringUtils.hasText(lngX) && StringUtils.hasText(latY)) {
+            builder.queryParam("x", lngX)
+                   .queryParam("y", latY);
+        }
+
+        URI apiuri = builder
+//                .encode(StandardCharsets.UTF_8)
+                .build()
+                .toUri();
+
+
+        try{
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("Authorization","KakaoAK 2fcfa96247ae04a4ad26cd853f1e5551");
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+
+            ResponseEntity<JsonNode> resp = resttemplate.exchange(
+                    apiuri, HttpMethod.GET, request, JsonNode.class
+            );
+
+            if (resp.getStatusCode().is2xxSuccessful() && resp.hasBody()) {
+                return Optional.of(resp.getBody());
+            }else{
+                return Optional.empty();
+            }
+        }catch(Exception e){
+            return Optional.empty();
+        }
     }
 
-//    public StoreDto UpdateStoreInfo(int seq , String tel , String url){
-//
-//        if(seq <=0){
-//            return null;
-//        }
-//
-//
-//        return new StoreDto();
-//    }
+    public Optional<JsonNode> UpdateStoreDetail(){
+
+
+        return Optional.empty();
+    }
+
+
 
 }
