@@ -64,12 +64,12 @@ public class JoinMemberController {
     }
 
 
-    @GetMapping("/test")
-    public ResponseEntity<?> reissueTest() {
-
-        producerService.sendMessage("하하하하하하");
-
-        return ResponseEntity.ok(true);
-    }
+//    @GetMapping("/test")
+//    public ResponseEntity<?> reissueTest() {
+//
+//        producerService.sendMessage("하하하하하하");
+//
+//        return ResponseEntity.ok(true);
+//    }
 
 }

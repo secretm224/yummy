@@ -133,9 +133,6 @@ public class LoginController {
                 /* Oauth2 인증 성공해서 유저 정보가 있는 경우 */
                 Boolean loginRes = yummyLoginService.oauthLogin(result.getUserNum(), result.getIdToken(), res);
 
-                System.out.println("====================");
-                System.out.println(loginRes);
-
                 if (loginRes) return ResponseEntity.ok(PublicStatus.SUCCESS);
                 else return ResponseEntity.ok(PublicStatus.AUTH_ERROR);
             }
