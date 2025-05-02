@@ -41,30 +41,20 @@ public class YummyLoginService {
     @PersistenceContext
     private final EntityManager entityManager;
     private final RedisService redisService;
+    private final UserService userService;
     private final JwtProviderService jwtProviderService;
     private final JPAQueryFactory queryFactory;
     private final UserTokenIdRepository userTokenIdRepository;
 
     public YummyLoginService(RedisService redisService, JwtProviderService jwtProviderService,
                              JPAQueryFactory queryFactory, EntityManager entityManager,
-                             UserTokenIdRepository userTokenIdRepository) {
+                             UserTokenIdRepository userTokenIdRepository, UserService userService) {
         this.redisService = redisService;
         this.jwtProviderService = jwtProviderService;
         this.queryFactory = queryFactory;
         this.entityManager = entityManager;
         this.userTokenIdRepository = userTokenIdRepository;
-    }
-
-    /* Entity -> DTO 변환 (UserTbl) */
-    private UserBasicInfoDto convertUserToBasicInfo(UserTbl userTbl, UserLocationDetailTbl userLocationDetail) {
-        return new UserBasicInfoDto(
-                userTbl.getUserId(),
-                userTbl.getUserNm(),
-                userTbl.getUserBirth(),
-                "",
-                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLngX).orElse(null),
-                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLatY).orElse(null)
-        );
+        this.userService = userService;
     }
 
     /**
@@ -91,7 +81,7 @@ public class YummyLoginService {
      * @throws Exception
      */
     @Transactional(rollbackFor = Exception.class)
-    public Boolean oauthLogin(Long userNum, String idToken, HttpServletResponse res) throws Exception {
+    public PublicStatus oauthLogin(Long userNum, String idToken, HttpServletResponse res) throws Exception {
 
         /* 1. 사용자 조회 */
         UserTbl user = queryFactory
@@ -101,7 +91,7 @@ public class YummyLoginService {
 
         if (user == null) {
             log.info("[YummyLoginService->oauthLogin][Login] No User: {}", userNum);
-            return false;
+            return PublicStatus.AUTH_ERROR;
         }
 
         log.info("[YummyLoginService->oauthLogin][Login] Login successful: {}", user.getUserId());
@@ -109,7 +99,7 @@ public class YummyLoginService {
         /* 2. 로그인 처리 */
         handlePostLogin(user, false, res);
 
-        return true;
+        return PublicStatus.SUCCESS;
     }
 
     /**
@@ -119,7 +109,7 @@ public class YummyLoginService {
      * @return
      */
     @Transactional(rollbackFor = Exception.class)
-    public Boolean standardLoginUser(StandardLoginDto standardLoginDto,
+    public PublicStatus standardLoginUser(StandardLoginDto standardLoginDto,
                                                         HttpServletResponse res,
                                                         HttpServletRequest req) throws Exception {
 
@@ -134,7 +124,7 @@ public class YummyLoginService {
 
         if (user == null) {
             log.info("[YummyLoginService->standardLoginUser][Login] No User: {}", standardLoginDto.getUserId());
-            return false;
+            return PublicStatus.AUTH_ERROR;
         }
 
         /* 3. 비밀번호 해시 비교 */
@@ -142,19 +132,19 @@ public class YummyLoginService {
 
         if (!hashedInput.equals(user.getUserPw())) {
             log.info("[YummyLoginService->standardLoginUser][Login] password mismatch: {}", standardLoginDto.getUserId());
-            return false;
+            return PublicStatus.AUTH_ERROR;
         }
 
         log.info("[YummyLoginService->standardLoginUser][Login] Login successful: {}", standardLoginDto.getUserId());
 
         handlePostLogin(user, tempUserYn, res);
 
-        return true;
+        return PublicStatus.SUCCESS;
     }
 
 
     /**
-     * Oauth2/Standard Login 공통 처리 함수
+     * Oauth2 / Standard Login 공통 처리 함수
      * @param user
      * @param tempUserYn
      * @param res
@@ -176,13 +166,8 @@ public class YummyLoginService {
         CookieUtil.addCookie(res, "yummy-access-token", accessToken, 7200);
 
         /* 4. 기본적인 유저의 정보를 가져와준다. */
-        UserLocationDetailTbl userLocationDetail = queryFactory
-                .selectFrom(userLocationDetailTbl)
-                .where(userLocationDetailTbl.id.userNo.eq(user.getUserNo()))
-                .fetchFirst();
-
         /* 기본 회원 정보 - 브라우저 돌아다니면서 사용할 수 있는 정보 - private 한 정보같은건 넣으면 안된다. */
-        UserBasicInfoDto userBasicInfo = convertUserToBasicInfo(user, userLocationDetail);
+        UserBasicInfoDto userBasicInfo = userService.getUserBasicInfos(user);
 
         /* 5. 기본 회원정보를 Redis 에 저장한다. */
         String basicUserInfo = String.format("%s:%s", userInfoKey, user.getUserNo().toString());
@@ -291,9 +276,6 @@ public class YummyLoginService {
      * @param res
      */
     public void standardLogoutUser(HttpServletResponse res) {
-        //CookieUtil.clearCookies(res, "yummy-access-token", "yummy-user-id");
         CookieUtil.clearCookie(res, "yummy-access-token");
     }
-
-
 }

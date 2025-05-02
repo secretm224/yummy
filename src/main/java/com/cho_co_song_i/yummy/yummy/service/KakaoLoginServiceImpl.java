@@ -6,6 +6,7 @@ import com.cho_co_song_i.yummy.yummy.dto.UserOAuthResponse;
 import com.cho_co_song_i.yummy.yummy.entity.UserAuthTbl;
 import com.cho_co_song_i.yummy.yummy.entity.UserLocationDetailTbl;
 import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
+import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
@@ -44,40 +45,35 @@ public class KakaoLoginServiceImpl implements LoginService {
 
     @Value("${kakao.auth.url}")
     private String kakaoAuthUrl;
-
     @Value("${kakao.redirect.url}")
     private String kakaoRedirectUrl;
-
     @Value("${kakao.client.id}")
     private String kakaoApiKey;
-
     @Value("${kakao.api.url}")
     private String kakaoApiUrl;
-
     @Value("${spring.redis.kakao.access_token}")
     private String kakaoAccessKeyPrefix;
-
     @Value("${spring.redis.kakao.user_info}")
     private String kakaoUserInfoPrefix;
-
     @Value("${spring.redis.login.user_info}")
     private String userInfoKey;
 
     private final RestTemplate restTemplate;
     private final JPAQueryFactory queryFactory;
     private final RedisService redisService;
+    private final UserService userService;
     private final JwtProviderService jwtProviderService;
 
 
     public KakaoLoginServiceImpl(RestTemplate restTemplate, JPAQueryFactory queryFactory,
-                                 RedisService redisService, JwtProviderService jwtProviderService) {
+                                 RedisService redisService, JwtProviderService jwtProviderService,
+                                 UserService userService) {
         this.restTemplate = restTemplate;
         this.queryFactory = queryFactory;
         this.redisService = redisService;
         this.jwtProviderService = jwtProviderService;
+        this.userService = userService;
     }
-
-
 
     /**
      * 회원이 oauth2 를 통해 기존아이디 통합 또는 회원가입을 위해 임시 jwt 쿠키를 발급해준다.
@@ -86,12 +82,12 @@ public class KakaoLoginServiceImpl implements LoginService {
      */
     @Override
     public void generateTempOauthJwtCookie(String idToken, HttpServletResponse res) {
-        String jwtToken = jwtProviderService.generateOauthTempToken(idToken, "kakao");
+        String jwtToken = jwtProviderService.generateOauthTempToken(idToken, String.valueOf(OauthChannelStatus.kakao));
         CookieUtil.addCookie(res, "yummy-oauth-token", jwtToken, 300);
     }
 
     /**
-     * Kakao 로그인 처리
+     * Oauth2 -> Kakao 로그인 처리
      * @param code
      * @return
      */
@@ -104,9 +100,11 @@ public class KakaoLoginServiceImpl implements LoginService {
 
         if (kakaoToken == null) {
             /* 카카오 토큰이 유효하지 않은 경우 */
+            log.error("[Error][KakaoLoginServiceImpl->handleOAuthLogin] Failed to convert code to KakaoToken. code: {}", code);
             return new UserOAuthResponse(PublicStatus.TOKEN_ERR, null, null);
         }
 
+        // 토큰이 필요할지 모르니 일단 주석처리.
 //        String accessToken = kakaoToken.getAccess_token();
 //        String refreshToken = kakaoToken.getRefresh_token();
 //        if (accessToken == null || accessToken.isEmpty()) {
@@ -122,6 +120,11 @@ public class KakaoLoginServiceImpl implements LoginService {
         UserOAuthInfoDto userKakaoInfo = getKakaoUserInfo(payload);
 
         /* Kakao 고유 id token*/
+        if (userKakaoInfo == null) {
+            log.error("[Error][KakaoLoginServiceImpl->handleOAuthLogin] Failed to convert payload to UserOAuthInfoDto. payload: {}", payload);
+            return new UserOAuthResponse(PublicStatus.TOKEN_ERR, null, null);
+        }
+
         String userToken = userKakaoInfo.getUserTokenId();
 
         /* user_auth_tbl 테이블을 탐색 */
@@ -129,26 +132,21 @@ public class KakaoLoginServiceImpl implements LoginService {
                 .selectFrom(userAuthTbl)
                 .join(userTbl).on(userTbl.eq(userAuthTbl.user))
                 .where(
-                        userAuthTbl.id.loginChannel.eq("kakao"),
+                        userAuthTbl.id.loginChannel.eq(String.valueOf(OauthChannelStatus.kakao)),
                         userAuthTbl.id.tokenId.eq(userToken)
                 )
                 .fetchFirst();
 
         if (userAuth == null) {
-            /* 연동한적이 없거나, 가입하지 않은 경우 */
+            /* 연동한적이 없거나, 가입하지 않은 경우 -> 가입유도 or 기존 아이디에 oauth2 추가 */
             return new UserOAuthResponse(PublicStatus.JOIN_TARGET_MEMBER, userToken, null);
         }
 
         /* 회원 정보를 Redis 에 저장해주기 위함 */
         Long userNo = userAuth.getId().getUserNo();
-        UserTbl loginUser = queryFactory
-                .selectFrom(userTbl)
-                .where(
-                        userTbl.userNo.eq(userNo)
-                )
-                .fetchFirst();
 
-        UserBasicInfoDto userBasicInfo = getUserInfo(userNo, userKakaoInfo);
+        /* 유저의 기본정보 */
+        UserBasicInfoDto userBasicInfo = userService.getUserInfos(userNo, userKakaoInfo);
 
         /* Redis 에 유저 정보 저장 */
         String basicUserInfo = String.format("%s:%s", userInfoKey, userNo);
@@ -156,36 +154,6 @@ public class KakaoLoginServiceImpl implements LoginService {
 
         /* 연동 이력이 존재하는 경우 -> jwt 토큰 발급 */
         return new UserOAuthResponse(PublicStatus.SUCCESS, userToken, userAuth.getUser().getUserNo());
-    }
-
-    /**
-     * 유저의 기본정보를 가져와주는 함수
-     * @param UserNo
-     * @param userOAuthInfoDto
-     * @return
-     */
-    private UserBasicInfoDto getUserInfo(Long UserNo, UserOAuthInfoDto userOAuthInfoDto) {
-
-        UserTbl loginUser = queryFactory
-                .selectFrom(userTbl)
-                .where(
-                        userTbl.userNo.eq(UserNo)
-                )
-                .fetchFirst();
-
-        UserLocationDetailTbl userLocationDetail = queryFactory
-                .selectFrom(userLocationDetailTbl)
-                .where(userLocationDetailTbl.id.userNo.eq(UserNo))
-                .fetchFirst();
-
-        return new UserBasicInfoDto(
-                loginUser.getUserId(),
-                loginUser.getUserNm(),
-                loginUser.getUserBirth(),
-                userOAuthInfoDto.getUserPicture(),
-                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLngX).orElse(null),
-                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLatY).orElse(null)
-        );
     }
 
     /**
@@ -226,10 +194,10 @@ public class KakaoLoginServiceImpl implements LoginService {
             * => grant_type=authorization_code&client_id=...&redirect_url=...&code=...
             * */
             MultiValueMap<String,Object> params = new LinkedMultiValueMap<>();
-            params.add("grant_type","authorization_code");
-            params.add("client_id",kakaoApiKey);
-            params.add("redirect_url",kakaoRedirectUrl);
-            params.add("code",code);
+            params.add("grant_type", "authorization_code");
+            params.add("client_id", kakaoApiKey);
+            params.add("redirect_url", kakaoRedirectUrl);
+            params.add("code", code);
 
             /* api 요청 데이터 및 헤더 세팅 */
             HttpHeaders headers = new HttpHeaders();
@@ -408,18 +376,5 @@ public class KakaoLoginServiceImpl implements LoginService {
         }
 
         return true;
-    }
-
-    /**
-     * 유저 로그인 관련 토큰을 삭제해주는 함수
-     * @param res
-     * @param req
-     * @return
-     */
-    public Boolean clearUserToken(HttpServletResponse res , HttpServletRequest req) {
-        Boolean accessRes = removeTokenAndCookie(res, req, "accessTokenKey");
-        Boolean refreshRes = removeTokenAndCookie(res, req, "refreshTokenKey");
-
-        return accessRes && refreshRes;
     }
 }
