@@ -27,9 +27,29 @@ public class JwtProviderService {
     public JwtProviderService(@Value("${spring.redis.jwt.secret_key}") String secretKey) {
         this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
-
+    private final long TEMP_TOKEN_EXPIRATION = 1000 * 60 * 5; /* 5분 */
     private final long ACCESS_TOKEN_EXPIRATION = 1000 * 60 * 60; /* 1시간 */
     private final long REFRESH_TOKEN_EXPIRATION = 1000L * 60 * 60 * 24 * 7; /* 7일 */
+
+
+    /**
+     * Oauth 회원가입을 위한 임시 jwt
+     * @param idToken
+     * @return
+     */
+    public String generateOauthTempToken(String idToken, String oauthChannel) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("oauthChannel", oauthChannel);
+
+        return Jwts.builder()
+                .claims(claims)
+                .subject(idToken)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + TEMP_TOKEN_EXPIRATION))
+                .signWith(key) /* 알고리즘은 키에서 자동 추론됨 */
+                .compact();
+    }
+
 
     /**
      * Access Token 을 발급해주는 함수

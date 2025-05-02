@@ -72,20 +72,20 @@ public class LoginController {
      * @return
      */
     @PostMapping("/standardLogin")
-    public ResponseEntity<PublicResponse> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res , HttpServletRequest req) {
+    public ResponseEntity<PublicStatus> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res , HttpServletRequest req) {
 
         try {
             Boolean result = yummyLoginService.standardLoginUser(standardLoginDto, res, req);
 
             if (!result) {
-                return ResponseEntity.ok(new PublicResponse(PublicStatus.AUTH_ERROR, "Your login information is invalid."));
+                return ResponseEntity.ok(PublicStatus.AUTH_ERROR);
             }
 
-            return ResponseEntity.ok(new PublicResponse(PublicStatus.SUCCESS, ""));
+            return ResponseEntity.ok(PublicStatus.SUCCESS);
 
         } catch(Exception e) {
             log.error("[Error][LoginController->StandardLogin] {}", e.getMessage(), e);
-            return ResponseEntity.ok(new PublicResponse(PublicStatus.AUTH_ERROR, "Your login information is invalid."));
+            return ResponseEntity.ok(PublicStatus.AUTH_ERROR);
         }
     }
 
@@ -115,19 +115,19 @@ public class LoginController {
 
         if (result.isEmpty()) {
             /* 실제 HTTP 200, 하지만 body에는 명시적인 로그인 실패 코드 포함 */
-            return ResponseEntity.ok(new PublicResponse(PublicStatus.AUTH_ERROR, "Not logged in."));
+            return ResponseEntity.ok(PublicStatus.AUTH_ERROR);
         }
 
         return ResponseEntity.ok(result);
     }
 
-    @PostMapping("/ouath2/kakao")
+    @PostMapping("/oauth2/kakao")
     @ResponseBody
     public ResponseEntity<PublicStatus> KakaoLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) {
 
         try {
 
-            UserOAuthResponse result = kakoLoginService.handleOAuthLogin(loginDto.getCode(), res);
+            UserOAuthResponse result = kakoLoginService.handleOAuthLogin(loginDto.getCode());
 
             if (result.getPublicStatus() == PublicStatus.SUCCESS) {
                 /* Oauth2 인증 성공해서 유저 정보가 있는 경우 */
@@ -136,14 +136,14 @@ public class LoginController {
                 if (loginRes) return ResponseEntity.ok(PublicStatus.SUCCESS);
                 else return ResponseEntity.ok(PublicStatus.AUTH_ERROR);
             }
-//            else if (result.getPublicStatus() == PublicStatus.JOIN_TARGET_MEMBER) {
-//                /*
-//                * 유저에게 신규 가입 또는 기존회원 연동 하게 시킴.
-//                * -> 임시 jwt 토큰 발급
-//                * */
-//
-//
-//            }
+            else if (result.getPublicStatus() == PublicStatus.JOIN_TARGET_MEMBER) {
+                /*
+                * 유저에게 신규 가입 또는 기존회원 연동 하게 시킴.
+                * -> 임시 jwt 토큰 발급
+                */
+                kakoLoginService.generateTempOauthJwtCookie(result.getIdToken(), res);
+                return ResponseEntity.ok(PublicStatus.JOIN_TARGET_MEMBER);
+            }
 
             return ResponseEntity.ok(PublicStatus.CASE_ERR);
         } catch(Exception e) {
@@ -152,35 +152,6 @@ public class LoginController {
         }
     }
 
-
-    // TODO: 4/5/25
-    @PostMapping("/auth/callback")
-    @ResponseBody
-    public ResponseEntity<?> OAuthLogin(HttpServletResponse res , HttpServletRequest req) {
-        //@RequestBody OauthLoginDto loginDto,
-
-        return ResponseEntity.ok(true);
-        
-//        if (loginDto == null || loginDto.getOauthType() == null) {
-//            return ResponseEntity
-//                    .status(HttpStatus.BAD_REQUEST)
-//                    .body(new ErrorResponse("LOGINDTO_EMPTY", "Login information is null."));
-//        } else {
-//
-//            if (loginDto.getOauthType().equals("kakao")) {
-//
-//            } else if (loginDto.getOauthType().equals("naver")) {
-//
-//            } else if (loginDto.getOauthType().equals("google")) {
-//
-//            }
-//
-//            /* 프로젝트에서 지원하지 않는 Oauth 를 사용한 경우 */
-//            return ResponseEntity
-//                    .status(HttpStatus.BAD_REQUEST)
-//                    .body(new ErrorResponse("OAUTH_UNSUPPORTED", "Unsupported OAuth type."));
-//        }
-    }
     
 
 //    @PostMapping("/kakao/callback")

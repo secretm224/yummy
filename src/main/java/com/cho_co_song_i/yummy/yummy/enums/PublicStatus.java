@@ -9,6 +9,7 @@ public enum PublicStatus {
     PW_CHECK_ERR,
     TELECOM_ERR,
     PHONE_ERR,
+    PHONE_DUPLICATED,
     ID_FIND_ERR,
     ID_DUPLICATED,
     PW_ERR,
@@ -17,6 +18,7 @@ public enum PublicStatus {
     AUTH_ERROR,
     SERVER_ERR,
     TOKEN_ERR,
+    REJOIN_CHECK,
     JOIN_TARGET_MEMBER,
     CASE_ERR
 }

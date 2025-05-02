@@ -61,6 +61,7 @@ public class YummyLoginService {
                 userTbl.getUserId(),
                 userTbl.getUserNm(),
                 userTbl.getUserBirth(),
+                "",
                 Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLngX).orElse(null),
                 Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLatY).orElse(null)
         );
@@ -80,7 +81,6 @@ public class YummyLoginService {
 
         return userTempPw != null;
     }
-
 
     /**
      * Oauth2 를 통한 로그인 처리

@@ -1,13 +1,14 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.interfaces.DecodedJWT;
+import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserOAuthInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserOAuthResponse;
-import com.cho_co_song_i.yummy.yummy.dto.UserProfileDto;
 import com.cho_co_song_i.yummy.yummy.entity.UserAuthTbl;
+import com.cho_co_song_i.yummy.yummy.entity.UserLocationDetailTbl;
+import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
+import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -23,16 +24,18 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+
+import static com.cho_co_song_i.yummy.yummy.entity.QUserLocationDetailTbl.userLocationDetailTbl;
 import static com.cho_co_song_i.yummy.yummy.utils.CookieUtil.*;
 import static com.cho_co_song_i.yummy.yummy.utils.JwtUtil.decodeJwtPayload;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QUserAuthTbl.userAuthTbl;
+import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 
 
 @Service
@@ -57,11 +60,12 @@ public class KakaoLoginServiceImpl implements LoginService {
     @Value("${spring.redis.kakao.user_info}")
     private String kakaoUserInfoPrefix;
 
+    @Value("${spring.redis.login.user_info}")
+    private String userInfoKey;
+
     private final RestTemplate restTemplate;
     private final JPAQueryFactory queryFactory;
-
     private final RedisService redisService;
-
     private final JwtProviderService jwtProviderService;
 
 
@@ -73,14 +77,26 @@ public class KakaoLoginServiceImpl implements LoginService {
         this.jwtProviderService = jwtProviderService;
     }
 
+
+
+    /**
+     * 회원이 oauth2 를 통해 기존아이디 통합 또는 회원가입을 위해 임시 jwt 쿠키를 발급해준다.
+     * @param idToken
+     * @param res
+     */
+    @Override
+    public void generateTempOauthJwtCookie(String idToken, HttpServletResponse res) {
+        String jwtToken = jwtProviderService.generateOauthTempToken(idToken, "kakao");
+        CookieUtil.addCookie(res, "yummy-oauth-token", jwtToken, 300);
+    }
+
     /**
      * Kakao 로그인 처리
      * @param code
-     * @param res
      * @return
      */
     @Override
-    public UserOAuthResponse handleOAuthLogin(String code, HttpServletResponse res) throws Exception {
+    public UserOAuthResponse handleOAuthLogin(String code) throws Exception {
         /*
          * OAuth 인증과정에서 받은 code를 이용해서 access_token을 요청하고, 그 결과를 KakaoToken 으로 반환받는다.
          */
@@ -91,13 +107,13 @@ public class KakaoLoginServiceImpl implements LoginService {
             return new UserOAuthResponse(PublicStatus.TOKEN_ERR, null, null);
         }
 
-        //String accessToken = kakaoToken.getAccess_token();
-        //String refreshToken = kakaoToken.getRefresh_token();
-        String idToken = kakaoToken.getId_token();
-
+//        String accessToken = kakaoToken.getAccess_token();
+//        String refreshToken = kakaoToken.getRefresh_token();
 //        if (accessToken == null || accessToken.isEmpty()) {
 //            return null;
 //        }
+
+        String idToken = kakaoToken.getId_token();
 
         /* Kakao Payload 정보 */
         Map<String, Object> payload = decodeJwtPayload(idToken);
@@ -105,22 +121,71 @@ public class KakaoLoginServiceImpl implements LoginService {
         /* User 정보 */
         UserOAuthInfoDto userKakaoInfo = getKakaoUserInfo(payload);
 
+        /* Kakao 고유 id token*/
+        String userToken = userKakaoInfo.getUserTokenId();
+
         /* user_auth_tbl 테이블을 탐색 */
         UserAuthTbl userAuth = queryFactory
                 .selectFrom(userAuthTbl)
+                .join(userTbl).on(userTbl.eq(userAuthTbl.user))
                 .where(
                         userAuthTbl.id.loginChannel.eq("kakao"),
-                        userAuthTbl.id.tokenId.eq(userKakaoInfo.getUserTokenId())
+                        userAuthTbl.id.tokenId.eq(userToken)
                 )
                 .fetchFirst();
 
         if (userAuth == null) {
             /* 연동한적이 없거나, 가입하지 않은 경우 */
-            return new UserOAuthResponse(PublicStatus.JOIN_TARGET_MEMBER, idToken, null);
+            return new UserOAuthResponse(PublicStatus.JOIN_TARGET_MEMBER, userToken, null);
         }
 
+        /* 회원 정보를 Redis 에 저장해주기 위함 */
+        Long userNo = userAuth.getId().getUserNo();
+        UserTbl loginUser = queryFactory
+                .selectFrom(userTbl)
+                .where(
+                        userTbl.userNo.eq(userNo)
+                )
+                .fetchFirst();
+
+        UserBasicInfoDto userBasicInfo = getUserInfo(userNo, userKakaoInfo);
+
+        /* Redis 에 유저 정보 저장 */
+        String basicUserInfo = String.format("%s:%s", userInfoKey, userNo);
+        redisService.set(basicUserInfo, userBasicInfo);
+
         /* 연동 이력이 존재하는 경우 -> jwt 토큰 발급 */
-        return new UserOAuthResponse(PublicStatus.SUCCESS, idToken, userAuth.getUser().getUserNo());
+        return new UserOAuthResponse(PublicStatus.SUCCESS, userToken, userAuth.getUser().getUserNo());
+    }
+
+    /**
+     * 유저의 기본정보를 가져와주는 함수
+     * @param UserNo
+     * @param userOAuthInfoDto
+     * @return
+     */
+    private UserBasicInfoDto getUserInfo(Long UserNo, UserOAuthInfoDto userOAuthInfoDto) {
+
+        UserTbl loginUser = queryFactory
+                .selectFrom(userTbl)
+                .where(
+                        userTbl.userNo.eq(UserNo)
+                )
+                .fetchFirst();
+
+        UserLocationDetailTbl userLocationDetail = queryFactory
+                .selectFrom(userLocationDetailTbl)
+                .where(userLocationDetailTbl.id.userNo.eq(UserNo))
+                .fetchFirst();
+
+        return new UserBasicInfoDto(
+                loginUser.getUserId(),
+                loginUser.getUserNm(),
+                loginUser.getUserBirth(),
+                userOAuthInfoDto.getUserPicture(),
+                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLngX).orElse(null),
+                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLatY).orElse(null)
+        );
     }
 
     /**
@@ -276,7 +341,7 @@ public class KakaoLoginServiceImpl implements LoginService {
             user_obj.put("nickname", nickName);
             user_obj.put("picture", image);
             user_obj.put("token_id", tokenId);
-//test
+
         }catch(Exception e){
             e.printStackTrace();
         }
@@ -321,10 +386,6 @@ public class KakaoLoginServiceImpl implements LoginService {
         return token_obj;
     }
 
-//    public List<UserProfileDto> getUserDetailInfo(String loginChannel, String tokenId) {
-//        return userCustomRepository.GetUserInfo(loginChannel, tokenId);
-//    }
-
     /**
      * 토큰을 쿠키, Redis 모두에서 삭제해주는 함수
      * @param res
@@ -361,31 +422,4 @@ public class KakaoLoginServiceImpl implements LoginService {
 
         return accessRes && refreshRes;
     }
-
-
-//    public Boolean validateServer(String access_token) {
-//
-//        /* 해당 access 토큰이 유효한지 검증 */
-//        try {
-//
-//            jwtProviderService.validateTokenAndGetSubject(access_token);
-//
-//        } catch (ExpiredJwtException e) {
-//            log.warn("[Warn][LoginService->handleServerLogin] JWT token expired: {}", e.getMessage(), e);
-//        } catch (UnsupportedJwtException e) {
-//            log.error("[Error][LoginService->handleServerLogin] JWT format not supported: {}", e.getMessage(), e);
-//            return false;
-//        } catch (MalformedJwtException e) {
-//            log.error("[Error][LoginService->handleServerLogin] Invalid JWT format: {}", e.getMessage(), e);
-//        } catch (SecurityException e) {
-//            log.error("[Error][LoginService->handleServerLogin] Signature Verification Failed: {}", e.getMessage(), e);
-//        } catch (IllegalArgumentException e) {
-//            log.error("[Error][LoginService->handleServerLogin] Token is empty or null: {}", e.getMessage(), e);
-//        } catch (Exception e) {
-//            log.error("[Error][LoginService->handleServerLogin] {}",e.getMessage(), e);
-//        }
-//
-//
-//    }
-
 }

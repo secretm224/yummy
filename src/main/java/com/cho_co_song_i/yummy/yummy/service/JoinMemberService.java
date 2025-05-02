@@ -3,16 +3,17 @@ package com.cho_co_song_i.yummy.yummy.service;
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JoinMemberIdStatus;
+import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
-import com.cho_co_song_i.yummy.yummy.repository.UserEmailRepository;
-import com.cho_co_song_i.yummy.yummy.repository.UserPhoneNumberRepository;
-import com.cho_co_song_i.yummy.yummy.repository.UserRepository;
-import com.cho_co_song_i.yummy.yummy.repository.UserTempPwHistoryRepository;
+import com.cho_co_song_i.yummy.yummy.repository.*;
+import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
 import com.cho_co_song_i.yummy.yummy.utils.PasswdUtil;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -23,22 +24,26 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserEmailTbl.userEmailTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserPhoneNumberTbl.userPhoneNumberTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTokenIdTbl.userTokenIdTbl;
+import static com.cho_co_song_i.yummy.yummy.utils.JwtUtil.decodeJwtPayload;
 
 @Service
 @Slf4j
 public class JoinMemberService {
     private final JPAQueryFactory queryFactory;
     private final UserRepository userRepository;
+    private final UserAuthRepository userAuthRepository;
     private final UserPhoneNumberRepository userPhoneNumberRepository;
     private final UserEmailRepository userEmailRepository;
     private final UserTempPwHistoryRepository userTempPwHistoryRepository;
     private final KafkaProducerService kafkaProducerService;
+    private final JwtProviderService jwtProviderService;
     private final RedisService redisService;
 
     @PersistenceContext
@@ -58,7 +63,8 @@ public class JoinMemberService {
     public JoinMemberService(JPAQueryFactory queryFactory, UserRepository userRepository,
                              UserPhoneNumberRepository userPhoneNumberRepository, UserEmailRepository userEmailRepository,
                              KafkaProducerService kafkaProducerService, UserTempPwHistoryRepository userTempPwHistoryRepository,
-                             RedisService redisService, EntityManager entityManager
+                             RedisService redisService, EntityManager entityManager, JwtProviderService jwtProviderService,
+                             UserAuthRepository userAuthRepository
     ) {
         this.queryFactory = queryFactory;
         this.userRepository = userRepository;
@@ -68,6 +74,8 @@ public class JoinMemberService {
         this.userTempPwHistoryRepository = userTempPwHistoryRepository;
         this.redisService = redisService;
         this.entityManager = entityManager;
+        this.jwtProviderService = jwtProviderService;
+        this.userAuthRepository = userAuthRepository;
     }
 
     /**
@@ -76,32 +84,32 @@ public class JoinMemberService {
      * @return
      */
     @Transactional(rollbackFor = Exception.class)
-    public PublicResponse findPw(FindPwDto findPwDto) throws Exception {
+    public PublicStatus findPw(FindPwDto findPwDto) throws Exception {
 
         /* 1. 유효성 검사 */
         /* 이름 검사 */
         boolean checkUserName = checkUserName(findPwDto.getUserNm());
         if (!checkUserName) {
-            return new PublicResponse(PublicStatus.NAME_ERR, "Invalid name form.");
+            return PublicStatus.NAME_ERR;
         }
 
         /* 아이디 검사 */
         boolean checkId = checkIdFormat(findPwDto.getUserId());
         if (!checkId) {
-            return new PublicResponse(PublicStatus.ID_ERR, "Invalid ID format.");
+            return PublicStatus.ID_ERR;
         }
 
         /* 이메일 검사 */
         boolean checkEmail = checkUserEmail(findPwDto.getEmail());
         if (!checkEmail) {
-            return new PublicResponse(PublicStatus.EMAIL_ERR, "Email does not conform to the rules.");
+            return PublicStatus.EMAIL_ERR;
         }
 
         /* 2.사용자 조회 */
         UserTbl userTbl = fetchUserInfo(findPwDto);
 
         if (userTbl == null) {
-            return new PublicResponse(PublicStatus.PW_FIND_ERR, "There are no membership records.");
+            return PublicStatus.PW_FIND_ERR;
         }
 
         /* 3. 임시 비밀번호 생성 및 기존 토큰 모두 제거 */
@@ -117,7 +125,7 @@ public class JoinMemberService {
         );
 
 
-        return new PublicResponse(PublicStatus.SUCCESS, "");
+        return PublicStatus.SUCCESS;
     }
 
     /**
@@ -203,30 +211,38 @@ public class JoinMemberService {
      * @param findIdDto
      * @return
      */
-    public PublicResponse findId(FindIdDto findIdDto) {
+    public PublicStatus findId(FindIdDto findIdDto) {
 
         /* 이름 검사 */
         boolean checkUserName = checkUserName(findIdDto.getUserNm());
         if (!checkUserName) {
-            return new PublicResponse(PublicStatus.NAME_ERR, "Invalid name form");
+            return PublicStatus.NAME_ERR;
         }
 
         /* 통신사 검사 */
         boolean checkUserTelecom = checkUserMobileCarrier(findIdDto.getTelecom());
         if (!checkUserTelecom) {
-            return new PublicResponse(PublicStatus.TELECOM_ERR, "Invalid birthday form");
+            return PublicStatus.TELECOM_ERR;
         }
 
-        /* 휴대폰 번호 검사 */
-        boolean checkUserPhoneNumber = checkUserPhoneNumber(findIdDto.getPhoneNumber());
-        if (!checkUserPhoneNumber) {
-            return new PublicResponse(PublicStatus.PHONE_ERR, "Invalid phone number form");
+
+        try {
+            /* 휴대폰 번호 검사 */
+            PublicStatus checkUserPhoneNumber = checkUserPhoneNumber(findIdDto.getPhoneNumber());
+            if (checkUserPhoneNumber != PublicStatus.SUCCESS) {
+                return checkUserPhoneNumber;
+            }
+
+        } catch(Exception e) {
+            log.error("[Error][JoinMemberService->findId] {}", e.getMessage(), e);
+            return PublicStatus.SERVER_ERR;
         }
+
 
         /* 이메일 검사 */
         boolean checkEmail = checkUserEmail(findIdDto.getEmail());
         if (!checkEmail) {
-            return new PublicResponse(PublicStatus.EMAIL_ERR, "Email does not conform to the rules");
+            return PublicStatus.EMAIL_ERR;
         }
 
         /**
@@ -250,7 +266,7 @@ public class JoinMemberService {
 
             /* 입력한 정보를 토대로 회원정보가 존재하지 않음 */
             if (findUserId == null || findUserId.isEmpty()) {
-                return new PublicResponse(PublicStatus.ID_FIND_ERR, "There are no membership records.");
+                return PublicStatus.ID_FIND_ERR;
             }
 
             /* 회원정보가 존재하는 경우 -> Kafka Producing */
@@ -261,7 +277,7 @@ public class JoinMemberService {
             log.error("[Error][JoinMemberService->findId] {}", e.getMessage(), e);
         }
 
-        return new PublicResponse(PublicStatus.SUCCESS, "");
+        return PublicStatus.SUCCESS;
     }
 
     /**
@@ -270,85 +286,139 @@ public class JoinMemberService {
      * @return
      */
     @Transactional(rollbackFor = Exception.class)
-    public PublicResponse joinMember(JoinMemberDto joinMemberDto) throws Exception {
+    public PublicStatus joinMember(HttpServletResponse res, HttpServletRequest req, JoinMemberDto joinMemberDto) throws Exception {
 
         /* UserID 확인 */
         try {
             JoinMemberIdStatus checkId = checkUserId(joinMemberDto.getUserId());
 
             if (checkId == JoinMemberIdStatus.NONFORMAT) {
-                return new PublicResponse(PublicStatus.ID_ERR,"Id does not conform to the rule");
+                return PublicStatus.ID_ERR;
             } else if (checkId == JoinMemberIdStatus.DUPLICATED) {
-                return new PublicResponse(PublicStatus.ID_DUPLICATED,"The ID already exists.");
+                return PublicStatus.ID_DUPLICATED;
             }
 
         } catch(Exception e) {
             log.error("[Error][JoinMemberService->joinMember] {}", e.getMessage(), e);
-            return new PublicResponse(PublicStatus.ID_ERR,"Id does not conform to the rule");
+            return PublicStatus.ID_ERR;
         }
 
 
         /* UserPasswd 확인 */
         boolean checkPw = checkUserPw(joinMemberDto.getPassword());
         if (!checkPw) {
-            return new PublicResponse(PublicStatus.PW_ERR,"Password does not conform to the rule");
+            return PublicStatus.PW_ERR;
         }
 
         /* UserPasswd 비밀번호 확인 */
         boolean checkPwCheck = checkUserPwCheck(joinMemberDto.getPassword(), joinMemberDto.getPasswordCheck());
         if (!checkPwCheck) {
-            return new PublicResponse(PublicStatus.PW_CHECK_ERR,"Password does not match.");
+            return PublicStatus.PW_CHECK_ERR;
         }
 
         /* Email 검사 */
         boolean checkEmail = checkUserEmail(joinMemberDto.getEmail());
         if (!checkEmail) {
-            return new PublicResponse(PublicStatus.EMAIL_ERR, "Email does not conform to the rules");
+            return PublicStatus.EMAIL_ERR;
         }
 
         /* 이름 검사 */
         boolean checkUserName = checkUserName(joinMemberDto.getName());
         if (!checkUserName) {
-            return new PublicResponse(PublicStatus.NAME_ERR, "Invalid name form");
+            return PublicStatus.NAME_ERR;
         }
 
         /* 생년월일 검사 */
         boolean checkUserBirthday = checkUserBirthday(joinMemberDto.getBirthDate());
         if (!checkUserBirthday) {
-            return new PublicResponse(PublicStatus.BIRTH_ERR, "Invalid birthday form");
+            return PublicStatus.BIRTH_ERR;
         }
 
         /* 통신사 검사 */
         boolean checkUserTelecom = checkUserMobileCarrier(joinMemberDto.getTelecom());
         if (!checkUserTelecom) {
-            return new PublicResponse(PublicStatus.TELECOM_ERR, "Invalid birthday form");
+            return PublicStatus.TELECOM_ERR;
         }
 
         /* 성별 검사 */
         boolean checkUserGender = checkUserGender(joinMemberDto.getGender());
         if (!checkUserGender) {
-            return new PublicResponse(PublicStatus.GENDER_ERR, "Invalid gender form");
+            return PublicStatus.GENDER_ERR;
         }
 
         /* 휴대전화번호 검사 */
-        boolean checkUserPhoneNumber = checkUserPhoneNumber(joinMemberDto.getPhoneNumber());
-        if (!checkUserPhoneNumber) {
-            return new PublicResponse(PublicStatus.PHONE_ERR, "Invalid phone number form");
+        PublicStatus checkUserPhoneNumber = checkUserPhoneNumber(joinMemberDto.getPhoneNumber());
+        if (checkUserPhoneNumber != PublicStatus.SUCCESS) {
+            return checkUserPhoneNumber;
         }
 
-        /* 검사가 문제가 없다면 DB 에 저장을 해준다. */
-        boolean saveJoinUser = saveJoinUser(joinMemberDto);
-
-        return new PublicResponse(PublicStatus.SUCCESS, "");
+        /* 신규회원 저장 */
+        return checkOauthAndSaveUser(res, req, joinMemberDto);
     }
+
+
+    /**
+     * Oauth2 연동 회원가입 유저인지 체크하고 유저의 정보를 디비에 저장해주는 함수
+     * @param res
+     * @param req
+     * @param joinMemberDto
+     * @return
+     * @throws Exception
+     */
+    private PublicStatus checkOauthAndSaveUser(HttpServletResponse res, HttpServletRequest req, JoinMemberDto joinMemberDto) throws Exception {
+
+        /* Oauth2 와 연동할 아이디인지 체크 */
+        String oauthToken = CookieUtil.getCookieValue(req, "yummy-oauth-token");
+
+        if (oauthToken != null) {
+            JwtValidationResult jwtResult = jwtProviderService.validateTokenAndGetSubject(oauthToken);
+
+            if (jwtResult.getStatus() == JwtValidationStatus.SUCCESS) {
+                /* JWT 검증 성공 */
+
+                /* oauth2 토큰 아이디 */
+                String idToken = jwtResult.getClaims().getSubject();
+
+                /* oauth2 채널 - 카카오,네이버,구글...등등 */
+                String oauthChannel = jwtResult.getClaims().get("oauthChannel", String.class);
+
+                /* user 정보부터 저장 */
+                UserTbl joinUser = saveJoinUser(joinMemberDto);
+
+                /* oauth2 정보도 저장 */
+                UserAuthTbl userAuthTbl = new UserAuthTbl();
+                UserAuthTblId userAuthTblId = new UserAuthTblId(joinUser.getUserNo(), oauthChannel, idToken);
+                userAuthTbl.setUser(joinUser);
+                userAuthTbl.setId(userAuthTblId);
+                userAuthTbl.setReg_dt(new Date());
+                userAuthTbl.setReg_id("system");
+
+                userAuthRepository.save(userAuthTbl);
+
+                CookieUtil.clearCookie(res, "yummy-oauth-token");
+
+            } else {
+                /* JWT 검증 실패 */
+                /* 해당 쿠키를 제거해주고 재가입 요청 보내준다. */
+                CookieUtil.clearCookie(res, "yummy-oauth-temp-token");
+                return PublicStatus.REJOIN_CHECK;
+            }
+        } else {
+            saveJoinUser(joinMemberDto);
+        }
+
+        return PublicStatus.SUCCESS;
+    }
+
 
     /**
      * 새로운 유저의 정보를 디비에 저장해준다.
      * @param joinMemberDto
      * @return
+     * @throws Exception
      */
     @Transactional(rollbackFor = Exception.class)
-    private boolean saveJoinUser(JoinMemberDto joinMemberDto) throws Exception {
+    private UserTbl saveJoinUser(JoinMemberDto joinMemberDto) throws Exception {
 
         UserTbl user = saveUser(joinMemberDto);
 
@@ -360,7 +430,7 @@ public class JoinMemberService {
         saveUserEmail(user, joinMemberDto.getEmail());
         saveUserPhoneNumber(user, joinMemberDto.getPhoneNumber(), joinMemberDto.getTelecom());
 
-        return true;
+        return user;
     }
 
     /**
@@ -605,18 +675,35 @@ public class JoinMemberService {
         };
     }
 
+
     /**
      * 유저의 핸드폰번호 검증
      * @param phoneNumber
      * @return
+     * @throws Exception
      */
-    private boolean checkUserPhoneNumber(String phoneNumber) {
+    private PublicStatus checkUserPhoneNumber(String phoneNumber) throws Exception {
 
         if (phoneNumber == null || phoneNumber.isEmpty()) {
-            return false;
+            return PublicStatus.PHONE_ERR;
         }
 
-        return phoneNumber.matches("^010\\d{8}$");
+        if (!phoneNumber.matches("^010\\d{8}$")) {
+            return PublicStatus.PHONE_ERR;
+        }
+
+        /* 핸드폰 번호가 중복되는지 확인 */
+        var queryCount = queryFactory
+                .selectOne()
+                .from(userPhoneNumberTbl)
+                .where(userPhoneNumberTbl.id.phoneNumber.eq(phoneNumber))
+                .fetchFirst();
+
+        if (queryCount == null) {
+            return PublicStatus.SUCCESS;
+        } else {
+            return PublicStatus.PHONE_DUPLICATED;
+        }
     }
 
 

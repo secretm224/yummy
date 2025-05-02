@@ -13,6 +13,7 @@ public class UserBasicInfoDto {
     private String userId;
     private String userNm;
     private String userBirth;
+    private String userPic;
     private BigDecimal lngX;
     private BigDecimal latY;
 }

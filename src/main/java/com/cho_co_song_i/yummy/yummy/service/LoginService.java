@@ -5,7 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 public interface LoginService {
 
-    UserOAuthResponse handleOAuthLogin(String code, HttpServletResponse res) throws Exception;
-
+    UserOAuthResponse handleOAuthLogin(String code) throws Exception;
+    void generateTempOauthJwtCookie(String idToken, HttpServletResponse res);
 
 }
