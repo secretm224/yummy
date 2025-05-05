@@ -38,10 +38,12 @@ type StoreTypeSubDto{
 }
 
 #query
+scalar JSON
 
 #Mutation
 type Mutation {
     addStore(addStoreDto: AddStoreInput!): Boolean!
+    UpdateStoreDetail: JSON
 }
 
 #scalar BigDecimal

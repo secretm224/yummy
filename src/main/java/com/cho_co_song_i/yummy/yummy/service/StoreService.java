@@ -1,15 +1,15 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
-import com.cho_co_song_i.yummy.yummy.dto.AddStoreDto;
-import com.cho_co_song_i.yummy.yummy.dto.StoreDto;
-import com.cho_co_song_i.yummy.yummy.dto.StoreTypeMajorDto;
-import com.cho_co_song_i.yummy.yummy.dto.StoreTypeSubDto;
+import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.entity.Store;
+import com.cho_co_song_i.yummy.yummy.entity.StoreLocationInfoTbl;
 import com.cho_co_song_i.yummy.yummy.entity.StoreTypeMajor;
 import com.cho_co_song_i.yummy.yummy.entity.StoreTypeSub;
 import com.cho_co_song_i.yummy.yummy.repository.StoreRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
@@ -30,11 +30,12 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.net.URI;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreTypeMajor.storeTypeMajor;
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreTypeSub.storeTypeSub;
-
+import com.cho_co_song_i.yummy.yummy.repository.StoreLocationInfoRepository;
 
 @Service
 @Slf4j
@@ -48,6 +49,8 @@ public class StoreService {
     private final StoreRepository storeRepository;
     private final RedisService redisService;
     private final RestTemplate resttemplate;
+    private final StoreLocationInfoRepository storeLocationInfoRepository;
+
 
     /* Redis Cache 관련 필드 */
     @Value("${spring.redis.category_main}")
@@ -60,12 +63,14 @@ public class StoreService {
 
 
     public StoreService(StoreRepository storeRepository, LocationService locationService,
-                        JPAQueryFactory queryFactory, RedisService redisService, RestTemplate resttemplate) {
+                        JPAQueryFactory queryFactory, RedisService redisService, RestTemplate resttemplate,
+                        StoreLocationInfoRepository storeLocationInfoRepository) {
         this.storeRepository = storeRepository;
         this.locationService = locationService;
         this.queryFactory = queryFactory;
         this.redisService = redisService;
         this.resttemplate = resttemplate;
+        this.storeLocationInfoRepository = storeLocationInfoRepository;
     }
 
     // Entity -> DTO 변환
@@ -109,6 +114,10 @@ public class StoreService {
     public Optional<StoreDto> getStoreById(Long id) {
         return storeRepository.findById(id)
                 .map(this::convertToDto);
+    }
+
+    public Optional<StoreLocationInfoTbl> getStoreLocationInfo(Long seq){
+        return storeLocationInfoRepository.findById(seq);
     }
 
     public StoreDto createStore(StoreDto dto) {
@@ -344,11 +353,45 @@ public class StoreService {
     }
 
     public Optional<JsonNode> UpdateStoreDetail(){
+        List<StoreDto> l_store = this.getAllStores();
+        AtomicInteger successCount = new AtomicInteger(0);
+        ObjectMapper mapper = new ObjectMapper();
 
+        if(!l_store.isEmpty()) {
+            for (StoreDto store : l_store) {
+                Long storeSeq = store.getSeq();
+                StoreLocationInfoDto store_location = new StoreLocationInfoDto();
+                if(storeSeq > 0){
+                    this.getStoreLocationInfo(storeSeq).ifPresent(loc -> {
+                        store_location.setLng(loc.getLng());
+                        store_location.setLat(loc.getLat());
+                    });
+                }
 
-        return Optional.empty();
+                this.StoreDetailQuery(store.getName(),store_location.getLng().toString(),
+                                                      store_location.getLat().toString()).
+                                                      ifPresent(jsonNode -> {
+                                                          //카테고리 추가 예정
+                                                          String tel = jsonNode.get("tel").asText();
+                                                          String url = jsonNode.get("url").asText();
+                                                          //updateStore
+                                                          store.setTel(tel);
+                                                          store.setUrl(url);
+
+                                                          StoreDto update_dto = this.updateStore(store.getSeq(),store);
+                                                          if(update_dto != null){
+                                                              successCount.incrementAndGet();
+                                                          }
+                                                      });
+
+            }
+
+        }
+        ObjectNode result = mapper.createObjectNode()
+                                  .put("success", successCount.get() > 0)
+                                  .put("successCount", successCount.get());
+
+        return Optional.of(result);
     }
-
-
 
 }

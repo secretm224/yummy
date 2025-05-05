@@ -20,8 +20,8 @@ public class MutationResolver {
         return storeService.addStore(addStoreDto);
     }
 
-//    @MutationMapping
-//    public Optional<JsonNode> updateStoreDetail(@Argument String storeQuery) {
-//        return storeService.UpdateStoreDetail(storeQuery);
-//    }
+    @MutationMapping
+    public Optional<JsonNode> updateStoreDetail() {
+        return storeService.UpdateStoreDetail();
+    }
 }
