@@ -1,5 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
+import com.cho_co_song_i.yummy.yummy.dto.ChangePwDto;
 import com.cho_co_song_i.yummy.yummy.dto.FindIdDto;
 import com.cho_co_song_i.yummy.yummy.dto.FindPwDto;
 import com.cho_co_song_i.yummy.yummy.dto.JoinMemberDto;
@@ -39,9 +40,13 @@ public class JoinMemberController {
             log.error("{}", e.getMessage(), e);
             return ResponseEntity.ok(PublicStatus.SERVER_ERR);
         }
-
     }
 
+    /**
+     * 아이디를 찾아주는 컨트롤러
+     * @param findIdDto
+     * @return
+     */
     @PostMapping("/findId")
     @ResponseBody
     public ResponseEntity<PublicStatus> findId(@RequestBody FindIdDto findIdDto) {
@@ -50,6 +55,11 @@ public class JoinMemberController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * 비밀번호를 찾아주는 컨트롤러
+     * @param findPwDto
+     * @return
+     */
     @PostMapping("/findPw")
     @ResponseBody
     public ResponseEntity<PublicStatus> findPw(@RequestBody FindPwDto findPwDto) {
@@ -61,5 +71,24 @@ public class JoinMemberController {
             return ResponseEntity.ok(PublicStatus.SERVER_ERR);
         }
     }
+
+    /**
+     * 비밀번호를 변경하는 컨트롤러
+     * @param changePwDto
+     * @param res
+     * @param req
+     * @return
+     */
+    @PostMapping("/changePw")
+    @ResponseBody
+    public ResponseEntity<PublicStatus> changePasswd(@RequestBody ChangePwDto changePwDto, HttpServletResponse res, HttpServletRequest req) {
+        try {
+            return ResponseEntity.ok(joinMemberService.changePasswd(res, req, changePwDto));
+        } catch (Exception e) {
+            log.error("{}", e.getMessage(), e);
+            return ResponseEntity.ok(PublicStatus.SERVER_ERR);
+        }
+    }
+
 
 }

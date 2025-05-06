@@ -59,14 +59,17 @@ public class YummyLoginService {
 
     /**
      * 로그인 - 유저가 임시비밀번호 발급을 했는지 확인 (비밀번호 찾기)
-     * @param standardLoginDto
+     * @param userTbl
      * @return
      */
-    private Boolean tempLoginUserCheck(StandardLoginDto standardLoginDto) {
+    private Boolean tempLoginUserCheck(UserTbl userTbl) {
 
         UserTempPwTbl userTempPw = queryFactory
                 .selectFrom(userTempPwTbl)
-                .where(userTempPwTbl.userId.eq(standardLoginDto.getUserId()))
+                .where(
+                        userTempPwTbl.userId.eq(userTbl.getUserId()),
+                        userTempPwTbl.userNo.eq(userTbl.getUserNo())
+                )
                 .fetchFirst();
 
         return userTempPw != null;
@@ -112,11 +115,8 @@ public class YummyLoginService {
     public PublicStatus standardLoginUser(StandardLoginDto standardLoginDto,
                                                         HttpServletResponse res,
                                                         HttpServletRequest req) throws Exception {
-
-        /* 1. 사용자가 임시비밀번호를 발급받은 사용자인지 체크 */
-        boolean tempUserYn = tempLoginUserCheck(standardLoginDto);
         
-        /* 2. 사용자 조회 */
+        /* 1. 사용자 조회 */
         UserTbl user = queryFactory
                 .selectFrom(userTbl)
                 .where(userTbl.userId.eq(standardLoginDto.getUserId()))
@@ -126,6 +126,9 @@ public class YummyLoginService {
             log.info("[YummyLoginService->standardLoginUser][Login] No User: {}", standardLoginDto.getUserId());
             return PublicStatus.AUTH_ERROR;
         }
+        
+        /* 2. 사용자가 임시비밀번호를 발급받은 사용자인지 체크 */
+        boolean tempUserYn = tempLoginUserCheck(user);
 
         /* 3. 비밀번호 해시 비교 */
         String hashedInput = HashUtil.hashWithSalt(standardLoginDto.getUserPw(), user.getUserPwSalt());
@@ -200,42 +203,56 @@ public class YummyLoginService {
      * @param req
      * @return
      */
-    public Optional<UserBasicInfoDto> checkLoginUser(HttpServletResponse res, HttpServletRequest req) {
+    public ServiceResponse<Optional<UserBasicInfoDto>> checkLoginUser(HttpServletResponse res, HttpServletRequest req) {
 
+        /* 1. 액세스 토큰 존재 확인 */
         String accessToken = getCookieValue(req, "yummy-access-token");
-
         if (accessToken == null) {
-            return Optional.empty();
+            return ServiceResponse.empty(PublicStatus.AUTH_ERROR);
         }
 
-        /* 1. 액세스 토큰 유효성 검증 */
-        JwtValidationResult jwtResult = jwtProviderService.validateTokenAndGetSubject(accessToken);
+        /* 2. 액세스 토큰 유효성 검증 */
+        JwtValidationResult jwtResult = jwtProviderService.validateTokenAndGetPayload(accessToken);
+        JwtValidationStatus status = jwtResult.getStatus();
 
-        /* 2. 유효한 토큰이면 → Redis 에서 유저 정보 조회 */
-        if (jwtResult.getStatus() == JwtValidationStatus.SUCCESS) {
-            String userNo = jwtResult.getClaims().getSubject();
-            return fetchUserProfileFromRedis(userNo);
+        if (!(status == JwtValidationStatus.SUCCESS || status == JwtValidationStatus.EXPIRED)) {
+            /* 토큰이 변조된 경우 -> 해당 쿠키를 삭제해준다. */
+            CookieUtil.clearCookie(res, "yummy-access-token");
         }
 
-        /* 3. 액세스 토큰 만료 → refresh 토큰 검증 및 access 재발급 */
-        if (jwtResult.getStatus() == JwtValidationStatus.EXPIRED) {
+        String userNo = jwtResult.getClaims().getSubject();
 
-            String userNo = jwtResult.getClaims().getSubject();
+        /* 3. 액세스 토큰 이상 없는 경우 */
+        if (status == JwtValidationStatus.SUCCESS) {
+
+            /* 임시 비밀번호 발급 받은 경우 */
+            Boolean isTempPw = jwtResult.getClaims().get("isTempPw", Boolean.class);
+
+            if (Boolean.TRUE.equals(isTempPw)) {
+                return ServiceResponse.empty(PublicStatus.TEMP_PW_CHECK);
+            }
+
+            /* 임시 비밀번호 발급받지 않은 경우 -> 회원정보 가져가준다. */
+            return ServiceResponse.of(PublicStatus.SUCCESS, fetchUserProfileFromRedis(userNo));
+        }
+
+        /* 4. 액세스 토큰 기간 만료 */
+        if (status == JwtValidationStatus.EXPIRED) {
             String tokenId = jwtResult.getClaims().get("tokenId", String.class);
 
-            boolean refreshed = tryRefreshAccessToken(res, userNo, tokenId);
-
-            if (refreshed) {
-                return fetchUserProfileFromRedis(userNo);
+            /* 리프레시 토큰을 통해서 액세스 토큰 재 발행 */
+            if (tryRefreshAccessToken(res, userNo, tokenId)) {
+                return ServiceResponse.of(PublicStatus.SUCCESS, fetchUserProfileFromRedis(userNo));
             } else {
                 log.warn("[Warn][YummyLoginService->checkLoginUser] refreshToken expired or does not exist: userNo={}", userNo);
-                return Optional.empty();
+                return ServiceResponse.empty(PublicStatus.AUTH_ERROR);
             }
         }
 
-        /* 4. 그 외 INVALID, 오류 등 */
-        return Optional.empty();
+        /* 5. 그외 모든 오류들은 아래와 같이 처리 */
+        return ServiceResponse.empty(PublicStatus.AUTH_ERROR);
     }
+
 
 
     /**

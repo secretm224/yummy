@@ -31,6 +31,7 @@ import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserEmailTbl.userEmailTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserPhoneNumberTbl.userPhoneNumberTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTokenIdTbl.userTokenIdTbl;
+import static com.cho_co_song_i.yummy.yummy.utils.CookieUtil.getCookieValue;
 import static com.cho_co_song_i.yummy.yummy.utils.JwtUtil.decodeJwtPayload;
 
 @Service
@@ -78,6 +79,73 @@ public class JoinMemberService {
         this.userAuthRepository = userAuthRepository;
     }
 
+
+    /**
+     * 유저의 비밀번호를 바꿔주는 함수
+     * @param changePwDto
+     * @return
+     * @throws Exception
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public PublicStatus changePasswd(HttpServletResponse res, HttpServletRequest req, ChangePwDto changePwDto) throws Exception {
+
+        /* 비밀번호 검증 */
+        /* UserPasswd 확인 */
+        boolean checkPw = checkUserPw(changePwDto.getUserChangePw());
+        if (!checkPw) {
+            return PublicStatus.PW_ERR;
+        }
+
+        /* UserPasswd 비밀번호 확인 */
+        boolean checkPwCheck = checkUserPwCheck(changePwDto.getUserChangePw(), changePwDto.getUserChangePwCheck());
+        if (!checkPwCheck) {
+            return PublicStatus.PW_CHECK_ERR;
+        }
+
+        /* 액세스 토큰 확인 */
+        String accessToken = getCookieValue(req, "yummy-access-token");
+        if (accessToken == null) {
+            return PublicStatus.AUTH_ERROR;
+        }
+
+        JwtValidationResult jwtResult = jwtProviderService.validateTokenAndGetPayload(accessToken);
+        JwtValidationStatus status = jwtResult.getStatus();
+
+        if (status == JwtValidationStatus.SUCCESS) {
+            String userNo = jwtResult.getClaims().getSubject();
+
+            String saltValue = HashUtil.generateSalt();
+            String userPwHash = HashUtil.hashWithSalt(changePwDto.getUserChangePw(), saltValue);
+
+            Optional<UserTbl> userOptional = userRepository.findById(Long.parseLong(userNo));
+
+            if (userOptional.isPresent()) {
+                UserTbl user = userOptional.get();
+                user.setUserPw(userPwHash);
+                user.setUserPwSalt(saltValue);
+            }
+
+            Optional<UserTempPwTbl> userTempPwOptional = userTempPwHistoryRepository.findById(Long.parseLong(userNo));
+
+            if (userTempPwOptional.isPresent()) {
+                UserTempPwTbl userTempPw = userTempPwOptional.get();
+                userTempPwHistoryRepository.delete(userTempPw);
+            }
+            /* 기존 jwt를 제거해준다. */
+            CookieUtil.clearCookie(res, "yummy-access-token");
+
+        } else if (status == JwtValidationStatus.EXPIRED) {
+            /* 재 로그인 후 비밀번호 수정 필요 */
+            return PublicStatus.LOGIN_AGAIN;
+        } else {
+            /* 토큰이 변조된 경우 -> 해당 쿠키를 삭제해준다. */
+            CookieUtil.clearCookie(res, "yummy-access-token");
+        }
+
+        return PublicStatus.SUCCESS;
+    }
+
+
     /**
      * 회원의 비밀번호를 찾아주는 함수
      * @param findPwDto
@@ -112,7 +180,7 @@ public class JoinMemberService {
             return PublicStatus.PW_FIND_ERR;
         }
 
-        /* 3. 임시 비밀번호 생성 및 기존 토큰 모두 제거 */
+        /* 3. 임시 비밀번호 생성 및 기존 토큰 모두 제거 -> 이 작업을 항후에는 배치로 옮겨서 해야될수도 있을듯 */
         String tempPw = issueAndSaveTempPassword(userTbl);
 
         /* 4. 기존 유저의 토큰 아이디 모두 제거 */
@@ -124,7 +192,6 @@ public class JoinMemberService {
                 new SendPwFormDto(LocalDateTime.now(), findPwDto.getUserId(), findPwDto.getEmail(), tempPw)
         );
 
-
         return PublicStatus.SUCCESS;
     }
 
@@ -132,12 +199,16 @@ public class JoinMemberService {
      * 특정 유저가 가지고 있는 토큰 키 모두 제거
      * @param userNo
      */
-    private void deleteUserTokenIds(Long userNo) {
+    private void deleteUserTokenIds(Long userNo) throws Exception {
 
         List<UserTokenIdTbl> userTokens = queryFactory
                 .selectFrom(userTokenIdTbl)
                 .where(userTokenIdTbl.id.userNo.eq(userNo))
                 .fetch();
+
+        if (userTokens == null || userTokens.isEmpty()) {
+            return;
+        }
 
         /* 레디스에 존재하는 토큰 모두 제거 */
         for (UserTokenIdTbl tokenTbl : userTokens) {
@@ -225,19 +296,11 @@ public class JoinMemberService {
             return PublicStatus.TELECOM_ERR;
         }
 
-
-        try {
-            /* 휴대폰 번호 검사 */
-            PublicStatus checkUserPhoneNumber = checkUserPhoneNumber(findIdDto.getPhoneNumber());
-            if (checkUserPhoneNumber != PublicStatus.SUCCESS) {
-                return checkUserPhoneNumber;
-            }
-
-        } catch(Exception e) {
-            log.error("[Error][JoinMemberService->findId] {}", e.getMessage(), e);
-            return PublicStatus.SERVER_ERR;
+        /* 휴대폰 번호 검사 */
+        boolean checkUserPhoneNumber = checkUserPhoneNumberFormat(findIdDto.getPhoneNumber());
+        if (!checkUserPhoneNumber) {
+            return PublicStatus.PHONE_ERR;
         }
-
 
         /* 이메일 검사 */
         boolean checkEmail = checkUserEmail(findIdDto.getEmail());
@@ -371,7 +434,7 @@ public class JoinMemberService {
         String oauthToken = CookieUtil.getCookieValue(req, "yummy-oauth-token");
 
         if (oauthToken != null) {
-            JwtValidationResult jwtResult = jwtProviderService.validateTokenAndGetSubject(oauthToken);
+            JwtValidationResult jwtResult = jwtProviderService.validateTokenAndGetPayload(oauthToken);
 
             if (jwtResult.getStatus() == JwtValidationStatus.SUCCESS) {
                 /* JWT 검증 성공 */
@@ -675,6 +738,18 @@ public class JoinMemberService {
         };
     }
 
+    /**
+     * 유저가 입력한 전화번호가 휴대폰 번호 양식에 맞는지 확인해준다.
+     * @param phoneNumber
+     * @return
+     */
+    private Boolean checkUserPhoneNumberFormat(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isEmpty()) {
+            return false;
+        }
+
+        return phoneNumber.matches("^010\\d{8}$");
+    }
 
     /**
      * 유저의 핸드폰번호 검증
@@ -684,11 +759,7 @@ public class JoinMemberService {
      */
     private PublicStatus checkUserPhoneNumber(String phoneNumber) throws Exception {
 
-        if (phoneNumber == null || phoneNumber.isEmpty()) {
-            return PublicStatus.PHONE_ERR;
-        }
-
-        if (!phoneNumber.matches("^010\\d{8}$")) {
+        if (!checkUserPhoneNumberFormat(phoneNumber)) {
             return PublicStatus.PHONE_ERR;
         }
 

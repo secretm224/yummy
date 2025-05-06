@@ -26,7 +26,7 @@ public class KafkaProducerService {
             String json = objectMapper.writeValueAsString(payload);
             kafkaTemplate.send(topicName, json); /* 강제로 JSON으로 보내기 */
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Kafka JSON 직렬화 실패", e);
+            throw new RuntimeException("[Error][KafkaProducerService->sendMessageJson] Kafka JSON serialization failed: {}", e);
         }
     }
 }

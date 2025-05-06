@@ -20,5 +20,7 @@ public enum PublicStatus {
     TOKEN_ERR,
     REJOIN_CHECK,
     JOIN_TARGET_MEMBER,
-    CASE_ERR
+    CASE_ERR,
+    TEMP_PW_CHECK,
+    LOGIN_AGAIN
 }

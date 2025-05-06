@@ -92,6 +92,8 @@ public class LoginController {
         return ResponseEntity.noContent().build();
     }
 
+
+
     /**
      * 로그인을 체크해주는 함수
      * @param res
@@ -100,16 +102,9 @@ public class LoginController {
      */
     @PostMapping("/auth/loginCheck")
     @ResponseBody
-    public ResponseEntity<?> LoginCheck(HttpServletResponse res , HttpServletRequest req) {
-
+    public ResponseEntity<ServiceResponse<Optional<UserBasicInfoDto>>> LoginCheck(HttpServletResponse res , HttpServletRequest req) {
         /* 로그인 체크 처리 */
-        Optional<UserBasicInfoDto> result = yummyLoginService.checkLoginUser(res, req);
-
-        if (result.isEmpty()) {
-            /* 실제 HTTP 200, 하지만 body에는 명시적인 로그인 실패 코드 포함 */
-            return ResponseEntity.ok(PublicStatus.AUTH_ERROR);
-        }
-
+        ServiceResponse<Optional<UserBasicInfoDto>> result = yummyLoginService.checkLoginUser(res, req);
         return ResponseEntity.ok(result);
     }
 

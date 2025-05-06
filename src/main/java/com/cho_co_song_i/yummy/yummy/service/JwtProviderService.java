@@ -92,7 +92,7 @@ public class JwtProviderService {
      * @param token
      * @return
      */
-    public JwtValidationResult validateTokenAndGetSubject(String token) {
+    public JwtValidationResult validateTokenAndGetPayload(String token) {
 
         try {
 
