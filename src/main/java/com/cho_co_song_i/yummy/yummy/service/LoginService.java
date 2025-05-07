@@ -1,11 +1,11 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
-import com.cho_co_song_i.yummy.yummy.dto.UserOAuthInfoDto;
+import com.cho_co_song_i.yummy.yummy.dto.UserOAuthResponse;
 import jakarta.servlet.http.HttpServletResponse;
 
 public interface LoginService {
 
-    UserOAuthInfoDto handleOAuthLogin(String code, HttpServletResponse res);
-
+    UserOAuthResponse handleOAuthLogin(String code) throws Exception;
+    void generateTempOauthJwtCookie(String idToken, HttpServletResponse res);
 
 }

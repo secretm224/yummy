@@ -8,7 +8,8 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class PublicResponse {
-    private PublicStatus code;
-    private String message;
+public class UserOAuthResponse {
+    private PublicStatus publicStatus;
+    private String idToken;
+    private Long userNum;
 }

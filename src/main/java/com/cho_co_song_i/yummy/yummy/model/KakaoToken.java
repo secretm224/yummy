@@ -9,5 +9,4 @@ public class KakaoToken {
     private Long expires_in;
     private String scope;
     private  String id_token;
-
 }

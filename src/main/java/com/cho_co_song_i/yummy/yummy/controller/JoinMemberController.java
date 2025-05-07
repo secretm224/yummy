@@ -1,12 +1,13 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
+import com.cho_co_song_i.yummy.yummy.dto.ChangePwDto;
 import com.cho_co_song_i.yummy.yummy.dto.FindIdDto;
 import com.cho_co_song_i.yummy.yummy.dto.FindPwDto;
 import com.cho_co_song_i.yummy.yummy.dto.JoinMemberDto;
-import com.cho_co_song_i.yummy.yummy.dto.PublicResponse;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.service.JoinMemberService;
-import com.cho_co_song_i.yummy.yummy.service.KafkaProducerService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -17,11 +18,9 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 public class JoinMemberController {
     private final JoinMemberService joinMemberService;
-    private final KafkaProducerService producerService;
 
-    public JoinMemberController(JoinMemberService joinMemberService, KafkaProducerService producerService) {
+    public JoinMemberController(JoinMemberService joinMemberService) {
         this.joinMemberService = joinMemberService;
-        this.producerService = producerService;
     }
 
     /**
@@ -31,45 +30,64 @@ public class JoinMemberController {
      */
     @PostMapping("/join")
     @ResponseBody
-    public ResponseEntity<PublicResponse> joinMember(@RequestBody JoinMemberDto joinMemberDto) {
+    public ResponseEntity<PublicStatus> joinMember(@RequestBody JoinMemberDto joinMemberDto, HttpServletResponse res, HttpServletRequest req) {
 
         try {
-            PublicResponse result = joinMemberService.joinMember(joinMemberDto);
+            PublicStatus result = joinMemberService.joinMember(res, req, joinMemberDto);
             return ResponseEntity.ok(result);
         } catch(Exception e) {
             log.error("{}", e.getMessage(), e);
-            return ResponseEntity.ok(new PublicResponse(PublicStatus.SERVER_ERR, "API server encountered an error."));
+            return ResponseEntity.ok(PublicStatus.SERVER_ERR);
         }
-
     }
 
+    /**
+     * 아이디를 찾아주는 컨트롤러
+     * @param findIdDto
+     * @return
+     */
     @PostMapping("/findId")
     @ResponseBody
-    public ResponseEntity<PublicResponse> findId(@RequestBody FindIdDto findIdDto) {
+    public ResponseEntity<PublicStatus> findId(@RequestBody FindIdDto findIdDto) {
 
-        PublicResponse result = joinMemberService.findId(findIdDto);
+        PublicStatus result = joinMemberService.findId(findIdDto);
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * 비밀번호를 찾아주는 컨트롤러
+     * @param findPwDto
+     * @return
+     */
     @PostMapping("/findPw")
     @ResponseBody
-    public ResponseEntity<PublicResponse> findPw(@RequestBody FindPwDto findPwDto) {
+    public ResponseEntity<PublicStatus> findPw(@RequestBody FindPwDto findPwDto) {
         try {
-            PublicResponse result = joinMemberService.findPw(findPwDto);
+            PublicStatus result = joinMemberService.findPw(findPwDto);
             return ResponseEntity.ok(result);
         } catch(Exception e) {
             log.error("{}", e.getMessage(), e);
-            return ResponseEntity.ok(new PublicResponse(PublicStatus.SERVER_ERR, "API server encountered an error."));
+            return ResponseEntity.ok(PublicStatus.SERVER_ERR);
         }
     }
 
-
-    @GetMapping("/test")
-    public ResponseEntity<?> reissueTest() {
-
-        producerService.sendMessage("하하하하하하");
-
-        return ResponseEntity.ok(true);
+    /**
+     * 비밀번호를 변경하는 컨트롤러
+     * @param changePwDto
+     * @param res
+     * @param req
+     * @return
+     */
+    @PostMapping("/changePw")
+    @ResponseBody
+    public ResponseEntity<PublicStatus> changePasswd(@RequestBody ChangePwDto changePwDto, HttpServletResponse res, HttpServletRequest req) {
+        try {
+            return ResponseEntity.ok(joinMemberService.changePasswd(res, req, changePwDto));
+        } catch (Exception e) {
+            log.error("{}", e.getMessage(), e);
+            return ResponseEntity.ok(PublicStatus.SERVER_ERR);
+        }
     }
+
 
 }

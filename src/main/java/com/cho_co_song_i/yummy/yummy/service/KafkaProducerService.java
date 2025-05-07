@@ -14,19 +14,19 @@ public class KafkaProducerService {
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final ObjectMapper objectMapper; /* 여기 자동 주입 */
 
-    @Value("${spring.topic.kafka.find-user-info}")
-    private String topicName;
+//    @Value("${spring.topic.kafka.find-user-info}")
+//    private String topicName;
 
-    public void sendMessage(Object payload) {
+    public void sendMessage(String topicName, Object payload) {
         kafkaTemplate.send(topicName, payload);
     }
 
-    public void sendMessageJson(Object payload) {
+    public void sendMessageJson(String topicName, Object payload) {
         try {
             String json = objectMapper.writeValueAsString(payload);
             kafkaTemplate.send(topicName, json); /* 강제로 JSON으로 보내기 */
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("Kafka JSON 직렬화 실패", e);
+            throw new RuntimeException("[Error][KafkaProducerService->sendMessageJson] Kafka JSON serialization failed: {}", e);
         }
     }
 }

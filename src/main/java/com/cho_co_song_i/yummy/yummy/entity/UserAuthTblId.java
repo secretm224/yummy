@@ -19,8 +19,8 @@ public class UserAuthTblId {
     private Long userNo;
 
     @Column(name = "login_channel", length = 10)
-    private Long loginChannel;
+    private String loginChannel;
 
     @Column(name = "token_id", length = 255)
-    private Long tokenId;
+    private String tokenId;
 }
