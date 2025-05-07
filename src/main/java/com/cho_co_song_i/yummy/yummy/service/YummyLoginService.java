@@ -210,7 +210,7 @@ public class YummyLoginService {
 
 
         System.out.println("여기는 와야 정상인데???==================");
-
+        System.out.println("status:" + status);
 
         /* 2. 액세스 토큰 이상 없는 경우 */
         if (status == JwtValidationStatus.SUCCESS) {
