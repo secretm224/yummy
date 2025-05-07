@@ -72,9 +72,9 @@ public class LoginController {
      * @return
      */
     @PostMapping("/standardLogin")
-    public ResponseEntity<PublicStatus> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res , HttpServletRequest req) {
+    public ResponseEntity<PublicStatus> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res) {
         try {
-            return ResponseEntity.ok(yummyLoginService.standardLoginUser(standardLoginDto, res, req));
+            return ResponseEntity.ok(yummyLoginService.standardLoginUser(standardLoginDto, res));
         } catch(Exception e) {
             log.error("[Error][LoginController->StandardLogin] {}", e.getMessage(), e);
             return ResponseEntity.ok(PublicStatus.AUTH_ERROR);

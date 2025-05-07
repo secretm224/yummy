@@ -78,6 +78,12 @@ public class JoinMemberService {
         this.userService = userService;
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public PublicStatus connectExistUser(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
+
+
+        return PublicStatus.SUCCESS;
+    }
 
     /**
      * 유저의 비밀번호를 바꿔주는 함수

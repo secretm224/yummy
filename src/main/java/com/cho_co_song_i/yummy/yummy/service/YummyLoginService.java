@@ -103,17 +103,13 @@ public class YummyLoginService {
         return PublicStatus.SUCCESS;
     }
 
+
     /**
-     * 정석적인 방법으로 로그인하는 경우 -> 아이디/비밀번호 입력해서 로그인 시도
-     * @param res
-     * @param req
+     * 기본적인 유저 로그인 검증
+     * @param standardLoginDto
      * @return
      */
-    @Transactional(rollbackFor = Exception.class)
-    public PublicStatus standardLoginUser(StandardLoginDto standardLoginDto,
-                                                        HttpServletResponse res,
-                                                        HttpServletRequest req) throws Exception {
-        
+    public StandardLoginBasicResDto getLoginUserInfo(StandardLoginDto standardLoginDto) throws Exception {
         /* 1. 사용자 조회 */
         UserTbl user = queryFactory
                 .selectFrom(userTbl)
@@ -122,9 +118,9 @@ public class YummyLoginService {
 
         if (user == null) {
             log.info("[YummyLoginService->standardLoginUser][Login] No User: {}", standardLoginDto.getUserId());
-            return PublicStatus.AUTH_ERROR;
+            return new StandardLoginBasicResDto(PublicStatus.AUTH_ERROR, null, false);
         }
-        
+
         /* 2. 사용자가 임시비밀번호를 발급받은 사용자인지 체크 */
         boolean tempUserYn = tempLoginUserCheck(user);
 
@@ -133,25 +129,45 @@ public class YummyLoginService {
 
         if (!hashedInput.equals(user.getUserPw())) {
             log.info("[YummyLoginService->standardLoginUser][Login] password mismatch: {}", standardLoginDto.getUserId());
-            return PublicStatus.AUTH_ERROR;
+            return new StandardLoginBasicResDto(PublicStatus.AUTH_ERROR, null, tempUserYn);
         }
 
-        log.info("[YummyLoginService->standardLoginUser][Login] Login successful: {}", standardLoginDto.getUserId());
-
-        handlePostLogin(user, tempUserYn, res);
-
-        return PublicStatus.SUCCESS;
+        return new StandardLoginBasicResDto(PublicStatus.SUCCESS, user, tempUserYn);
     }
 
 
     /**
-     * Oauth2 / Standard Login 공통 처리 함수
-     * @param user
-     * @param tempUserYn
+     * 정석적인 방법으로 로그인하는 경우 -> 아이디/비밀번호 입력해서 로그인 시도
+     * @param standardLoginDto
      * @param res
+     * @return
      * @throws Exception
      */
-    private void handlePostLogin(UserTbl user, boolean tempUserYn, HttpServletResponse res) throws Exception {
+    @Transactional(rollbackFor = Exception.class)
+    public PublicStatus standardLoginUser(StandardLoginDto standardLoginDto, HttpServletResponse res) throws Exception {
+
+        StandardLoginBasicResDto loginRes = getLoginUserInfo(standardLoginDto);
+
+        if (loginRes.getPublicStatus() == PublicStatus.SUCCESS) {
+            log.info("[YummyLoginService->standardLoginUser][Login] Login successful: {}", standardLoginDto.getUserId());
+        } else {
+            log.warn("[YummyLoginService->standardLoginUser][Login] Login failed: {}", standardLoginDto.getUserId());
+            return PublicStatus.AUTH_ERROR;
+        }
+
+        handlePostLogin(res, loginRes);
+        //handlePostLogin(loginRes.getUserTbl(), loginRes.isTempUserYn(), res);
+
+        return PublicStatus.SUCCESS;
+    }
+
+    /**
+     * Oauth2 / Standard Login 공통 처리 함수
+     * @param res
+     * @param standardLoginBasicResDto
+     * @throws Exception
+     */
+    private void handlePostLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo) throws Exception {
 
         /* 1. 로그인 성공시 JWT 토큰을 발급. */
         String tokenId = UUID.randomUUID().toString();
