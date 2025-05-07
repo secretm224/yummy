@@ -249,7 +249,6 @@ public class YummyLoginService {
     private Optional<UserBasicInfoDto> fetchUserProfileFromRedis(String userNo) {
         String keyPrefix = String.format("%s:%s", userInfoKey, userNo);
         UserBasicInfoDto userDto = redisService.getValue(keyPrefix, new TypeReference<UserBasicInfoDto>() {});
-        log.info("userDto: {}", userDto);
 
         return Optional.ofNullable(userDto);
     }
