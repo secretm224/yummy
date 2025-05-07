@@ -99,6 +99,8 @@ public class JwtProviderService {
 
         String token = CookieUtil.getCookieValue(req, jwtName);
 
+        System.out.println("token: " + token);
+
         /* token 이 존재하는지 체크해준다. */
         if (token == null || token.isEmpty()) {
             return new JwtValidationResult(jwtName, JwtValidationStatus.EMPTY, null);
