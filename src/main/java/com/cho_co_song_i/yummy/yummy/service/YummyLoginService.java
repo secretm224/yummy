@@ -211,6 +211,8 @@ public class YummyLoginService {
         /* 2. 액세스 토큰 이상 없는 경우 */
         if (status == JwtValidationStatus.SUCCESS) {
 
+            log.info("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+
             /* 임시 비밀번호 발급 받은 경우 */
             Boolean isTempPw = userService.getClaimFromJwt(jwtResult, "isTempPw", Boolean.class);
 
