@@ -24,6 +24,8 @@ type SearchStoreDto {
     timestamp: String
     type: String
     zeroPossible: Boolean
+    url:String
+    tel:String
 }
 
 type StoreTypeMajorDto {

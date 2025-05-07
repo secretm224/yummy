@@ -34,4 +34,6 @@ public class SearchStoreDto {
     private String type;
     @JsonProperty("zero_possible")
     private boolean zeroPossible;
+    private String tel;
+    private String url;
 }
