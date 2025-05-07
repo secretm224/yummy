@@ -24,15 +24,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserEmailTbl.userEmailTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserPhoneNumberTbl.userPhoneNumberTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTokenIdTbl.userTokenIdTbl;
-import static com.cho_co_song_i.yummy.yummy.utils.CookieUtil.getCookieValue;
-import static com.cho_co_song_i.yummy.yummy.utils.JwtUtil.decodeJwtPayload;
 
 @Service
 @Slf4j
@@ -46,6 +43,7 @@ public class JoinMemberService {
     private final KafkaProducerService kafkaProducerService;
     private final JwtProviderService jwtProviderService;
     private final RedisService redisService;
+    private final UserService userService;
 
     @PersistenceContext
     private final EntityManager entityManager;
@@ -65,7 +63,7 @@ public class JoinMemberService {
                              UserPhoneNumberRepository userPhoneNumberRepository, UserEmailRepository userEmailRepository,
                              KafkaProducerService kafkaProducerService, UserTempPwHistoryRepository userTempPwHistoryRepository,
                              RedisService redisService, EntityManager entityManager, JwtProviderService jwtProviderService,
-                             UserAuthRepository userAuthRepository
+                             UserAuthRepository userAuthRepository, UserService userService
     ) {
         this.queryFactory = queryFactory;
         this.userRepository = userRepository;
@@ -77,6 +75,7 @@ public class JoinMemberService {
         this.entityManager = entityManager;
         this.jwtProviderService = jwtProviderService;
         this.userAuthRepository = userAuthRepository;
+        this.userService = userService;
     }
 
 
@@ -103,13 +102,8 @@ public class JoinMemberService {
         }
 
         /* 액세스 토큰 확인 */
-        String accessToken = getCookieValue(req, "yummy-access-token");
-        if (accessToken == null) {
-            return PublicStatus.AUTH_ERROR;
-        }
-
-        JwtValidationResult jwtResult = jwtProviderService.validateTokenAndGetPayload(accessToken);
-        JwtValidationStatus status = jwtResult.getStatus();
+        JwtValidationResult jwtResult = userService.getValidateResultJwt("yummy-access-token", req);
+        JwtValidationStatus status = userService.getStatusJwt(jwtResult, res);
 
         if (status == JwtValidationStatus.SUCCESS) {
             String userNo = jwtResult.getClaims().getSubject();
@@ -131,15 +125,16 @@ public class JoinMemberService {
                 UserTempPwTbl userTempPw = userTempPwOptional.get();
                 userTempPwHistoryRepository.delete(userTempPw);
             }
-            /* 기존 jwt를 제거해준다. */
+
+            /* 기존 jwt를 제거해준다. -> 재 로그인 유도하기 위함. */
             CookieUtil.clearCookie(res, "yummy-access-token");
 
         } else if (status == JwtValidationStatus.EXPIRED) {
-            /* 재 로그인 후 비밀번호 수정 필요 */
+            /* 재 로그인 후 비밀번호 수정 필요 -> 이건 뭔가 수정이 필요해 보임. */
             return PublicStatus.LOGIN_AGAIN;
         } else {
-            /* 토큰이 변조된 경우 -> 해당 쿠키를 삭제해준다. */
-            CookieUtil.clearCookie(res, "yummy-access-token");
+            /* 토큰이 유효하지 않음 */
+            return PublicStatus.AUTH_ERROR;
         }
 
         return PublicStatus.SUCCESS;
@@ -434,10 +429,11 @@ public class JoinMemberService {
         String oauthToken = CookieUtil.getCookieValue(req, "yummy-oauth-token");
 
         if (oauthToken != null) {
-            JwtValidationResult jwtResult = jwtProviderService.validateTokenAndGetPayload(oauthToken);
+            JwtValidationResult jwtResult = userService.getValidateResultJwt("yummy-oauth-token", req);
+            JwtValidationStatus status = userService.getStatusJwt(jwtResult, res);
 
-            if (jwtResult.getStatus() == JwtValidationStatus.SUCCESS) {
-                /* JWT 검증 성공 */
+            if (status == JwtValidationStatus.SUCCESS) {
+                /* ==== JWT 검증 성공 ==== */
 
                 /* oauth2 토큰 아이디 */
                 String idToken = jwtResult.getClaims().getSubject();
@@ -462,10 +458,9 @@ public class JoinMemberService {
 
             } else {
                 /* JWT 검증 실패 */
-                /* 해당 쿠키를 제거해주고 재가입 요청 보내준다. */
-                CookieUtil.clearCookie(res, "yummy-oauth-temp-token");
                 return PublicStatus.REJOIN_CHECK;
             }
+
         } else {
             saveJoinUser(joinMemberDto);
         }

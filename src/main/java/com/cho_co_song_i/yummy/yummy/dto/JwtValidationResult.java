@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class JwtValidationResult {
+    private String jwtName;
     private JwtValidationStatus status;
     private Claims claims;
 }

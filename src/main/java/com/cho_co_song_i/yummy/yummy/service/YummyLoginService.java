@@ -23,9 +23,7 @@ import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
 
-import static com.cho_co_song_i.yummy.yummy.utils.CookieUtil.getCookieValue;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
-import static com.cho_co_song_i.yummy.yummy.entity.QUserLocationDetailTbl.userLocationDetailTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTempPwTbl.userTempPwTbl;
 
 @Service
@@ -205,28 +203,16 @@ public class YummyLoginService {
      */
     public ServiceResponse<Optional<UserBasicInfoDto>> checkLoginUser(HttpServletResponse res, HttpServletRequest req) {
 
-        /* 1. 액세스 토큰 존재 확인 */
-        String accessToken = getCookieValue(req, "yummy-access-token");
-        if (accessToken == null) {
-            return ServiceResponse.empty(PublicStatus.AUTH_ERROR);
-        }
+        /* 1. 액세스 토큰 확인 */
+        JwtValidationResult jwtResult = userService.getValidateResultJwt("yummy-access-token", req);
+        JwtValidationStatus status = userService.getStatusJwt(jwtResult, res);
+        String userNo = userService.getSubjectFromJwt(jwtResult);
 
-        /* 2. 액세스 토큰 유효성 검증 */
-        JwtValidationResult jwtResult = jwtProviderService.validateTokenAndGetPayload(accessToken);
-        JwtValidationStatus status = jwtResult.getStatus();
-
-        if (!(status == JwtValidationStatus.SUCCESS || status == JwtValidationStatus.EXPIRED)) {
-            /* 토큰이 변조된 경우 -> 해당 쿠키를 삭제해준다. */
-            CookieUtil.clearCookie(res, "yummy-access-token");
-        }
-
-        String userNo = jwtResult.getClaims().getSubject();
-
-        /* 3. 액세스 토큰 이상 없는 경우 */
+        /* 2. 액세스 토큰 이상 없는 경우 */
         if (status == JwtValidationStatus.SUCCESS) {
 
             /* 임시 비밀번호 발급 받은 경우 */
-            Boolean isTempPw = jwtResult.getClaims().get("isTempPw", Boolean.class);
+            Boolean isTempPw = userService.getClaimFromJwt(jwtResult, "isTempPw", Boolean.class);
 
             if (Boolean.TRUE.equals(isTempPw)) {
                 return ServiceResponse.empty(PublicStatus.TEMP_PW_CHECK);
@@ -236,9 +222,9 @@ public class YummyLoginService {
             return ServiceResponse.of(PublicStatus.SUCCESS, fetchUserProfileFromRedis(userNo));
         }
 
-        /* 4. 액세스 토큰 기간 만료 */
+        /* 3. 액세스 토큰 기간 만료 */
         if (status == JwtValidationStatus.EXPIRED) {
-            String tokenId = jwtResult.getClaims().get("tokenId", String.class);
+            String tokenId = userService.getClaimFromJwt(jwtResult, "tokenId", String.class);
 
             /* 리프레시 토큰을 통해서 액세스 토큰 재 발행 */
             if (tryRefreshAccessToken(res, userNo, tokenId)) {
@@ -249,7 +235,7 @@ public class YummyLoginService {
             }
         }
 
-        /* 5. 그외 모든 오류들은 아래와 같이 처리 */
+        /* 4. 그외 모든 오류들은 아래와 같이 처리 */
         return ServiceResponse.empty(PublicStatus.AUTH_ERROR);
     }
 

@@ -22,5 +22,5 @@ public enum PublicStatus {
     JOIN_TARGET_MEMBER,
     CASE_ERR,
     TEMP_PW_CHECK,
-    LOGIN_AGAIN
+    LOGIN_AGAIN,
 }

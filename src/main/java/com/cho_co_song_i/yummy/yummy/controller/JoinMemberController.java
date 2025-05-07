@@ -6,7 +6,6 @@ import com.cho_co_song_i.yummy.yummy.dto.FindPwDto;
 import com.cho_co_song_i.yummy.yummy.dto.JoinMemberDto;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.service.JoinMemberService;
-import com.cho_co_song_i.yummy.yummy.service.KafkaProducerService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;

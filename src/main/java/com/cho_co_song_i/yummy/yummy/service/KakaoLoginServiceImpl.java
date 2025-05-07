@@ -4,8 +4,6 @@ import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserOAuthInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserOAuthResponse;
 import com.cho_co_song_i.yummy.yummy.entity.UserAuthTbl;
-import com.cho_co_song_i.yummy.yummy.entity.UserLocationDetailTbl;
-import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
@@ -28,10 +26,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 
-import static com.cho_co_song_i.yummy.yummy.entity.QUserLocationDetailTbl.userLocationDetailTbl;
 import static com.cho_co_song_i.yummy.yummy.utils.CookieUtil.*;
 import static com.cho_co_song_i.yummy.yummy.utils.JwtUtil.decodeJwtPayload;
 
