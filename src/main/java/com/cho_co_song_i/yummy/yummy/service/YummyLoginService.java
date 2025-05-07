@@ -208,10 +208,14 @@ public class YummyLoginService {
         JwtValidationStatus status = userService.getStatusJwt(jwtResult, res);
         String userNo = userService.getSubjectFromJwt(jwtResult);
 
+
+        System.out.println("여기는 와야 정상인데???==================");
+
+
         /* 2. 액세스 토큰 이상 없는 경우 */
         if (status == JwtValidationStatus.SUCCESS) {
 
-            log.info("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+            System.out.println("++++++++++++++++++++++++++++++++++++++++++++");
 
             /* 임시 비밀번호 발급 받은 경우 */
             Boolean isTempPw = userService.getClaimFromJwt(jwtResult, "isTempPw", Boolean.class);
@@ -253,6 +257,8 @@ public class YummyLoginService {
         UserBasicInfoDto userDto = redisService.getValue(keyPrefix, new TypeReference<UserBasicInfoDto>() {});
         log.info("=============================================");
         log.info("userDto: {}", userDto);
+
+        System.out.println("userDto: " + userDto);
 
         return Optional.ofNullable(userDto);
     }
