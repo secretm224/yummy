@@ -5,6 +5,7 @@ import com.cho_co_song_i.yummy.yummy.entity.Store;
 import com.cho_co_song_i.yummy.yummy.entity.StoreLocationInfoTbl;
 import com.cho_co_song_i.yummy.yummy.entity.StoreTypeMajor;
 import com.cho_co_song_i.yummy.yummy.entity.StoreTypeSub;
+import com.cho_co_song_i.yummy.yummy.repository.StoreLocationInfoRepository;
 import com.cho_co_song_i.yummy.yummy.repository.StoreRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -23,11 +24,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
-import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.math.BigDecimal;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -35,7 +37,6 @@ import java.util.stream.Collectors;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreTypeMajor.storeTypeMajor;
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreTypeSub.storeTypeSub;
-import com.cho_co_song_i.yummy.yummy.repository.StoreLocationInfoRepository;
 
 @Service
 @Slf4j
@@ -304,7 +305,7 @@ public class StoreService {
     }
 
     // 비즈니스 앱 등록 이슈 해결 후 처리 예정
-    public Optional<JsonNode> StoreDetailQuery(String storeName ,String lngX, String latY)
+    public Optional<JsonNode> StoreDetailQuery(String storeName , BigDecimal lngX, BigDecimal latY)
     {
         if (storeName == null || storeName.isEmpty()) {
             return Optional.empty();
@@ -322,13 +323,14 @@ public class StoreService {
                 .queryParam("category_group_code", categoryGroupCode)
                 .queryParam("query", storeName);
 
-        if (StringUtils.hasText(lngX) && StringUtils.hasText(latY)) {
+        if (lngX != null && latY != null &&
+            lngX.compareTo(BigDecimal.ZERO) > 0 && latY.compareTo(BigDecimal.ZERO) > 0) {
             builder.queryParam("x", lngX)
                    .queryParam("y", latY);
         }
 
         URI apiuri = builder
-//                .encode(StandardCharsets.UTF_8)
+                .encode(StandardCharsets.UTF_8)
                 .build()
                 .toUri();
 
@@ -363,25 +365,37 @@ public class StoreService {
                 StoreLocationInfoDto store_location = new StoreLocationInfoDto();
                 if(storeSeq > 0){
                     this.getStoreLocationInfo(storeSeq).ifPresent(loc -> {
+                        store_location.setSeq(store.getSeq());
                         store_location.setLng(loc.getLng());
                         store_location.setLat(loc.getLat());
                     });
                 }
 
-                this.StoreDetailQuery(store.getName(),store_location.getLng().toString(),
-                                                      store_location.getLat().toString()).
+                this.StoreDetailQuery(store.getName(),store_location.getLng(),
+                                                      store_location.getLat()).
                                                       ifPresent(jsonNode -> {
                                                           //카테고리 추가 예정
-                                                          String tel = jsonNode.get("tel").asText();
-                                                          String url = jsonNode.get("url").asText();
-                                                          //updateStore
-                                                          store.setTel(tel);
-                                                          store.setUrl(url);
+                                                          if (jsonNode.has("documents") && jsonNode.get("documents").isArray() && jsonNode.get("documents").size() > 0) {
+                                                              JsonNode firstDoc = jsonNode.get("documents").get(0);
 
-                                                          StoreDto update_dto = this.updateStore(store.getSeq(),store);
-                                                          if(update_dto != null){
-                                                              successCount.incrementAndGet();
+                                                              String tel = Optional.ofNullable(firstDoc.get("phone"))
+                                                                      .map(JsonNode::asText)
+                                                                      .orElse(null);
+
+                                                              String url = Optional.ofNullable(firstDoc.get("place_url"))
+                                                                      .map(JsonNode::asText)
+                                                                      .orElse(null);
+
+                                                              store.setTel(tel);
+                                                              store.setUrl(url);
+                                                              store.setChgId("Store>UpdateStoreDetail");
+
+                                                              StoreDto update_dto = this.updateStore(store.getSeq(),store);
+                                                              if(update_dto != null){
+                                                                  successCount.incrementAndGet();
+                                                              }
                                                           }
+                                                          //updateStore
                                                       });
 
             }

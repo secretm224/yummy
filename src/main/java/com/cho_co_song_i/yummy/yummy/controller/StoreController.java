@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -88,8 +89,8 @@ public class StoreController {
 
     @GetMapping("/StoreDetailQuery")
     public Optional<JsonNode> StoreDetailQuery(@RequestParam(value = "storeName", required = true) String storeName,
-                                               @RequestParam(value = "lngX", required = false) String lngX,
-                                               @RequestParam(value = "latY", required = false) String latY
+                                               @RequestParam(value = "lngX", required = false) BigDecimal lngX,
+                                               @RequestParam(value = "latY", required = false) BigDecimal latY
     ){
         return storeService.StoreDetailQuery(storeName,lngX,latY);
     }
@@ -114,6 +115,12 @@ public class StoreController {
 
        StoreDto update_store = storeService.updateStore(id,storeDto);
         return ResponseEntity.ok(update_store);
+    }
+
+    @GetMapping("/UpdateStoreInfobyKaKao")
+    public ResponseEntity<Optional<JsonNode>> UpdateStoreInfobyKaKao(){
+        Optional<JsonNode> result = storeService.UpdateStoreDetail();
+        return ResponseEntity.ok(result);
     }
 
 }

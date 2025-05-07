@@ -21,7 +21,7 @@ public class MutationResolver {
     }
 
     @MutationMapping
-    public Optional<JsonNode> updateStoreDetail() {
+    public Optional<JsonNode> UpdateStoreDetail() {
         return storeService.UpdateStoreDetail();
     }
 }
