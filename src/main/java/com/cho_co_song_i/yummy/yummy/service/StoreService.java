@@ -2,23 +2,37 @@ package com.cho_co_song_i.yummy.yummy.service;
 
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.entity.Store;
+import com.cho_co_song_i.yummy.yummy.entity.StoreLocationInfoTbl;
 import com.cho_co_song_i.yummy.yummy.entity.StoreTypeMajor;
 import com.cho_co_song_i.yummy.yummy.entity.StoreTypeSub;
+import com.cho_co_song_i.yummy.yummy.repository.StoreLocationInfoRepository;
 import com.cho_co_song_i.yummy.yummy.repository.StoreRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
-
+import java.math.BigDecimal;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreTypeMajor.storeTypeMajor;
@@ -35,20 +49,29 @@ public class StoreService {
     private final LocationService locationService;
     private final StoreRepository storeRepository;
     private final RedisService redisService;
-    //commit test
-    //commit test2
+    private final RestTemplate resttemplate;
+    private final StoreLocationInfoRepository storeLocationInfoRepository;
+
+
     /* Redis Cache 관련 필드 */
     @Value("${spring.redis.category_main}")
     private String categoryMain;
     @Value("${spring.redis.category_sub}")
     private String categorySub;
 
-    public StoreService(StoreRepository storeRepository,  LocationService locationService,
-                        JPAQueryFactory queryFactory, RedisService redisService) {
+    private static final String KAKAO_SEARCH_API_URL =
+            "https://dapi.kakao.com/v2/local/search/keyword.json";
+
+
+    public StoreService(StoreRepository storeRepository, LocationService locationService,
+                        JPAQueryFactory queryFactory, RedisService redisService, RestTemplate resttemplate,
+                        StoreLocationInfoRepository storeLocationInfoRepository) {
         this.storeRepository = storeRepository;
         this.locationService = locationService;
         this.queryFactory = queryFactory;
         this.redisService = redisService;
+        this.resttemplate = resttemplate;
+        this.storeLocationInfoRepository = storeLocationInfoRepository;
     }
 
     // Entity -> DTO 변환
@@ -61,7 +84,9 @@ public class StoreService {
                 store.getRegDt(),
                 store.getRegId(),
                 store.getChgDt(),
-                store.getChgId()
+                store.getChgId(),
+                store.getTel(),
+                store.getUrl()
         );
     }
 
@@ -75,6 +100,8 @@ public class StoreService {
         store.setRegId(dto.getRegId());
         store.setChgDt(dto.getChgDt());
         store.setChgId(dto.getChgId());
+        store.setTel(dto.getTel());
+        store.setUrl(dto.getUrl());
         return store;
     }
 
@@ -90,6 +117,10 @@ public class StoreService {
                 .map(this::convertToDto);
     }
 
+    public Optional<StoreLocationInfoTbl> getStoreLocationInfo(Long seq){
+        return storeLocationInfoRepository.findById(seq);
+    }
+
     public StoreDto createStore(StoreDto dto) {
         Store store = convertToEntity(dto);
         store = storeRepository.save(store);
@@ -98,6 +129,10 @@ public class StoreService {
 
     public StoreDto updateStore(Long id, StoreDto dto) {
         Optional<Store> optionalStore = storeRepository.findById(id);
+
+        Instant nowInstant = Instant.now();
+        Date now = Date.from(nowInstant);
+
         if (optionalStore.isPresent()) {
             Store store = optionalStore.get();
             store.setName(dto.getName());
@@ -105,8 +140,11 @@ public class StoreService {
             store.setUseYn(dto.getUseYn());
             store.setRegDt(dto.getRegDt());
             store.setRegId(dto.getRegId());
-            store.setChgDt(dto.getChgDt());
+            store.setChgDt(now);
             store.setChgId(dto.getChgId());
+            store.setTel(dto.getTel());
+            store.setUrl(dto.getUrl());
+
             store = storeRepository.save(store);
             return convertToDto(store);
         } else {
@@ -162,6 +200,8 @@ public class StoreService {
             newStore.setUseYn('Y');
             newStore.setRegDt(now);
             newStore.setRegId("system");
+            newStore.setTel(addStoreDto.getTel());
+            newStore.setUrl(addStoreDto.getUrl());
             newStore.markAsNew();
 
             Long newStoreSeq = storeRepository.save(newStore).getSeq();
@@ -262,6 +302,110 @@ public class StoreService {
         } else {
             return storeTypeSubs;
         }
+    }
+
+    // 비즈니스 앱 등록 이슈 해결 후 처리 예정
+    public Optional<JsonNode> StoreDetailQuery(String storeName , BigDecimal lngX, BigDecimal latY)
+    {
+        if (storeName == null || storeName.isEmpty()) {
+            return Optional.empty();
+        }
+
+        String apiKey = "2fcfa96247ae04a4ad26cd853f1e5551";
+        String categoryGroupCode = "FD6";
+        String page = "1";
+        String size = "1";
+
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromHttpUrl(KAKAO_SEARCH_API_URL)
+                .queryParam("page", page)
+                .queryParam("size", size)
+                .queryParam("category_group_code", categoryGroupCode)
+                .queryParam("query", storeName);
+
+        if (lngX != null && latY != null &&
+            lngX.compareTo(BigDecimal.ZERO) > 0 && latY.compareTo(BigDecimal.ZERO) > 0) {
+            builder.queryParam("x", lngX)
+                   .queryParam("y", latY);
+        }
+
+        URI apiuri = builder
+                .encode(StandardCharsets.UTF_8)
+                .build()
+                .toUri();
+
+
+        try{
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("Authorization","KakaoAK 2fcfa96247ae04a4ad26cd853f1e5551");
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+
+            ResponseEntity<JsonNode> resp = resttemplate.exchange(
+                    apiuri, HttpMethod.GET, request, JsonNode.class
+            );
+
+            if (resp.getStatusCode().is2xxSuccessful() && resp.hasBody()) {
+                return Optional.of(resp.getBody());
+            }else{
+                return Optional.empty();
+            }
+        }catch(Exception e){
+            return Optional.empty();
+        }
+    }
+
+    public Optional<JsonNode> UpdateStoreDetail(){
+        List<StoreDto> l_store = this.getAllStores();
+        AtomicInteger successCount = new AtomicInteger(0);
+        ObjectMapper mapper = new ObjectMapper();
+
+        if(!l_store.isEmpty()) {
+            for (StoreDto store : l_store) {
+                Long storeSeq = store.getSeq();
+                StoreLocationInfoDto store_location = new StoreLocationInfoDto();
+                if(storeSeq > 0){
+                    this.getStoreLocationInfo(storeSeq).ifPresent(loc -> {
+                        store_location.setSeq(store.getSeq());
+                        store_location.setLng(loc.getLng());
+                        store_location.setLat(loc.getLat());
+                    });
+                }
+
+                this.StoreDetailQuery(store.getName(),store_location.getLng(),
+                                                      store_location.getLat()).
+                                                      ifPresent(jsonNode -> {
+                                                          //카테고리 추가 예정
+                                                          if (jsonNode.has("documents") && jsonNode.get("documents").isArray() && jsonNode.get("documents").size() > 0) {
+                                                              JsonNode firstDoc = jsonNode.get("documents").get(0);
+
+                                                              String tel = Optional.ofNullable(firstDoc.get("phone"))
+                                                                      .map(JsonNode::asText)
+                                                                      .orElse(null);
+
+                                                              String url = Optional.ofNullable(firstDoc.get("place_url"))
+                                                                      .map(JsonNode::asText)
+                                                                      .orElse(null);
+
+                                                              store.setTel(tel);
+                                                              store.setUrl(url);
+                                                              store.setChgId("Store>UpdateStoreDetail");
+
+                                                              StoreDto update_dto = this.updateStore(store.getSeq(),store);
+                                                              if(update_dto != null){
+                                                                  successCount.incrementAndGet();
+                                                              }
+                                                          }
+                                                          //updateStore
+                                                      });
+
+            }
+
+        }
+        ObjectNode result = mapper.createObjectNode()
+                                  .put("success", successCount.get() > 0)
+                                  .put("successCount", successCount.get());
+
+        return Optional.of(result);
     }
 
 }

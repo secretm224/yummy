@@ -7,12 +7,14 @@ import com.cho_co_song_i.yummy.yummy.dto.StoreTypeSubDto;
 import com.cho_co_song_i.yummy.yummy.service.LocationService;
 import com.cho_co_song_i.yummy.yummy.service.RedisService;
 import com.cho_co_song_i.yummy.yummy.service.StoreService;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @Slf4j
@@ -83,6 +85,42 @@ public class StoreController {
 
         System.out.println(redisService.get("categories:main"));
         return ResponseEntity.ok(true);
+    }
+
+    @GetMapping("/StoreDetailQuery")
+    public Optional<JsonNode> StoreDetailQuery(@RequestParam(value = "storeName", required = true) String storeName,
+                                               @RequestParam(value = "lngX", required = false) BigDecimal lngX,
+                                               @RequestParam(value = "latY", required = false) BigDecimal latY
+    ){
+        return storeService.StoreDetailQuery(storeName,lngX,latY);
+    }
+
+    @GetMapping("/UpdateDetailInfo")
+    public ResponseEntity<StoreDto> UpdateStoreDetail(@RequestParam(value = "id", required = false) long id,
+                                                      @RequestParam(value = "tel", required = false) String tel,
+                                                      @RequestParam(value = "url", required = false) String url){
+        if(id <=0){
+            return ResponseEntity.badRequest().build();
+        }
+
+        Optional<StoreDto> optionalStore = storeService.getStoreById(id);
+        if (optionalStore.isEmpty()) {
+            return ResponseEntity.notFound().build(); // id로 Store를 못찾으면 404 리턴
+        }
+
+        StoreDto storeDto = optionalStore.get();
+        storeDto.setTel(tel);
+        storeDto.setUrl(url);
+        storeDto.setChgId("Store>UpdateStoreDetail");
+
+       StoreDto update_store = storeService.updateStore(id,storeDto);
+        return ResponseEntity.ok(update_store);
+    }
+
+    @GetMapping("/UpdateStoreInfobyKaKao")
+    public ResponseEntity<Optional<JsonNode>> UpdateStoreInfobyKaKao(){
+        Optional<JsonNode> result = storeService.UpdateStoreDetail();
+        return ResponseEntity.ok(result);
     }
 
 }

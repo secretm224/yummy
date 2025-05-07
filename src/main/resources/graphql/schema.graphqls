@@ -1,3 +1,4 @@
+#query
 type Query {
     hello: String
     helloWithName(name: String): String
@@ -7,9 +8,7 @@ type Query {
     StoreMajorsTypeList:[StoreTypeMajorDto]
     StoreSubMajorsTypeList(major_code:Int!):[StoreTypeSubDto]
 }
-
 #scalar DateTime
-
 type SearchStoreDto {
     address: String
     lat: String
@@ -37,3 +36,31 @@ type StoreTypeSubDto{
     majorType:Int
     typeName:String
 }
+
+#query
+scalar JSON
+
+#Mutation
+type Mutation {
+    addStore(addStoreDto: AddStoreInput!): Boolean!
+    UpdateStoreDetail: JSON
+}
+
+#scalar BigDecimal
+
+input AddStoreInput {
+    name: String!
+    type: String!
+    isBeefulPay: Boolean = false
+    lat:Float = 0
+    lng:Float = 0
+    locationCounty:String!
+    locationCity:String!
+    locationDistrict:String!
+    subType:Int!
+    address:String!
+    tel:String
+    url:String
+}
+
+#Mutation

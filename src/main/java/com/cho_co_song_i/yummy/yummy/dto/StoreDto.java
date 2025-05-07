@@ -16,4 +16,6 @@ public class StoreDto {
     private String regId;
     private Date chgDt;
     private String chgId;
+    private String tel;
+    private String url;
 }
