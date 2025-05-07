@@ -81,6 +81,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-graphql'
 	implementation 'com.graphql-java:graphql-java-extended-scalars:19.0'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'com.graphql-java:graphql-java-extended-scalars:20.1'
+
 
 }
 

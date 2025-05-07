@@ -1,15 +1,14 @@
 package com.cho_co_song_i.yummy.yummy.entity;
 
 import jakarta.persistence.*;
-
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Persistable;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 @Entity
 @Table(name = "store")
@@ -45,6 +44,13 @@ public class Store implements Persistable<Long> {
 
     @Column(name = "chg_id", nullable = true, length = 25)
     private String chgId;
+
+    @Column(name = "tel", nullable = true, length = 20)
+    private String tel;
+
+    @Column(name = "url", nullable = true, length = 100)
+    private String url;
+
 
     /* ✅ Hibernate 에게 신규 엔티티임을 알려주기 위해 사용 */
     @Transient
