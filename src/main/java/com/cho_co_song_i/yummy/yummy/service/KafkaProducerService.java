@@ -14,13 +14,21 @@ public class KafkaProducerService {
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final ObjectMapper objectMapper; /* 여기 자동 주입 */
 
-//    @Value("${spring.topic.kafka.find-user-info}")
-//    private String topicName;
 
+    /**
+     *
+     * @param topicName
+     * @param payload
+     */
     public void sendMessage(String topicName, Object payload) {
         kafkaTemplate.send(topicName, payload);
     }
 
+    /**
+     * payload 정보를 json 형태로 Kafka Topic 에 Produce 해주는 함수
+     * @param topicName
+     * @param payload
+     */
     public void sendMessageJson(String topicName, Object payload) {
         try {
             String json = objectMapper.writeValueAsString(payload);

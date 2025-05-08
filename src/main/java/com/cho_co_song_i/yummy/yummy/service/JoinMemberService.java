@@ -40,10 +40,9 @@ public class JoinMemberService {
     private final UserPhoneNumberRepository userPhoneNumberRepository;
     private final UserEmailRepository userEmailRepository;
     private final UserTempPwHistoryRepository userTempPwHistoryRepository;
-    private final KafkaProducerService kafkaProducerService;
-    private final JwtProviderService jwtProviderService;
     private final RedisService redisService;
     private final UserService userService;
+    private final EventProducerService eventProducerService;
 
     @PersistenceContext
     private final EntityManager entityManager;
@@ -51,29 +50,20 @@ public class JoinMemberService {
     @Value("${spring.redis.refresh-key-prefix}")
     private String refreshKeyPrefix;
 
-    /* 회원의 아이디 찾기 관련 Kafka Topic */
-    @Value("${spring.topic.kafka.find-user-id-info}")
-    private String findIdTopic;
-
-    /* 회원의 비밀번호 찾기 관련 Kafka Topic */
-    @Value("${spring.topic.kafka.find-user-pw-info}")
-    private String findPwTopic;
-
     public JoinMemberService(JPAQueryFactory queryFactory, UserRepository userRepository,
                              UserPhoneNumberRepository userPhoneNumberRepository, UserEmailRepository userEmailRepository,
-                             KafkaProducerService kafkaProducerService, UserTempPwHistoryRepository userTempPwHistoryRepository,
-                             RedisService redisService, EntityManager entityManager, JwtProviderService jwtProviderService,
+                             UserTempPwHistoryRepository userTempPwHistoryRepository, EventProducerService eventProducerService,
+                             RedisService redisService, EntityManager entityManager,
                              UserAuthRepository userAuthRepository, UserService userService
     ) {
         this.queryFactory = queryFactory;
         this.userRepository = userRepository;
         this.userPhoneNumberRepository = userPhoneNumberRepository;
         this.userEmailRepository = userEmailRepository;
-        this.kafkaProducerService = kafkaProducerService;
         this.userTempPwHistoryRepository = userTempPwHistoryRepository;
         this.redisService = redisService;
+        this.eventProducerService = eventProducerService;
         this.entityManager = entityManager;
-        this.jwtProviderService = jwtProviderService;
         this.userAuthRepository = userAuthRepository;
         this.userService = userService;
     }
@@ -188,10 +178,7 @@ public class JoinMemberService {
         deleteUserTokenIds(userTbl.getUserNo());
 
         /* 5. Kafka를 통해 전송 */
-        kafkaProducerService.sendMessageJson(
-                findPwTopic,
-                new SendPwFormDto(LocalDateTime.now(), findPwDto.getUserId(), findPwDto.getEmail(), tempPw)
-        );
+        eventProducerService.produceUserTempPw(findPwDto.getUserId(), findPwDto.getEmail(), tempPw);
 
         return PublicStatus.SUCCESS;
     }
@@ -270,15 +257,6 @@ public class JoinMemberService {
 
 
     /**
-     * 유저 리프레시 토큰을 삭제해주는 함수
-     * @param userNo
-     */
-    private void deleteRefreshToken(String userNo) {
-        //String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNo, tokenId);
-        //redisService.deleteKey(refreshKey);
-    }
-
-    /**
      * 회원의 아이디를 찾아주는 함수
      * @param findIdDto
      * @return
@@ -334,8 +312,7 @@ public class JoinMemberService {
             }
 
             /* 회원정보가 존재하는 경우 -> Kafka Producing */
-            SendIdFormDto sendIdFormDto = new SendIdFormDto(LocalDateTime.now(), findUserId, findIdDto.getEmail());
-            kafkaProducerService.sendMessageJson(findIdTopic, sendIdFormDto);
+            eventProducerService.produceUserIdInfo(findUserId, findIdDto.getEmail());
 
         } catch(Exception e) {
             log.error("[Error][JoinMemberService->findId] {}", e.getMessage(), e);

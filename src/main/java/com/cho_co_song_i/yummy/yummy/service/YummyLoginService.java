@@ -3,14 +3,13 @@ package com.cho_co_song_i.yummy.yummy.service;
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
+import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.repository.UserTokenIdRepository;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -19,10 +18,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.cho_co_song_i.yummy.yummy.entity.QUserAuthTbl.userAuthTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTempPwTbl.userTempPwTbl;
 
@@ -36,22 +37,23 @@ public class YummyLoginService {
     @Value("${spring.redis.refresh-key-prefix}")
     private String refreshKeyPrefix;
 
-    @Value("${spring.topic.kafka.login-history}")
-    private String loginKafkaTopic;
-
-    @PersistenceContext
     private final RedisService redisService;
     private final UserService userService;
     private final JwtProviderService jwtProviderService;
+    private final EventProducerService eventProducerService;
+
     private final JPAQueryFactory queryFactory;
     private final UserTokenIdRepository userTokenIdRepository;
 
+
+
     public YummyLoginService(RedisService redisService, JwtProviderService jwtProviderService,
-                             JPAQueryFactory queryFactory,
+                             JPAQueryFactory queryFactory, EventProducerService eventProducerService,
                              UserTokenIdRepository userTokenIdRepository, UserService userService) {
         this.redisService = redisService;
         this.jwtProviderService = jwtProviderService;
         this.queryFactory = queryFactory;
+        this.eventProducerService = eventProducerService;
         this.userTokenIdRepository = userTokenIdRepository;
         this.userService = userService;
     }
@@ -153,15 +155,7 @@ public class YummyLoginService {
         return true;
     }
 
-    private String getTryLoginUserIpAddress(HttpServletRequest req) {
-        String ip = req.getHeader("X-Forwarded-For");
 
-        if (ip == null || ip.isEmpty()) {
-            ip = req.getRemoteAddr();
-        }
-
-        return ip;
-    }
 
     /**
      * 유저의 로그아웃을 위해서 로그인관련 인증 토큰을 다 제거해주는 함수
@@ -171,6 +165,23 @@ public class YummyLoginService {
         CookieUtil.clearCookie(res, "yummy-access-token");
     }
 
+    /**
+     * userAuthTbl 테이블의 정보를 쿼리하는 함수
+     * @param userToken
+     * @param oauthChannelStatus
+     * @return
+     * @throws Exception
+     */
+    public UserAuthTbl getUserAuthTbl(String userToken, OauthChannelStatus oauthChannelStatus) throws Exception {
+        return queryFactory
+                .selectFrom(userAuthTbl)
+                .join(userTbl).on(userTbl.eq(userAuthTbl.user))
+                .where(
+                        userAuthTbl.id.loginChannel.eq(String.valueOf(oauthChannelStatus)),
+                        userAuthTbl.id.tokenId.eq(userToken)
+                )
+                .fetchFirst();
+    }
 
     /**
      * 기본적인 유저 로그인 검증 후 유저로그인 관련 정보 반환하는 함수
@@ -246,10 +257,8 @@ public class YummyLoginService {
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus standardLoginUser(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
 
-        String tryUserIp = getTryLoginUserIpAddress(req);
-
-        System.out.println("========================================");
-        System.out.println("tryUserIp: " + tryUserIp);
+        /* 로그인 시도 기록 */
+        eventProducerService.produceLoginAttemptEvent(req);
 
         StandardLoginBasicResDto loginRes = getLoginUserInfo(standardLoginDto);
 

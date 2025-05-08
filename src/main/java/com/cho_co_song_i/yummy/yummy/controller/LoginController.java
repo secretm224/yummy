@@ -94,7 +94,6 @@ public class LoginController {
     }
 
 
-
     /**
      * 로그인을 체크해주는 함수
      * @param res
@@ -109,29 +108,18 @@ public class LoginController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * Kakao Oauth2 를 통해서 로그인 해주는 컨트롤러
+     * @param loginDto
+     * @param res
+     * @param req
+     * @return
+     */
     @PostMapping("/oauth2/kakao")
     @ResponseBody
     public ResponseEntity<PublicStatus> KakaoLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) {
-
         try {
-
-            UserOAuthResponse result = kakoLoginService.handleOAuthLogin(loginDto.getCode());
-
-            if (result.getPublicStatus() == PublicStatus.SUCCESS) {
-
-                /* Oauth2 인증 성공해서 유저 정보가 있는 경우 */
-                return ResponseEntity.ok(yummyLoginService.oauthLogin(result.getUserNum(), res));
-
-            } else if (result.getPublicStatus() == PublicStatus.JOIN_TARGET_MEMBER) {
-                /*
-                * 유저에게 신규 가입 또는 기존회원 연동 하게 시킴.
-                * -> 임시 jwt 토큰 발급
-                */
-                kakoLoginService.generateTempOauthJwtCookie(result.getIdToken(), res);
-                return ResponseEntity.ok(PublicStatus.JOIN_TARGET_MEMBER);
-            }
-
-            return ResponseEntity.ok(PublicStatus.CASE_ERR);
+            return ResponseEntity.ok(kakoLoginService.handleOAuthLogin(loginDto, res, req));
         } catch(Exception e) {
             log.error("[Error][LoginController->KakaoLogin] {}", e.getMessage(), e);
             return ResponseEntity.ok(PublicStatus.SERVER_ERR);
