@@ -14,6 +14,6 @@ public class UserBasicInfoDto {
     private String userNm;
     private String userBirth;
     private String userPic;
-    private BigDecimal lngX;
-    private BigDecimal latY;
+    private BigDecimal lng;
+    private BigDecimal lat;
 }
