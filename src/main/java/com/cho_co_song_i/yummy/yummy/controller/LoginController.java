@@ -9,6 +9,7 @@ import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -72,9 +73,9 @@ public class LoginController {
      * @return
      */
     @PostMapping("/standardLogin")
-    public ResponseEntity<PublicStatus> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res) {
+    public ResponseEntity<PublicStatus> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) {
         try {
-            return ResponseEntity.ok(yummyLoginService.standardLoginUser(standardLoginDto, res));
+            return ResponseEntity.ok(yummyLoginService.standardLoginUser(standardLoginDto, res, req));
         } catch(Exception e) {
             log.error("[Error][LoginController->StandardLogin] {}", e.getMessage(), e);
             return ResponseEntity.ok(PublicStatus.AUTH_ERROR);
@@ -117,10 +118,11 @@ public class LoginController {
             UserOAuthResponse result = kakoLoginService.handleOAuthLogin(loginDto.getCode());
 
             if (result.getPublicStatus() == PublicStatus.SUCCESS) {
+
                 /* Oauth2 인증 성공해서 유저 정보가 있는 경우 */
-                return ResponseEntity.ok(yummyLoginService.oauthLogin(result.getUserNum(), result.getIdToken(), res));
-            }
-            else if (result.getPublicStatus() == PublicStatus.JOIN_TARGET_MEMBER) {
+                return ResponseEntity.ok(yummyLoginService.oauthLogin(result.getUserNum(), res));
+
+            } else if (result.getPublicStatus() == PublicStatus.JOIN_TARGET_MEMBER) {
                 /*
                 * 유저에게 신규 가입 또는 기존회원 연동 하게 시킴.
                 * -> 임시 jwt 토큰 발급
