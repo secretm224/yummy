@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/joinMember")
 @Slf4j
 public class JoinMemberController {
+
     private final JoinMemberService joinMemberService;
 
     public JoinMemberController(JoinMemberService joinMemberService) {
@@ -49,9 +50,12 @@ public class JoinMemberController {
     @PostMapping("/findId")
     @ResponseBody
     public ResponseEntity<PublicStatus> findId(@RequestBody FindIdDto findIdDto) {
-
-        PublicStatus result = joinMemberService.findId(findIdDto);
-        return ResponseEntity.ok(result);
+        try {
+            return ResponseEntity.ok(joinMemberService.findId(findIdDto));
+        } catch(Exception e) {
+            log.error("[Error][JoinMemberController->findId] {}", e.getMessage(), e);
+            return ResponseEntity.ok(PublicStatus.SERVER_ERR);
+        }
     }
 
     /**

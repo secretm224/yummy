@@ -35,7 +35,7 @@ public class UserService {
      * @param user
      * @return
      */
-    public UserBasicInfoDto getUserBasicInfos(UserTbl user) throws Exception {
+    public UserBasicInfoDto getUserBasicInfos(UserTbl user) {
 
         UserLocationDetailTbl userLocationDetail = queryFactory
                 .selectFrom(userLocationDetailTbl)
@@ -68,7 +68,7 @@ public class UserService {
      * @param userOAuthInfoDto
      * @return
      */
-    public UserBasicInfoDto getUserInfos(Long UserNo, UserOAuthInfoDto userOAuthInfoDto) throws Exception {
+    public UserBasicInfoDto getUserInfos(Long UserNo, UserOAuthInfoDto userOAuthInfoDto) {
 
         UserTbl loginUser = queryFactory
                 .selectFrom(userTbl)
@@ -93,7 +93,7 @@ public class UserService {
     }
 
     /**
-     * jwt 의 포괄적인 정보를 리턴해주는 함수
+     * jwt 의 포괄적인 정보를 리턴해주는 함수 필요있는건가?...
      * @param jwtName
      * @param req
      * @return
@@ -104,7 +104,27 @@ public class UserService {
 
 
     /**
-     * jwt 의 상태를 리턴해주는 함수 -> jwt 가 변조된 경우 해당 jwt 쿠키를 지워주는 역할도 수행한다.
+     *
+     * @param jwtName
+     * @param res
+     * @param req
+     * @return
+     */
+    public JwtValidationResult verifyJwtInfo(String jwtName, HttpServletResponse res, HttpServletRequest req) {
+        JwtValidationResult jwtValidationResult = getValidateResultJwt(jwtName, req);
+        JwtValidationStatus jwtStatus = jwtValidationResult.getStatus();
+
+        if (jwtStatus != JwtValidationStatus.SUCCESS) {
+            /* 유효하지 않은 or 만료된 jwt 경우 삭제 시켜준다. */
+            CookieUtil.clearCookie(res, jwtValidationResult.getJwtName());
+        }
+
+        return jwtValidationResult;
+    }
+
+
+    /**
+     * jwt 의 상태를 리턴해주는 함수 -> jwt 가 변조된 경우 해당 jwt 쿠키를 지워주는 역할도 수행한다. -> 필요있는건가?...
      * @param jwtValidationResult
      * @param res
      * @return

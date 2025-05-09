@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
@@ -40,6 +39,8 @@ public class JoinMemberService {
     private final UserPhoneNumberRepository userPhoneNumberRepository;
     private final UserEmailRepository userEmailRepository;
     private final UserTempPwHistoryRepository userTempPwHistoryRepository;
+
+    private final YummyLoginService yummyLoginService;
     private final RedisService redisService;
     private final UserService userService;
     private final EventProducerService eventProducerService;
@@ -53,7 +54,7 @@ public class JoinMemberService {
     public JoinMemberService(JPAQueryFactory queryFactory, UserRepository userRepository,
                              UserPhoneNumberRepository userPhoneNumberRepository, UserEmailRepository userEmailRepository,
                              UserTempPwHistoryRepository userTempPwHistoryRepository, EventProducerService eventProducerService,
-                             RedisService redisService, EntityManager entityManager,
+                             RedisService redisService, EntityManager entityManager, YummyLoginService yummyLoginService,
                              UserAuthRepository userAuthRepository, UserService userService
     ) {
         this.queryFactory = queryFactory;
@@ -66,6 +67,7 @@ public class JoinMemberService {
         this.entityManager = entityManager;
         this.userAuthRepository = userAuthRepository;
         this.userService = userService;
+        this.yummyLoginService = yummyLoginService;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -75,143 +77,54 @@ public class JoinMemberService {
         return PublicStatus.SUCCESS;
     }
 
+
     /**
-     * 유저의 비밀번호를 바꿔주는 함수
-     * @param changePwDto
+     * 입력된 아이디가 DB 유저 테이블에 존재하는지 확인해주는 함수
+     * @param userId
      * @return
-     * @throws Exception
      */
-    @Transactional(rollbackFor = Exception.class)
-    public PublicStatus changePasswd(HttpServletResponse res, HttpServletRequest req, ChangePwDto changePwDto) throws Exception {
+    private JoinMemberIdStatus checkUserId(String userId) {
 
-        /* 비밀번호 검증 */
-        /* UserPasswd 확인 */
-        boolean checkPw = checkUserPw(changePwDto.getUserChangePw());
-        if (!checkPw) {
-            return PublicStatus.PW_ERR;
+        if (!checkIdFormat(userId)) {
+            return JoinMemberIdStatus.NONFORMAT;
         }
 
-        /* UserPasswd 비밀번호 확인 */
-        boolean checkPwCheck = checkUserPwCheck(changePwDto.getUserChangePw(), changePwDto.getUserChangePwCheck());
-        if (!checkPwCheck) {
-            return PublicStatus.PW_CHECK_ERR;
-        }
+        var queryCount = queryFactory
+                .selectOne()
+                .from(userTbl)
+                .where(userTbl.userId.eq(userId))
+                .fetchFirst();
 
-        /* 액세스 토큰 확인 */
-        JwtValidationResult jwtResult = userService.getValidateResultJwt("yummy-access-token", req);
-        JwtValidationStatus status = userService.getStatusJwt(jwtResult, res);
-
-        if (status == JwtValidationStatus.SUCCESS) {
-            String userNo = jwtResult.getClaims().getSubject();
-
-            String saltValue = HashUtil.generateSalt();
-            String userPwHash = HashUtil.hashWithSalt(changePwDto.getUserChangePw(), saltValue);
-
-            Optional<UserTbl> userOptional = userRepository.findById(Long.parseLong(userNo));
-
-            if (userOptional.isPresent()) {
-                UserTbl user = userOptional.get();
-                user.setUserPw(userPwHash);
-                user.setUserPwSalt(saltValue);
-            }
-
-            Optional<UserTempPwTbl> userTempPwOptional = userTempPwHistoryRepository.findById(Long.parseLong(userNo));
-
-            if (userTempPwOptional.isPresent()) {
-                UserTempPwTbl userTempPw = userTempPwOptional.get();
-                userTempPwHistoryRepository.delete(userTempPw);
-            }
-
-            /* 기존 jwt를 제거해준다. -> 재 로그인 유도하기 위함. */
-            CookieUtil.clearCookie(res, "yummy-access-token");
-
-        } else if (status == JwtValidationStatus.EXPIRED) {
-            /* 재 로그인 후 비밀번호 수정 필요 -> 이건 뭔가 수정이 필요해 보임. */
-            return PublicStatus.LOGIN_AGAIN;
+        if (queryCount == null) {
+            return JoinMemberIdStatus.SUCCESS;
         } else {
-            /* 토큰이 유효하지 않음 */
-            return PublicStatus.AUTH_ERROR;
+            return JoinMemberIdStatus.DUPLICATED;
         }
-
-        return PublicStatus.SUCCESS;
     }
 
 
     /**
-     * 회원의 비밀번호를 찾아주는 함수
-     * @param findPwDto
+     * 아이디 찾기를 위해서 유저정보를 디비에서 가져와주는 함수
+     * @param findIdDto
      * @return
      */
-    @Transactional(rollbackFor = Exception.class)
-    public PublicStatus findPw(FindPwDto findPwDto) throws Exception {
-
-        /* 1. 유효성 검사 */
-        /* 이름 검사 */
-        boolean checkUserName = checkUserName(findPwDto.getUserNm());
-        if (!checkUserName) {
-            return PublicStatus.NAME_ERR;
-        }
-
-        /* 아이디 검사 */
-        boolean checkId = checkIdFormat(findPwDto.getUserId());
-        if (!checkId) {
-            return PublicStatus.ID_ERR;
-        }
-
-        /* 이메일 검사 */
-        boolean checkEmail = checkUserEmail(findPwDto.getEmail());
-        if (!checkEmail) {
-            return PublicStatus.EMAIL_ERR;
-        }
-
-        /* 2.사용자 조회 */
-        UserTbl userTbl = fetchUserInfo(findPwDto);
-
-        if (userTbl == null) {
-            return PublicStatus.PW_FIND_ERR;
-        }
-
-        /* 3. 임시 비밀번호 생성 및 기존 토큰 모두 제거 -> 이 작업을 항후에는 배치로 옮겨서 해야될수도 있을듯 */
-        String tempPw = issueAndSaveTempPassword(userTbl);
-
-        /* 4. 기존 유저의 토큰 아이디 모두 제거 */
-        deleteUserTokenIds(userTbl.getUserNo());
-
-        /* 5. Kafka를 통해 전송 */
-        eventProducerService.produceUserTempPw(findPwDto.getUserId(), findPwDto.getEmail(), tempPw);
-
-        return PublicStatus.SUCCESS;
+    private String getUserIdByFindId(FindIdDto findIdDto) {
+        return queryFactory
+                .select(userTbl.userId)
+                .from(userTbl)
+                .join(userEmailTbl).on(userEmailTbl.user.eq(userTbl))
+                .join(userPhoneNumberTbl).on(userPhoneNumberTbl.user.eq(userTbl))
+                .where(
+                        userTbl.userNm.eq(findIdDto.getUserNm()),
+                        userPhoneNumberTbl.id.phoneNumber.eq(findIdDto.getPhoneNumber()),
+                        userPhoneNumberTbl.telecomName.eq(findIdDto.getTelecom()),
+                        userEmailTbl.id.userEmailAddress.eq(findIdDto.getEmail())
+                )
+                .fetchFirst();
     }
 
     /**
-     * 특정 유저가 가지고 있는 토큰 키 모두 제거
-     * @param userNo
-     */
-    private void deleteUserTokenIds(Long userNo) throws Exception {
-
-        List<UserTokenIdTbl> userTokens = queryFactory
-                .selectFrom(userTokenIdTbl)
-                .where(userTokenIdTbl.id.userNo.eq(userNo))
-                .fetch();
-
-        if (userTokens == null || userTokens.isEmpty()) {
-            return;
-        }
-
-        /* 레디스에 존재하는 토큰 모두 제거 */
-        for (UserTokenIdTbl tokenTbl : userTokens) {
-            Optional.ofNullable(tokenTbl.getId().getTokenId())
-                    .ifPresent(token -> {
-                        String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNo.toString(), token);
-                        redisService.deleteKey(refreshKey);
-                        entityManager.remove(tokenTbl);
-                    });
-        }
-    }
-
-
-    /**
-     * 유저정보를 가져와주는 함수
+     * DB 에서 유저정보를 가져와주는 함수
      * @param dto
      * @return
      */
@@ -228,12 +141,35 @@ public class JoinMemberService {
                 .fetchFirst();
     }
 
+    /**
+     * 특정 유저가 가지고 있는 토큰 키 모두 제거
+     * @param userNo
+     */
+    private void deleteUserTokenIds(Long userNo) {
+
+        List<UserTokenIdTbl> userTokens = queryFactory
+                .selectFrom(userTokenIdTbl)
+                .where(userTokenIdTbl.id.userNo.eq(userNo))
+                .fetch();
+
+        if (userTokens == null || userTokens.isEmpty()) {
+            return;
+        }
+
+        /* 레디스에 존재하는 토큰 모두 제거 && DB 에서도 해당 정보 제거*/
+        for (UserTokenIdTbl tokenTbl : userTokens) {
+            Optional.ofNullable(tokenTbl.getId().getTokenId())
+                    .ifPresent(token -> {
+                        String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNo.toString(), token);
+                        redisService.deleteKey(refreshKey);
+                        entityManager.remove(tokenTbl);
+                    });
+        }
+    }
 
     /**
      * 새로운 비밀번호를 생성하고 저장해주는 함수
      * @param userTbl
-     * @return
-     * @throws Exception
      */
     private String issueAndSaveTempPassword(UserTbl userTbl) throws Exception {
 
@@ -255,210 +191,12 @@ public class JoinMemberService {
         return tempPw;
     }
 
-
-    /**
-     * 회원의 아이디를 찾아주는 함수
-     * @param findIdDto
-     * @return
-     */
-    public PublicStatus findId(FindIdDto findIdDto) {
-
-        /* 이름 검사 */
-        boolean checkUserName = checkUserName(findIdDto.getUserNm());
-        if (!checkUserName) {
-            return PublicStatus.NAME_ERR;
-        }
-
-        /* 통신사 검사 */
-        boolean checkUserTelecom = checkUserMobileCarrier(findIdDto.getTelecom());
-        if (!checkUserTelecom) {
-            return PublicStatus.TELECOM_ERR;
-        }
-
-        /* 휴대폰 번호 검사 */
-        boolean checkUserPhoneNumber = checkUserPhoneNumberFormat(findIdDto.getPhoneNumber());
-        if (!checkUserPhoneNumber) {
-            return PublicStatus.PHONE_ERR;
-        }
-
-        /* 이메일 검사 */
-        boolean checkEmail = checkUserEmail(findIdDto.getEmail());
-        if (!checkEmail) {
-            return PublicStatus.EMAIL_ERR;
-        }
-
-        /**
-         * 문제가 없다면, 회원 아이디를 회원의 이메일에 전송하는 로직을 짜준다.
-         * 여기서 JAVA에서 SMTP 로 바로 쏴주는게 아닌, Kafka 토픽으로 회원의 아이디 정보를 보내주면 된다.
-         */
-        try {
-
-            String findUserId = queryFactory
-                    .select(userTbl.userId)
-                    .from(userTbl)
-                    .join(userEmailTbl).on(userEmailTbl.user.eq(userTbl))
-                    .join(userPhoneNumberTbl).on(userPhoneNumberTbl.user.eq(userTbl))
-                    .where(
-                            userTbl.userNm.eq(findIdDto.getUserNm()),
-                            userPhoneNumberTbl.id.phoneNumber.eq(findIdDto.getPhoneNumber()),
-                            userPhoneNumberTbl.telecomName.eq(findIdDto.getTelecom()),
-                            userEmailTbl.id.userEmailAddress.eq(findIdDto.getEmail())
-                    )
-                    .fetchFirst();
-
-            /* 입력한 정보를 토대로 회원정보가 존재하지 않음 */
-            if (findUserId == null || findUserId.isEmpty()) {
-                return PublicStatus.ID_FIND_ERR;
-            }
-
-            /* 회원정보가 존재하는 경우 -> Kafka Producing */
-            eventProducerService.produceUserIdInfo(findUserId, findIdDto.getEmail());
-
-        } catch(Exception e) {
-            log.error("[Error][JoinMemberService->findId] {}", e.getMessage(), e);
-        }
-
-        return PublicStatus.SUCCESS;
-    }
-
-    /**
-     * 회원가입 해주는 서비스 함수
-     * @param joinMemberDto
-     * @return
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public PublicStatus joinMember(HttpServletResponse res, HttpServletRequest req, JoinMemberDto joinMemberDto) throws Exception {
-
-        /* UserID 확인 */
-        try {
-            JoinMemberIdStatus checkId = checkUserId(joinMemberDto.getUserId());
-
-            if (checkId == JoinMemberIdStatus.NONFORMAT) {
-                return PublicStatus.ID_ERR;
-            } else if (checkId == JoinMemberIdStatus.DUPLICATED) {
-                return PublicStatus.ID_DUPLICATED;
-            }
-
-        } catch(Exception e) {
-            log.error("[Error][JoinMemberService->joinMember] {}", e.getMessage(), e);
-            return PublicStatus.ID_ERR;
-        }
-
-
-        /* UserPasswd 확인 */
-        boolean checkPw = checkUserPw(joinMemberDto.getPassword());
-        if (!checkPw) {
-            return PublicStatus.PW_ERR;
-        }
-
-        /* UserPasswd 비밀번호 확인 */
-        boolean checkPwCheck = checkUserPwCheck(joinMemberDto.getPassword(), joinMemberDto.getPasswordCheck());
-        if (!checkPwCheck) {
-            return PublicStatus.PW_CHECK_ERR;
-        }
-
-        /* Email 검사 */
-        boolean checkEmail = checkUserEmail(joinMemberDto.getEmail());
-        if (!checkEmail) {
-            return PublicStatus.EMAIL_ERR;
-        }
-
-        /* 이름 검사 */
-        boolean checkUserName = checkUserName(joinMemberDto.getName());
-        if (!checkUserName) {
-            return PublicStatus.NAME_ERR;
-        }
-
-        /* 생년월일 검사 */
-        boolean checkUserBirthday = checkUserBirthday(joinMemberDto.getBirthDate());
-        if (!checkUserBirthday) {
-            return PublicStatus.BIRTH_ERR;
-        }
-
-        /* 통신사 검사 */
-        boolean checkUserTelecom = checkUserMobileCarrier(joinMemberDto.getTelecom());
-        if (!checkUserTelecom) {
-            return PublicStatus.TELECOM_ERR;
-        }
-
-        /* 성별 검사 */
-        boolean checkUserGender = checkUserGender(joinMemberDto.getGender());
-        if (!checkUserGender) {
-            return PublicStatus.GENDER_ERR;
-        }
-
-        /* 휴대전화번호 검사 */
-        PublicStatus checkUserPhoneNumber = checkUserPhoneNumber(joinMemberDto.getPhoneNumber());
-        if (checkUserPhoneNumber != PublicStatus.SUCCESS) {
-            return checkUserPhoneNumber;
-        }
-
-        /* 신규회원 저장 */
-        return checkOauthAndSaveUser(res, req, joinMemberDto);
-    }
-
-
-    /**
-     * Oauth2 연동 회원가입 유저인지 체크하고 유저의 정보를 디비에 저장해주는 함수
-     * @param res
-     * @param req
-     * @param joinMemberDto
-     * @return
-     * @throws Exception
-     */
-    private PublicStatus checkOauthAndSaveUser(HttpServletResponse res, HttpServletRequest req, JoinMemberDto joinMemberDto) throws Exception {
-
-        /* Oauth2 와 연동할 아이디인지 체크 */
-        String oauthToken = CookieUtil.getCookieValue(req, "yummy-oauth-token");
-
-        if (oauthToken != null) {
-            JwtValidationResult jwtResult = userService.getValidateResultJwt("yummy-oauth-token", req);
-            JwtValidationStatus status = userService.getStatusJwt(jwtResult, res);
-
-            if (status == JwtValidationStatus.SUCCESS) {
-                /* ==== JWT 검증 성공 ==== */
-
-                /* oauth2 토큰 아이디 */
-                String idToken = jwtResult.getClaims().getSubject();
-
-                /* oauth2 채널 - 카카오,네이버,구글...등등 */
-                String oauthChannel = jwtResult.getClaims().get("oauthChannel", String.class);
-
-                /* user 정보부터 저장 */
-                UserTbl joinUser = saveJoinUser(joinMemberDto);
-
-                /* oauth2 정보도 저장 */
-                UserAuthTbl userAuthTbl = new UserAuthTbl();
-                UserAuthTblId userAuthTblId = new UserAuthTblId(joinUser.getUserNo(), oauthChannel, idToken);
-                userAuthTbl.setUser(joinUser);
-                userAuthTbl.setId(userAuthTblId);
-                userAuthTbl.setReg_dt(new Date());
-                userAuthTbl.setReg_id("system");
-
-                userAuthRepository.save(userAuthTbl);
-
-                CookieUtil.clearCookie(res, "yummy-oauth-token");
-
-            } else {
-                /* JWT 검증 실패 */
-                return PublicStatus.REJOIN_CHECK;
-            }
-
-        } else {
-            saveJoinUser(joinMemberDto);
-        }
-
-        return PublicStatus.SUCCESS;
-    }
-
-
     /**
      * 새로운 유저의 정보를 디비에 저장해준다.
      * @param joinMemberDto
      * @return
      * @throws Exception
      */
-    @Transactional(rollbackFor = Exception.class)
     private UserTbl saveJoinUser(JoinMemberDto joinMemberDto) throws Exception {
 
         UserTbl user = saveUser(joinMemberDto);
@@ -555,35 +293,6 @@ public class JoinMemberService {
         return userId.matches("^(?!\\d+$)[a-z0-9]+$");
     }
 
-    /**
-     * 아이디가 존재하는지 확인
-     * @param userId
-     * @return
-     */
-    private JoinMemberIdStatus checkUserId(String userId) throws Exception {
-
-        if (!checkIdFormat(userId)) {
-            return JoinMemberIdStatus.NONFORMAT;
-        }
-
-        try {
-
-            var queryCount = queryFactory
-                    .selectOne()
-                    .from(userTbl)
-                    .where(userTbl.userId.eq(userId))
-                    .fetchFirst();
-
-            if (queryCount == null) {
-                return JoinMemberIdStatus.SUCCESS;
-            } else {
-                return JoinMemberIdStatus.DUPLICATED;
-            }
-
-        } catch(Exception e) {
-            throw new Exception("Error in checkUserId: {}" + e.getMessage(), e);
-        }
-    }
 
     /**
      * 비밀번호 검증
@@ -648,11 +357,7 @@ public class JoinMemberService {
         }
 
         /* 특수문자가 포함되면 false (문자만 허용) */
-        if (!name.matches("^[\\p{L}]+$")) {
-            return false;
-        }
-
-        return true;
+        return name.matches("^[\\p{L}]+$");
     }
 
     /**
@@ -674,7 +379,7 @@ public class JoinMemberService {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
 
         try {
-            LocalDate parsedDate = LocalDate.parse(birthDate, formatter);
+            LocalDate.parse(birthDate, formatter);
             return true;
         } catch(Exception e) {
             /* 날짜 파싱 실패 - 잘못된 날짜 */
@@ -733,9 +438,8 @@ public class JoinMemberService {
      * 유저의 핸드폰번호 검증
      * @param phoneNumber
      * @return
-     * @throws Exception
      */
-    private PublicStatus checkUserPhoneNumber(String phoneNumber) throws Exception {
+    private PublicStatus checkUserPhoneNumber(String phoneNumber) {
 
         if (!checkUserPhoneNumberFormat(phoneNumber)) {
             return PublicStatus.PHONE_ERR;
@@ -755,6 +459,337 @@ public class JoinMemberService {
         }
     }
 
+    /**
+     * UserAuthTbl 정보를 DB에 저장해주는 함수
+     * @param userTbl
+     * @param idToken
+     * @param oauthChannel
+     */
+    private void saveUserAuth(UserTbl userTbl, String idToken, String oauthChannel) {
+        /* oauth2 정보 저장 */
+        UserAuthTbl userAuthTbl = new UserAuthTbl();
+        UserAuthTblId userAuthTblId = new UserAuthTblId(userTbl.getUserNo(), oauthChannel, idToken);
+        userAuthTbl.setUser(userTbl);
+        userAuthTbl.setId(userAuthTblId);
+        userAuthTbl.setReg_dt(new Date());
+        userAuthTbl.setReg_id("system");
+
+        userAuthRepository.save(userAuthTbl);
+    }
 
 
+    /**
+     * Oauth2 연동 회원가입 유저인지 체크하고 유저의 정보를 디비에 저장해주는 함수
+     * @param res
+     * @param req
+     * @param joinMemberDto
+     * @return
+     * @throws Exception
+     */
+    private PublicStatus checkOauthAndSaveUser(HttpServletResponse res, HttpServletRequest req, JoinMemberDto joinMemberDto) throws Exception {
+
+        /* Oauth2 와 연동할 아이디인지 체크 */
+        String oauthToken = CookieUtil.getCookieValue(req, "yummy-oauth-token");
+
+        if (oauthToken != null) {
+            JwtValidationResult jwtResult = userService.getValidateResultJwt("yummy-oauth-token", req);
+            JwtValidationStatus status = userService.getStatusJwt(jwtResult, res);
+
+            if (status == JwtValidationStatus.SUCCESS) {
+                /* ==== JWT 검증 성공 ==== */
+
+                /* oauth2 토큰 아이디 */
+                String idToken = jwtResult.getClaims().getSubject();
+
+                /* oauth2 채널 - 카카오,네이버,구글...등등 */
+                String oauthChannel = jwtResult.getClaims().get("oauthChannel", String.class);
+
+                /* oauth2 채널 필터가 필요할듯...?*/
+
+                /* user 정보부터 저장 */
+                UserTbl joinUser = saveJoinUser(joinMemberDto);
+
+                /* oauth2 정보도 저장 */
+                saveUserAuth(joinUser, idToken, oauthChannel);
+
+                CookieUtil.clearCookie(res, "yummy-oauth-token");
+
+            } else {
+                /* JWT 검증 실패 */
+                return PublicStatus.REJOIN_CHECK;
+            }
+
+        } else {
+            saveJoinUser(joinMemberDto);
+        }
+
+
+        return PublicStatus.SUCCESS;
+    }
+
+
+    /**
+     * 유저의 비밀번호를 바꿔주는 함수
+     * @param changePwDto
+     * @return
+     * @throws Exception
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public PublicStatus changePasswd(HttpServletResponse res, HttpServletRequest req, ChangePwDto changePwDto) throws Exception {
+
+        /* 비밀번호 검증 */
+        /* UserPasswd 확인 */
+        boolean checkPw = checkUserPw(changePwDto.getUserChangePw());
+        if (!checkPw) {
+            return PublicStatus.PW_ERR;
+        }
+
+        /* UserPasswd 비밀번호 확인 */
+        boolean checkPwCheck = checkUserPwCheck(changePwDto.getUserChangePw(), changePwDto.getUserChangePwCheck());
+        if (!checkPwCheck) {
+            return PublicStatus.PW_CHECK_ERR;
+        }
+
+        /* 액세스 토큰 확인 */
+        JwtValidationResult jwtResult = userService.getValidateResultJwt("yummy-access-token", req);
+        JwtValidationStatus status = userService.getStatusJwt(jwtResult, res);
+
+        if (status == JwtValidationStatus.SUCCESS) {
+            String userNo = jwtResult.getClaims().getSubject();
+
+            String saltValue = HashUtil.generateSalt();
+            String userPwHash = HashUtil.hashWithSalt(changePwDto.getUserChangePw(), saltValue);
+
+            Optional<UserTbl> userOptional = userRepository.findById(Long.parseLong(userNo));
+
+            if (userOptional.isPresent()) {
+                UserTbl user = userOptional.get();
+                user.setUserPw(userPwHash);
+                user.setUserPwSalt(saltValue);
+            }
+
+            Optional<UserTempPwTbl> userTempPwOptional = userTempPwHistoryRepository.findById(Long.parseLong(userNo));
+
+            if (userTempPwOptional.isPresent()) {
+                UserTempPwTbl userTempPw = userTempPwOptional.get();
+                userTempPwHistoryRepository.delete(userTempPw);
+            }
+
+            /* 기존 jwt를 제거해준다. -> 재 로그인 유도하기 위함. */
+            CookieUtil.clearCookie(res, "yummy-access-token");
+
+        } else if (status == JwtValidationStatus.EXPIRED) {
+            /* 재 로그인 후 비밀번호 수정 필요 -> 이건 뭔가 수정이 필요해 보임. */
+            return PublicStatus.LOGIN_AGAIN;
+        } else {
+            /* 토큰이 유효하지 않음 */
+            return PublicStatus.AUTH_ERROR;
+        }
+
+        return PublicStatus.SUCCESS;
+    }
+
+
+    /**
+     * 회원의 비밀번호를 찾아주는 함수
+     * @param findPwDto
+     * @return
+     * @throws Exception
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public PublicStatus findPw(FindPwDto findPwDto) throws Exception {
+
+        /* 1. 유효성 검사 */
+        /* 이름 검사 */
+        boolean checkUserName = checkUserName(findPwDto.getUserNm());
+        if (!checkUserName) {
+            return PublicStatus.NAME_ERR;
+        }
+
+        /* 아이디 검사 */
+        boolean checkId = checkIdFormat(findPwDto.getUserId());
+        if (!checkId) {
+            return PublicStatus.ID_ERR;
+        }
+
+        /* 이메일 검사 */
+        boolean checkEmail = checkUserEmail(findPwDto.getEmail());
+        if (!checkEmail) {
+            return PublicStatus.EMAIL_ERR;
+        }
+
+        /* 2.사용자 조회 */
+        UserTbl userTbl = fetchUserInfo(findPwDto);
+
+        if (userTbl == null) {
+            return PublicStatus.PW_FIND_ERR;
+        }
+
+        /* 3. 임시 비밀번호 생성 및 기존 토큰 모두 제거 -> 이 작업을 항후에는 배치로 옮겨서 해야될수도 있을듯 */
+        String tempPw = issueAndSaveTempPassword(userTbl);
+
+        /* 4. 기존 유저의 토큰 아이디 모두 제거 */
+        deleteUserTokenIds(userTbl.getUserNo());
+
+        /* 5. Kafka를 통해 전송 */
+        eventProducerService.produceUserTempPw(findPwDto.getUserId(), findPwDto.getEmail(), tempPw);
+
+        return PublicStatus.SUCCESS;
+    }
+
+
+    /**
+     * 회원의 아이디를 찾아주는 함수
+     * @param findIdDto
+     * @return
+     * @throws Exception
+     */
+    public PublicStatus findId(FindIdDto findIdDto) throws Exception {
+
+        /* 이름 검사 */
+        boolean checkUserName = checkUserName(findIdDto.getUserNm());
+        if (!checkUserName) {
+            return PublicStatus.NAME_ERR;
+        }
+
+        /* 통신사 검사 */
+        boolean checkUserTelecom = checkUserMobileCarrier(findIdDto.getTelecom());
+        if (!checkUserTelecom) {
+            return PublicStatus.TELECOM_ERR;
+        }
+
+        /* 휴대폰 번호 검사 */
+        boolean checkUserPhoneNumber = checkUserPhoneNumberFormat(findIdDto.getPhoneNumber());
+        if (!checkUserPhoneNumber) {
+            return PublicStatus.PHONE_ERR;
+        }
+
+        /* 이메일 검사 */
+        boolean checkEmail = checkUserEmail(findIdDto.getEmail());
+        if (!checkEmail) {
+            return PublicStatus.EMAIL_ERR;
+        }
+
+        /**
+         * 문제가 없다면, 회원 아이디를 회원의 이메일에 전송하는 로직을 짜준다.
+         * 여기서 JAVA에서 SMTP 로 바로 쏴주는게 아닌, Kafka 토픽으로 회원의 아이디 정보를 보내주면 된다.
+         */
+        String findUserId = getUserIdByFindId(findIdDto);
+
+        /* 입력한 정보를 토대로 회원정보가 존재하지 않음 */
+        if (findUserId == null || findUserId.isEmpty()) {
+            return PublicStatus.ID_FIND_ERR;
+        }
+
+        /* 회원정보가 존재하는 경우 -> Kafka Producing */
+        eventProducerService.produceUserIdInfo(findUserId, findIdDto.getEmail());
+
+        return PublicStatus.SUCCESS;
+    }
+
+
+    /**
+     * 회원가입 해주는 서비스 함수
+     * @param joinMemberDto
+     * @return
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public PublicStatus joinMember(HttpServletResponse res, HttpServletRequest req, JoinMemberDto joinMemberDto) throws Exception {
+
+        /* UserID 확인 */
+        JoinMemberIdStatus checkId = checkUserId(joinMemberDto.getUserId());
+
+        if (checkId == JoinMemberIdStatus.NONFORMAT) {
+            return PublicStatus.ID_ERR;
+        } else if (checkId == JoinMemberIdStatus.DUPLICATED) {
+            return PublicStatus.ID_DUPLICATED;
+        }
+
+        /* UserPasswd 확인 */
+        boolean checkPw = checkUserPw(joinMemberDto.getPassword());
+        if (!checkPw) {
+            return PublicStatus.PW_ERR;
+        }
+
+        /* UserPasswd 비밀번호 확인 */
+        boolean checkPwCheck = checkUserPwCheck(joinMemberDto.getPassword(), joinMemberDto.getPasswordCheck());
+        if (!checkPwCheck) {
+            return PublicStatus.PW_CHECK_ERR;
+        }
+
+        /* Email 검사 */
+        boolean checkEmail = checkUserEmail(joinMemberDto.getEmail());
+        if (!checkEmail) {
+            return PublicStatus.EMAIL_ERR;
+        }
+
+        /* 이름 검사 */
+        boolean checkUserName = checkUserName(joinMemberDto.getName());
+        if (!checkUserName) {
+            return PublicStatus.NAME_ERR;
+        }
+
+        /* 생년월일 검사 */
+        boolean checkUserBirthday = checkUserBirthday(joinMemberDto.getBirthDate());
+        if (!checkUserBirthday) {
+            return PublicStatus.BIRTH_ERR;
+        }
+
+        /* 통신사 검사 */
+        boolean checkUserTelecom = checkUserMobileCarrier(joinMemberDto.getTelecom());
+        if (!checkUserTelecom) {
+            return PublicStatus.TELECOM_ERR;
+        }
+
+        /* 성별 검사 */
+        boolean checkUserGender = checkUserGender(joinMemberDto.getGender());
+        if (!checkUserGender) {
+            return PublicStatus.GENDER_ERR;
+        }
+
+        /* 휴대전화번호 검사 */
+        PublicStatus checkUserPhoneNumber = checkUserPhoneNumber(joinMemberDto.getPhoneNumber());
+        if (checkUserPhoneNumber != PublicStatus.SUCCESS) {
+            return checkUserPhoneNumber;
+        }
+
+        /* 신규회원 저장 */
+        return checkOauthAndSaveUser(res, req, joinMemberDto);
+    }
+
+    /**
+     *
+     * @param standardLoginDto
+     * @param res
+     * @param req
+     * @return
+     * @throws Exception
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public PublicStatus linkMemberByOauth(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
+
+        /* 로그인 정보 검증 */
+        StandardLoginBasicResDto standardLoginBasicResDto = yummyLoginService.verifyLoginUserInfo(standardLoginDto);
+
+        if (standardLoginBasicResDto.getPublicStatus() != PublicStatus.SUCCESS) {
+            return PublicStatus.AUTH_ERROR;
+        }
+
+        /* 해당 유저 정보와 Oauth2 정보를 연결해준다. */
+        JwtValidationResult jwtRes = userService.getValidateResultJwt("yummy-oauth-token", req);
+
+        if (jwtRes.getStatus() != JwtValidationStatus.SUCCESS) {
+            return PublicStatus.AUTH_ERROR;
+        }
+
+        /* Oauth id token*/
+        String idToken = userService.getSubjectFromJwt(jwtRes);
+        String loginChannel = userService.getClaimFromJwt(jwtRes, "oauthChannel", String.class);
+
+
+
+
+
+        return PublicStatus.SUCCESS;
+    }
 }
