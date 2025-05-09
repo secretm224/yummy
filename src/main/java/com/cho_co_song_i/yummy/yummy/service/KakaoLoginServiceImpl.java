@@ -46,7 +46,6 @@ public class KakaoLoginServiceImpl implements LoginService {
     @Value("${spring.redis.login.user_info}")
     private String userInfoKey;
 
-
     private final RestTemplate restTemplate;
     private final RedisService redisService;
     private final UserService userService;
@@ -72,7 +71,7 @@ public class KakaoLoginServiceImpl implements LoginService {
      * @param code
      * @return
      */
-    private KakaoToken getKakaoToken(String code) throws Exception {
+    private KakaoToken exchangeCodeForKakaoToken(String code) throws Exception {
 
         /* URL-encoded 포맷으로 만들어주기 위한 데이터 구조 를 위해서 MultiValueMap 를 사용한다.
          * MultiValueMap<String,Object> params = new LinkedMultiValueMap<>();
@@ -116,6 +115,7 @@ public class KakaoLoginServiceImpl implements LoginService {
         }
     }
 
+
     /**
      * 유저의 Kakao Oauth에 대한 정보를 반환해주는 함수
      * @param code
@@ -124,7 +124,7 @@ public class KakaoLoginServiceImpl implements LoginService {
      */
     private UserOAuthResponse getOauthLoginInfo(String code) throws Exception {
         /* User 정보 */
-        UserOAuthInfoDto userKakaoInfo = getKakaoUserOauthInfo(code);
+        UserOAuthInfoDto userKakaoInfo = exchangeCodeForKakaoUser(code);
         String userToken = userKakaoInfo.getUserTokenId();
         UserAuthTbl userAuth = yummyLoginService.getUserAuthTbl(userToken, OauthChannelStatus.kakao);
 
@@ -153,23 +153,18 @@ public class KakaoLoginServiceImpl implements LoginService {
      * @return
      * @throws Exception
      */
-    private UserOAuthInfoDto getKakaoUserOauthInfo(String code) throws Exception {
+    private UserOAuthInfoDto exchangeCodeForKakaoUser(String code) throws Exception {
         /*
          * OAuth 인증과정에서 받은 code를 이용해서 access_token을 요청하고, 그 결과를 KakaoToken 으로 반환받는다.
          */
-        KakaoToken kakaoToken = getKakaoToken(code);
-
-        if (kakaoToken == null) {
-            throw new IllegalStateException("[Error][KakaoLoginServiceImpl->getKakaoUserInfo] Failed to get Kakao token. code: " + code);
-        }
-
+        KakaoToken kakaoToken = exchangeCodeForKakaoToken(code);
         String idToken = kakaoToken.getId_token();
 
         /* Kakao Payload 정보 */
         Map<String, Object> payload = decodeJwtPayload(idToken);
 
         /* User 정보 */
-        return getKakaoUserInfo(payload);
+        return extractKakaoUserInfo(payload);
     }
 
     /**
@@ -177,7 +172,7 @@ public class KakaoLoginServiceImpl implements LoginService {
      * @param payload
      * @return
      */
-    private UserOAuthInfoDto getKakaoUserInfo(Map<String, Object> payload) throws Exception {
+    private UserOAuthInfoDto extractKakaoUserInfo(Map<String, Object> payload) {
         String userTokenId = (String)payload.get("sub");
         String nickName = (String)payload.get("nickname");
         String userPicture = (String)payload.get("picture");

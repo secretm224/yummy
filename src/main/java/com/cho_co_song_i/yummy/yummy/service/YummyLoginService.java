@@ -156,7 +156,7 @@ public class YummyLoginService {
      * @param res
      * @param loginInfo
      */
-    private void handlePostLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo) {
+    public void handlePostLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo) {
 
         /* 유저 정보 */
         UserTbl user = loginInfo.getUserTbl();
@@ -186,7 +186,6 @@ public class YummyLoginService {
         String basicUserInfo = String.format("%s:%s", userInfoKey, userNoStr);
         redisService.set(basicUserInfo, userBasicInfo);
     }
-
 
 
     /**
@@ -312,12 +311,11 @@ public class YummyLoginService {
     public ServiceResponse<Optional<UserBasicInfoDto>> checkLoginUser(HttpServletResponse res, HttpServletRequest req) {
 
         /* 1. 액세스 토큰 확인 */
-        JwtValidationResult jwtResult = userService.getValidateResultJwt("yummy-access-token", req);
-        JwtValidationStatus status = userService.getStatusJwt(jwtResult, res);
+        JwtValidationResult jwtResult = userService.validateJwtAndCleanIfInvalid("yummy-access-token", res, req);
         String userNo = userService.getSubjectFromJwt(jwtResult);
 
         /* 2. 액세스 토큰 이상 없는 경우 */
-        if (status == JwtValidationStatus.SUCCESS) {
+        if (jwtResult.getStatus() == JwtValidationStatus.SUCCESS) {
 
             /* 임시 비밀번호 발급 받은 경우 */
             Boolean isTempPw = userService.getClaimFromJwt(jwtResult, "isTempPw", Boolean.class);
@@ -331,7 +329,7 @@ public class YummyLoginService {
         }
 
         /* 3. 액세스 토큰 기간 만료 */
-        if (status == JwtValidationStatus.EXPIRED) {
+        if (jwtResult.getStatus() == JwtValidationStatus.EXPIRED) {
             String tokenId = userService.getClaimFromJwt(jwtResult, "tokenId", String.class);
 
             /* 리프레시 토큰을 통해서 액세스 토큰 재 발행 */

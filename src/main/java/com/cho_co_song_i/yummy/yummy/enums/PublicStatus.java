@@ -23,4 +23,5 @@ public enum PublicStatus {
     CASE_ERR,
     TEMP_PW_CHECK,
     LOGIN_AGAIN,
+    OAUTH_DUPLICATED
 }

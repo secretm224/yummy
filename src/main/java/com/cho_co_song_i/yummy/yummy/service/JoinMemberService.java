@@ -4,6 +4,7 @@ import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JoinMemberIdStatus;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
+import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.repository.*;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
@@ -29,6 +30,7 @@ import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserEmailTbl.userEmailTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserPhoneNumberTbl.userPhoneNumberTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTokenIdTbl.userTokenIdTbl;
+import static com.cho_co_song_i.yummy.yummy.entity.QUserAuthTbl.userAuthTbl;
 
 @Service
 @Slf4j
@@ -492,10 +494,10 @@ public class JoinMemberService {
         String oauthToken = CookieUtil.getCookieValue(req, "yummy-oauth-token");
 
         if (oauthToken != null) {
-            JwtValidationResult jwtResult = userService.getValidateResultJwt("yummy-oauth-token", req);
-            JwtValidationStatus status = userService.getStatusJwt(jwtResult, res);
 
-            if (status == JwtValidationStatus.SUCCESS) {
+            JwtValidationResult jwtResult = userService.validateJwtAndCleanIfInvalid("yummy-oauth-token", res, req);
+
+            if (jwtResult.getStatus() == JwtValidationStatus.SUCCESS) {
                 /* ==== JWT 검증 성공 ==== */
 
                 /* oauth2 토큰 아이디 */
@@ -527,6 +529,26 @@ public class JoinMemberService {
         return PublicStatus.SUCCESS;
     }
 
+    /**
+     * 해당 유저가 기존 Oauth 채널에 유저연동을 한적이 있는지 체크해주는 함수
+     * @param userNo
+     * @param loginChannel
+     * @return
+     */
+    private boolean existsUserAuthChannel(Long userNo, String loginChannel) {
+
+        Integer result = queryFactory
+                .selectOne()
+                .from(userAuthTbl)
+                .where(
+                        userAuthTbl.id.loginChannel.eq(loginChannel),
+                        userAuthTbl.id.userNo.eq(userNo)
+                )
+                .fetchFirst();
+
+        return result == null;
+    }
+
 
     /**
      * 유저의 비밀번호를 바꿔주는 함수
@@ -551,10 +573,9 @@ public class JoinMemberService {
         }
 
         /* 액세스 토큰 확인 */
-        JwtValidationResult jwtResult = userService.getValidateResultJwt("yummy-access-token", req);
-        JwtValidationStatus status = userService.getStatusJwt(jwtResult, res);
+        JwtValidationResult jwtResult = userService.validateJwtAndCleanIfInvalid("yummy-access-token", res, req);
 
-        if (status == JwtValidationStatus.SUCCESS) {
+        if (jwtResult.getStatus() == JwtValidationStatus.SUCCESS) {
             String userNo = jwtResult.getClaims().getSubject();
 
             String saltValue = HashUtil.generateSalt();
@@ -578,7 +599,7 @@ public class JoinMemberService {
             /* 기존 jwt를 제거해준다. -> 재 로그인 유도하기 위함. */
             CookieUtil.clearCookie(res, "yummy-access-token");
 
-        } else if (status == JwtValidationStatus.EXPIRED) {
+        } else if (jwtResult.getStatus() == JwtValidationStatus.EXPIRED) {
             /* 재 로그인 후 비밀번호 수정 필요 -> 이건 뭔가 수정이 필요해 보임. */
             return PublicStatus.LOGIN_AGAIN;
         } else {
@@ -758,7 +779,7 @@ public class JoinMemberService {
     }
 
     /**
-     *
+     * 사용자가 Oauth 로 로그인 했을때 해당 Oauth 정보를 기존의 회원정보와 연동시키는 함수.
      * @param standardLoginDto
      * @param res
      * @param req
@@ -769,26 +790,43 @@ public class JoinMemberService {
     public PublicStatus linkMemberByOauth(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
 
         /* 로그인 정보 검증 */
-        StandardLoginBasicResDto standardLoginBasicResDto = yummyLoginService.verifyLoginUserInfo(standardLoginDto);
+        StandardLoginBasicResDto loginInfo = yummyLoginService.verifyLoginUserInfo(standardLoginDto);
 
-        if (standardLoginBasicResDto.getPublicStatus() != PublicStatus.SUCCESS) {
+        if (loginInfo.getPublicStatus() != PublicStatus.SUCCESS) {
             return PublicStatus.AUTH_ERROR;
         }
 
-        /* 해당 유저 정보와 Oauth2 정보를 연결해준다. */
-        JwtValidationResult jwtRes = userService.getValidateResultJwt("yummy-oauth-token", req);
+        UserTbl user = loginInfo.getUserTbl();
+
+        /* 해당 유저 Oauth2 정보 검증 */
+        JwtValidationResult jwtRes = userService.validateJwtAndCleanIfInvalid("yummy-oauth-token", res, req);
 
         if (jwtRes.getStatus() != JwtValidationStatus.SUCCESS) {
             return PublicStatus.AUTH_ERROR;
         }
 
-        /* Oauth id token*/
+        /* Oauth id token & Login 채널 */
         String idToken = userService.getSubjectFromJwt(jwtRes);
         String loginChannel = userService.getClaimFromJwt(jwtRes, "oauthChannel", String.class);
 
+        if (!OauthChannelStatus.isValid(loginChannel)) {
+            return PublicStatus.AUTH_ERROR;
+        }
 
+        /* Oauth 채널당 하나의 아이디만 연동이 가능함. -> 해당 부분을 확인해주는 로직 */
+        boolean userOauthCheck = existsUserAuthChannel(user.getUserNo(), loginChannel);
+        if (!userOauthCheck) {
+            return PublicStatus.OAUTH_DUPLICATED;
+        }
 
+        /* idToken 유저와 매칭시켜서 디비에 저장해준다. */
+        saveUserAuth(user, idToken, loginChannel);
 
+        /* 그외 로그인 완료처리 진행... */
+        yummyLoginService.handlePostLogin(res, loginInfo);
+
+        /* Oauth 유저 연동을 위한 임시 jwt 쿠키 제거 */
+        CookieUtil.clearCookie(res, "yummy-oauth-token");
 
         return PublicStatus.SUCCESS;
     }

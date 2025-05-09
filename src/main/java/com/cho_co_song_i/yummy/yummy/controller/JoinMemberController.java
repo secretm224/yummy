@@ -1,9 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
-import com.cho_co_song_i.yummy.yummy.dto.ChangePwDto;
-import com.cho_co_song_i.yummy.yummy.dto.FindIdDto;
-import com.cho_co_song_i.yummy.yummy.dto.FindPwDto;
-import com.cho_co_song_i.yummy.yummy.dto.JoinMemberDto;
+import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.service.JoinMemberService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -89,6 +86,24 @@ public class JoinMemberController {
             return ResponseEntity.ok(joinMemberService.changePasswd(res, req, changePwDto));
         } catch (Exception e) {
             log.error("{}", e.getMessage(), e);
+            return ResponseEntity.ok(PublicStatus.SERVER_ERR);
+        }
+    }
+
+    /**
+     * 사용자가 Oauth 로 로그인 했을때 해당 Oauth 정보를 기존의 회원정보와 연동시키는 함수.
+     * @param standardLoginDto
+     * @param res
+     * @param req
+     * @return
+     */
+    @PostMapping("/linkUserByOauth")
+    @ResponseBody
+    public ResponseEntity<PublicStatus> linkMemberByOauth(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) {
+        try {
+            return ResponseEntity.ok(joinMemberService.linkMemberByOauth(standardLoginDto, res, req));
+        } catch(Exception e) {
+            log.error("[Error][JoinMemberController->linkMemberByOauth] {}", e.getMessage(), e);
             return ResponseEntity.ok(PublicStatus.SERVER_ERR);
         }
     }

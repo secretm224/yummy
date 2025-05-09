@@ -95,7 +95,7 @@ public class JwtProviderService {
      * @param req
      * @return
      */
-    public JwtValidationResult validateTokenAndGetPayload(String jwtName, HttpServletRequest req) {
+    public JwtValidationResult validateAndParseJwt(String jwtName, HttpServletRequest req) {
 
         String token = CookieUtil.getCookieValue(req, jwtName);
 
@@ -118,19 +118,19 @@ public class JwtProviderService {
             log.warn("JJWT token expired: {}", e.getMessage());
             return new JwtValidationResult(jwtName, JwtValidationStatus.EXPIRED, e.getClaims());
         } catch (UnsupportedJwtException e) {
-            log.error("[Error][JwtProviderService->validateTokenAndGetPayload] JWT format not supported: {}", e.getMessage(), e);
+            log.error("[Error][JwtProviderService->validateAndParseJwt] JWT format not supported: {}", e.getMessage(), e);
             return new JwtValidationResult(jwtName, JwtValidationStatus.INVALID, null);
         } catch (MalformedJwtException e) {
-            log.error("[Error][JwtProviderService->validateTokenAndGetPayload] Invalid JWT format: {}", e.getMessage(), e);
+            log.error("[Error][JwtProviderService->validateAndParseJwt] Invalid JWT format: {}", e.getMessage(), e);
             return new JwtValidationResult(jwtName, JwtValidationStatus.INVALID, null);
         } catch (SecurityException e) {
-            log.error("[Error][JwtProviderService->validateTokenAndGetPayload] Signature Verification Failed: {}", e.getMessage(), e);
+            log.error("[Error][JwtProviderService->validateAndParseJwt] Signature Verification Failed: {}", e.getMessage(), e);
             return new JwtValidationResult(jwtName, JwtValidationStatus.INVALID, null);
         } catch (IllegalArgumentException e) {
-            log.error("[Error][JwtProviderService->validateTokenAndGetPayload] Token is empty or null: {}", e.getMessage(), e);
+            log.error("[Error][JwtProviderService->validateAndParseJwt] Token is empty or null: {}", e.getMessage(), e);
             return new JwtValidationResult(jwtName, JwtValidationStatus.INVALID, null);
         } catch (Exception e) {
-            log.error("[Error][JwtProviderService->validateTokenAndGetPayload] Unspecified Exception Occurred: {}", e.getMessage(), e);
+            log.error("[Error][JwtProviderService->validateAndParseJwt] Unspecified Exception Occurred: {}", e.getMessage(), e);
             return new JwtValidationResult(jwtName, JwtValidationStatus.INVALID, null);
         }
     }
