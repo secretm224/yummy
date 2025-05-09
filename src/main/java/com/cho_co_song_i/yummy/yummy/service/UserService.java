@@ -57,8 +57,8 @@ public class UserService {
                 userTbl.getUserNm(),
                 userTbl.getUserBirth(),
                 "",
-                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLngX).orElse(null),
-                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLatY).orElse(null)
+                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLng).orElse(null),
+                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLat).orElse(null)
         );
     }
 
@@ -87,8 +87,8 @@ public class UserService {
                 loginUser.getUserNm(),
                 loginUser.getUserBirth(),
                 userOAuthInfoDto.getUserPicture(),
-                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLngX).orElse(null),
-                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLatY).orElse(null)
+                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLng).orElse(null),
+                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLat).orElse(null)
         );
     }
 
