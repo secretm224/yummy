@@ -7,6 +7,7 @@ import com.cho_co_song_i.yummy.yummy.dto.StoreTypeSubDto;
 import com.cho_co_song_i.yummy.yummy.service.LocationService;
 import com.cho_co_song_i.yummy.yummy.service.RedisService;
 import com.cho_co_song_i.yummy.yummy.service.StoreService;
+import com.cho_co_song_i.yummy.yummy.service.StoreServiceImpl;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;

@@ -51,19 +51,19 @@ public class KakaoLoginServiceImpl implements LoginService {
     private final UserService userService;
     private final JwtProviderService jwtProviderService;
     private final EventProducerService eventProducerService;
-    private final YummyLoginService yummyLoginService;
+    private final YummyLoginServiceImpl yummyLoginServiceImpl;
 
 
     public KakaoLoginServiceImpl(RestTemplate restTemplate,
                                  RedisService redisService, JwtProviderService jwtProviderService,
                                  UserService userService, EventProducerService eventProducerService,
-                                 YummyLoginService yummyLoginService) {
+                                 YummyLoginServiceImpl yummyLoginServiceImpl) {
         this.restTemplate = restTemplate;
         this.redisService = redisService;
         this.jwtProviderService = jwtProviderService;
         this.userService = userService;
         this.eventProducerService = eventProducerService;
-        this.yummyLoginService = yummyLoginService;
+        this.yummyLoginServiceImpl = yummyLoginServiceImpl;
     }
 
     /**
@@ -126,7 +126,7 @@ public class KakaoLoginServiceImpl implements LoginService {
         /* User 정보 */
         UserOAuthInfoDto userKakaoInfo = exchangeCodeForKakaoUser(code);
         String userToken = userKakaoInfo.getUserTokenId();
-        UserAuthTbl userAuth = yummyLoginService.getUserAuthTbl(userToken, OauthChannelStatus.kakao);
+        UserAuthTbl userAuth = yummyLoginServiceImpl.getUserAuthTbl(userToken, OauthChannelStatus.kakao);
 
         if (userAuth == null) {
             /* 연동한적이 없거나, 가입하지 않은 경우 -> 가입유도 or 기존 아이디에 oauth2 추가 */
@@ -203,7 +203,7 @@ public class KakaoLoginServiceImpl implements LoginService {
 
         if (userOAuthResponse.getPublicStatus() == PublicStatus.SUCCESS) {
             /* Oauth2 인증 성공해서 유저 정보가 있는 경우 */
-            return yummyLoginService.oauthLogin(userOAuthResponse.getUserNum(), res);
+            return yummyLoginServiceImpl.oauthLogin(userOAuthResponse.getUserNum(), res);
         } else if (userOAuthResponse.getPublicStatus() == PublicStatus.JOIN_TARGET_MEMBER) {
             /*
              * 유저에게 신규 가입 또는 기존회원 연동 하게 시킴.

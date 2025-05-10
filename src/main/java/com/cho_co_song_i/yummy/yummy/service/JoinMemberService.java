@@ -42,7 +42,7 @@ public class JoinMemberService {
     private final UserEmailRepository userEmailRepository;
     private final UserTempPwHistoryRepository userTempPwHistoryRepository;
 
-    private final YummyLoginService yummyLoginService;
+    private final YummyLoginServiceImpl yummyLoginServiceImpl;
     private final RedisService redisService;
     private final UserService userService;
     private final EventProducerService eventProducerService;
@@ -56,7 +56,7 @@ public class JoinMemberService {
     public JoinMemberService(JPAQueryFactory queryFactory, UserRepository userRepository,
                              UserPhoneNumberRepository userPhoneNumberRepository, UserEmailRepository userEmailRepository,
                              UserTempPwHistoryRepository userTempPwHistoryRepository, EventProducerService eventProducerService,
-                             RedisService redisService, EntityManager entityManager, YummyLoginService yummyLoginService,
+                             RedisService redisService, EntityManager entityManager, YummyLoginServiceImpl yummyLoginServiceImpl,
                              UserAuthRepository userAuthRepository, UserService userService
     ) {
         this.queryFactory = queryFactory;
@@ -69,7 +69,7 @@ public class JoinMemberService {
         this.entityManager = entityManager;
         this.userAuthRepository = userAuthRepository;
         this.userService = userService;
-        this.yummyLoginService = yummyLoginService;
+        this.yummyLoginServiceImpl = yummyLoginServiceImpl;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -790,7 +790,7 @@ public class JoinMemberService {
     public PublicStatus linkMemberByOauth(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
 
         /* 로그인 정보 검증 */
-        StandardLoginBasicResDto loginInfo = yummyLoginService.verifyLoginUserInfo(standardLoginDto);
+        StandardLoginBasicResDto loginInfo = yummyLoginServiceImpl.verifyLoginUserInfo(standardLoginDto);
 
         if (loginInfo.getPublicStatus() != PublicStatus.SUCCESS) {
             return PublicStatus.AUTH_ERROR;
@@ -823,7 +823,7 @@ public class JoinMemberService {
         saveUserAuth(user, idToken, loginChannel);
 
         /* 그외 로그인 완료처리 진행... */
-        yummyLoginService.handlePostLogin(res, loginInfo);
+        yummyLoginServiceImpl.handlePostLogin(res, loginInfo);
 
         /* Oauth 유저 연동을 위한 임시 jwt 쿠키 제거 */
         CookieUtil.clearCookie(res, "yummy-oauth-token");

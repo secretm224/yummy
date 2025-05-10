@@ -4,12 +4,12 @@ import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreTypeMajorDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreTypeSubDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
+import com.cho_co_song_i.yummy.yummy.service.StoreService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
-import com.cho_co_song_i.yummy.yummy.service.StoreService;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -21,7 +21,7 @@ public class QueryResolver {
     private SearchService _searchService;
 
     @Autowired
-    private  StoreService _store_service;
+    private StoreService _store_service;
 
     @Autowired
     private Environment env;
