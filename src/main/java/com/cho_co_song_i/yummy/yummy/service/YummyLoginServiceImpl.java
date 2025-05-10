@@ -1,5 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
+import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
@@ -12,8 +13,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,34 +30,19 @@ import static com.cho_co_song_i.yummy.yummy.entity.QUserTempPwTbl.userTempPwTbl;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class YummyLoginServiceImpl implements YummyLoginService {
 
     @Value("${spring.redis.login.user_info}")
     private String userInfoKey;
-
     @Value("${spring.redis.refresh-key-prefix}")
     private String refreshKeyPrefix;
-
-    private final RedisService redisService;
+    private final RedisAdapter redisAdapter;
     private final UserService userService;
     private final JwtProviderService jwtProviderService;
-    private final EventProducerService eventProducerService;
-
+    private final EventProducerServiceImpl eventProducerServiceImpl;
     private final JPAQueryFactory queryFactory;
     private final UserTokenIdRepository userTokenIdRepository;
-
-
-
-    public YummyLoginServiceImpl(RedisService redisService, JwtProviderService jwtProviderService,
-                                 JPAQueryFactory queryFactory, EventProducerService eventProducerService,
-                                 UserTokenIdRepository userTokenIdRepository, UserService userService) {
-        this.redisService = redisService;
-        this.jwtProviderService = jwtProviderService;
-        this.queryFactory = queryFactory;
-        this.eventProducerService = eventProducerService;
-        this.userTokenIdRepository = userTokenIdRepository;
-        this.userService = userService;
-    }
 
     /**
      * 로그인 - 유저가 임시비밀번호 발급을 했는지 확인 (비밀번호 찾기)
@@ -125,7 +111,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
      */
     private Optional<UserBasicInfoDto> fetchUserProfileFromRedis(String userNo) {
         String keyPrefix = String.format("%s:%s", userInfoKey, userNo);
-        UserBasicInfoDto userDto = redisService.getValue(keyPrefix, new TypeReference<UserBasicInfoDto>() {});
+        UserBasicInfoDto userDto = redisAdapter.getValue(keyPrefix, new TypeReference<UserBasicInfoDto>() {});
 
         return Optional.ofNullable(userDto);
     }
@@ -139,7 +125,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
      */
     private boolean tryRefreshAccessToken(HttpServletResponse res, String userNo, String tokenId) {
         String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNo, tokenId);
-        String refreshToken = redisService.getValue(refreshKey, new TypeReference<String>() {});
+        String refreshToken = redisAdapter.getValue(refreshKey, new TypeReference<String>() {});
 
         /* Refresh Token 도 존재하지 않는 경우 -> 로그인 창으로 보내준다. */
         if (refreshToken == null) {
@@ -169,7 +155,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         /* 2. Refresh Token 을 Redis 에 넣어준다. && DB 에는 Tokenid 를 넣어준다. */
         insertUserTokenId(user, tokenId);
         String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNoStr, tokenId);
-        redisService.set(refreshKey, refreshToken, Duration.ofDays(7));
+        redisAdapter.set(refreshKey, refreshToken, Duration.ofDays(7));
 
         /* 3. accessToken을 쿠키에 저장해준다. */
         CookieUtil.addCookie(res, "yummy-access-token", accessToken, 7200);
@@ -180,7 +166,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
 
         /* 5. 기본 회원정보를 Redis 에 저장한다. */
         String basicUserInfo = String.format("%s:%s", userInfoKey, userNoStr);
-        redisService.set(basicUserInfo, userBasicInfo);
+        redisAdapter.set(basicUserInfo, userBasicInfo);
     }
 
     public void standardLogoutUser(HttpServletResponse res) {
@@ -254,7 +240,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     public PublicStatus standardLoginUser(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
 
         /* 로그인 시도 기록 */
-        eventProducerService.produceLoginAttemptEvent(req);
+        eventProducerServiceImpl.produceLoginAttemptEvent(req);
 
         StandardLoginBasicResDto loginRes = verifyLoginUserInfo(standardLoginDto);
 

@@ -10,6 +10,7 @@ import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -20,15 +21,11 @@ import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final JPAQueryFactory queryFactory;
     private final JwtProviderService jwtProviderService;
-
-    public UserServiceImpl(JPAQueryFactory queryFactory, JwtProviderService jwtProviderService) {
-        this.queryFactory = queryFactory;
-        this.jwtProviderService = jwtProviderService;
-    }
 
     /**
      * Entity -> DTO 변환 (UserTbl)

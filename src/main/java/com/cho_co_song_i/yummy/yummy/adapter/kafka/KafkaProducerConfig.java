@@ -1,4 +1,4 @@
-package com.cho_co_song_i.yummy.yummy.configuration;
+package com.cho_co_song_i.yummy.yummy.adapter.kafka;
 
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
@@ -11,7 +11,6 @@ import java.util.Map;
 
 @Configuration
 public class KafkaProducerConfig {
-
     private final KafkaProperties kafkaProperties;
 
     public KafkaProducerConfig(KafkaProperties kafkaProperties) {
@@ -28,5 +27,4 @@ public class KafkaProducerConfig {
     public KafkaTemplate<String, Object> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
     }
-
 }

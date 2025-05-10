@@ -1,5 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
+import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.entity.Store;
 import com.cho_co_song_i.yummy.yummy.entity.StoreLocationInfoTbl;
@@ -15,6 +16,7 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -40,6 +42,7 @@ import static com.cho_co_song_i.yummy.yummy.entity.QStoreTypeSub.storeTypeSub;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class StoreServiceImpl implements StoreService {
 
     @PersistenceContext
@@ -48,7 +51,7 @@ public class StoreServiceImpl implements StoreService {
     private final JPAQueryFactory queryFactory;
     private final LocationService locationService;
     private final StoreRepository storeRepository;
-    private final RedisService redisService;
+    private final RedisAdapter redisAdapter;
     private final RestTemplate resttemplate;
     private final StoreLocationInfoRepository storeLocationInfoRepository;
 
@@ -61,18 +64,6 @@ public class StoreServiceImpl implements StoreService {
 
     private static final String KAKAO_SEARCH_API_URL =
             "https://dapi.kakao.com/v2/local/search/keyword.json";
-
-
-    public StoreServiceImpl(StoreRepository storeRepository, LocationService locationService,
-                            JPAQueryFactory queryFactory, RedisService redisService, RestTemplate resttemplate,
-                            StoreLocationInfoRepository storeLocationInfoRepository) {
-        this.storeRepository = storeRepository;
-        this.locationService = locationService;
-        this.queryFactory = queryFactory;
-        this.redisService = redisService;
-        this.resttemplate = resttemplate;
-        this.storeLocationInfoRepository = storeLocationInfoRepository;
-    }
 
     /**
      * Entity -> DTO 변환
@@ -241,7 +232,7 @@ public class StoreServiceImpl implements StoreService {
         List<StoreTypeMajorDto> storeMajors = new ArrayList<>();
 
         try {
-            storeMajors = redisService.getValue(categoryMain, new TypeReference<List<StoreTypeMajorDto>>() {});
+            storeMajors = redisAdapter.getValue(categoryMain, new TypeReference<List<StoreTypeMajorDto>>() {});
         } catch(Exception e) {
             log.error("[Error][StoreService->getStoreTypeMajors] {}", e.getMessage(), e);
         }
@@ -280,7 +271,7 @@ public class StoreServiceImpl implements StoreService {
 
         try {
             String storeSubKey = String.format("%s:%s", categorySub, majorType);
-            storeTypeSubs = redisService.getValue(storeSubKey, new TypeReference<List<StoreTypeSubDto>>() {});
+            storeTypeSubs = redisAdapter.getValue(storeSubKey, new TypeReference<List<StoreTypeSubDto>>() {});
         } catch(Exception e) {
             log.error("[Error][StoreService->getStoreTypeSubs] {}", e.getMessage(), e);
         }

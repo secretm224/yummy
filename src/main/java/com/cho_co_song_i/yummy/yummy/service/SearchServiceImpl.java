@@ -7,6 +7,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -18,12 +19,9 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class SearchServiceImpl implements SearchService {
     private final ElasticsearchAsyncClient searchAsyncClient;
-
-    public SearchServiceImpl(ElasticsearchAsyncClient searchAsyncClient) {
-        this.searchAsyncClient = searchAsyncClient;
-    }
 
     @SuppressWarnings("unchecked")
     private List<FieldValue> convertToFieldValues(Object values) {

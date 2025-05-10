@@ -8,6 +8,7 @@ import com.cho_co_song_i.yummy.yummy.service.*;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -20,20 +21,12 @@ import java.util.Optional;
 @Controller
 @RequestMapping("/login")
 @Slf4j
+@RequiredArgsConstructor
 public class LoginController {
-
-    private final LoginService kakoLoginService;
-    private final LoginService naverLoginService;
-    private final LoginService googleLoginService;
+    private final KakaoLoginServiceImpl kakoLoginService;
+    private final NaverLoginServiceImpl naverLoginService;
+    private final GoogleLoginServiceImpl googleLoginService;
     private final YummyLoginService yummyLoginService;
-
-    public LoginController(KakaoLoginServiceImpl kakoLoginService, NaverLoginServiceImpl naverLoginService,
-                           GoogleLoginServiceImpl googleLoginService, YummyLoginService yummyLoginService){
-        this.kakoLoginService = kakoLoginService;
-        this.naverLoginService = naverLoginService;
-        this.googleLoginService = googleLoginService;
-        this.yummyLoginService = yummyLoginService;
-    }
 
     @GetMapping
     public String Login(Model model) {

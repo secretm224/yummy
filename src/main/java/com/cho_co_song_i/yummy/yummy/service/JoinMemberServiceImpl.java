@@ -1,5 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
+import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JoinMemberIdStatus;
@@ -15,6 +16,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -34,7 +36,8 @@ import static com.cho_co_song_i.yummy.yummy.entity.QUserAuthTbl.userAuthTbl;
 
 @Service
 @Slf4j
-public class JoinMemberService {
+@RequiredArgsConstructor
+public class JoinMemberServiceImpl implements JoinMamberService {
     private final JPAQueryFactory queryFactory;
     private final UserRepository userRepository;
     private final UserAuthRepository userAuthRepository;
@@ -43,42 +46,19 @@ public class JoinMemberService {
     private final UserTempPwHistoryRepository userTempPwHistoryRepository;
 
     private final YummyLoginServiceImpl yummyLoginServiceImpl;
-    private final RedisService redisService;
+    private final RedisAdapter redisAdapter;
     private final UserService userService;
-    private final EventProducerService eventProducerService;
+    private final EventProducerServiceImpl eventProducerServiceImpl;
 
     @PersistenceContext
     private final EntityManager entityManager;
-
     @Value("${spring.redis.refresh-key-prefix}")
     private String refreshKeyPrefix;
 
-    public JoinMemberService(JPAQueryFactory queryFactory, UserRepository userRepository,
-                             UserPhoneNumberRepository userPhoneNumberRepository, UserEmailRepository userEmailRepository,
-                             UserTempPwHistoryRepository userTempPwHistoryRepository, EventProducerService eventProducerService,
-                             RedisService redisService, EntityManager entityManager, YummyLoginServiceImpl yummyLoginServiceImpl,
-                             UserAuthRepository userAuthRepository, UserService userService
-    ) {
-        this.queryFactory = queryFactory;
-        this.userRepository = userRepository;
-        this.userPhoneNumberRepository = userPhoneNumberRepository;
-        this.userEmailRepository = userEmailRepository;
-        this.userTempPwHistoryRepository = userTempPwHistoryRepository;
-        this.redisService = redisService;
-        this.eventProducerService = eventProducerService;
-        this.entityManager = entityManager;
-        this.userAuthRepository = userAuthRepository;
-        this.userService = userService;
-        this.yummyLoginServiceImpl = yummyLoginServiceImpl;
-    }
-
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus connectExistUser(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
-
-
         return PublicStatus.SUCCESS;
     }
-
 
     /**
      * 입력된 아이디가 DB 유저 테이블에 존재하는지 확인해주는 함수
@@ -163,7 +143,7 @@ public class JoinMemberService {
             Optional.ofNullable(tokenTbl.getId().getTokenId())
                     .ifPresent(token -> {
                         String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNo.toString(), token);
-                        redisService.deleteKey(refreshKey);
+                        redisAdapter.deleteKey(refreshKey);
                         entityManager.remove(tokenTbl);
                     });
         }
@@ -550,12 +530,6 @@ public class JoinMemberService {
     }
 
 
-    /**
-     * 유저의 비밀번호를 바꿔주는 함수
-     * @param changePwDto
-     * @return
-     * @throws Exception
-     */
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus changePasswd(HttpServletResponse res, HttpServletRequest req, ChangePwDto changePwDto) throws Exception {
 
@@ -610,13 +584,6 @@ public class JoinMemberService {
         return PublicStatus.SUCCESS;
     }
 
-
-    /**
-     * 회원의 비밀번호를 찾아주는 함수
-     * @param findPwDto
-     * @return
-     * @throws Exception
-     */
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus findPw(FindPwDto findPwDto) throws Exception {
 
@@ -653,18 +620,11 @@ public class JoinMemberService {
         deleteUserTokenIds(userTbl.getUserNo());
 
         /* 5. Kafka를 통해 전송 */
-        eventProducerService.produceUserTempPw(findPwDto.getUserId(), findPwDto.getEmail(), tempPw);
+        eventProducerServiceImpl.produceUserTempPw(findPwDto.getUserId(), findPwDto.getEmail(), tempPw);
 
         return PublicStatus.SUCCESS;
     }
 
-
-    /**
-     * 회원의 아이디를 찾아주는 함수
-     * @param findIdDto
-     * @return
-     * @throws Exception
-     */
     public PublicStatus findId(FindIdDto findIdDto) throws Exception {
 
         /* 이름 검사 */
@@ -703,17 +663,12 @@ public class JoinMemberService {
         }
 
         /* 회원정보가 존재하는 경우 -> Kafka Producing */
-        eventProducerService.produceUserIdInfo(findUserId, findIdDto.getEmail());
+        eventProducerServiceImpl.produceUserIdInfo(findUserId, findIdDto.getEmail());
 
         return PublicStatus.SUCCESS;
     }
 
 
-    /**
-     * 회원가입 해주는 서비스 함수
-     * @param joinMemberDto
-     * @return
-     */
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus joinMember(HttpServletResponse res, HttpServletRequest req, JoinMemberDto joinMemberDto) throws Exception {
 
@@ -778,14 +733,6 @@ public class JoinMemberService {
         return checkOauthAndSaveUser(res, req, joinMemberDto);
     }
 
-    /**
-     * 사용자가 Oauth 로 로그인 했을때 해당 Oauth 정보를 기존의 회원정보와 연동시키는 함수.
-     * @param standardLoginDto
-     * @param res
-     * @param req
-     * @return
-     * @throws Exception
-     */
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus linkMemberByOauth(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
 

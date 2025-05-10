@@ -9,24 +9,24 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/location")
 public class LocationController {
     private final LocationService locationService;
 
-    public LocationController(LocationService locationService) { this.locationService = locationService; }
-
     /* N+1 문제를 테스트하기 위한 컨트롤러 */
-    @GetMapping("/test")
-    public ResponseEntity<String> getTest(
-            @RequestParam(value = "countySeq", required = false) Long locationCountyCode
-    ) {
-        locationService.getTestDtos(locationCountyCode);
-        return ResponseEntity.ok("test");
-    }
+//    @GetMapping("/test")
+//    public ResponseEntity<String> getTest(
+//            @RequestParam(value = "countySeq", required = false) Long locationCountyCode
+//    ) {
+//        locationService.getTestDtos(locationCountyCode);
+//        return ResponseEntity.ok("test");
+//    }
 
     @GetMapping("/county")
     public ResponseEntity<List<LocationCountyDto>> getAllLocationCounty() {

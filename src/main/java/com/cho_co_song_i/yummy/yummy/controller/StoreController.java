@@ -1,14 +1,13 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
+import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.AddStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreTypeMajorDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreTypeSubDto;
-import com.cho_co_song_i.yummy.yummy.service.LocationService;
-import com.cho_co_song_i.yummy.yummy.service.RedisService;
 import com.cho_co_song_i.yummy.yummy.service.StoreService;
-import com.cho_co_song_i.yummy.yummy.service.StoreServiceImpl;
 import com.fasterxml.jackson.databind.JsonNode;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,19 +17,13 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
+@RequiredArgsConstructor
 @Slf4j
 @RequestMapping("/stores")
 public class StoreController {
 
     private final StoreService storeService;
-    private final LocationService locationService;
-    private final RedisService redisService;
-
-    public StoreController(StoreService storeService, LocationService locationService, RedisService redisService) {
-        this.storeService = storeService;
-        this.locationService = locationService;
-        this.redisService = redisService;
-    }
+    private final RedisAdapter redisAdapter;
 
     @GetMapping
     public ResponseEntity<List<StoreDto>> getAllStores() {
@@ -84,7 +77,7 @@ public class StoreController {
     @GetMapping("/redisTest")
     public ResponseEntity<Boolean> redisTest() {
 
-        System.out.println(redisService.get("categories:main"));
+        System.out.println(redisAdapter.get("categories:main"));
         return ResponseEntity.ok(true);
     }
 

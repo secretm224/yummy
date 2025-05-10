@@ -2,6 +2,7 @@ package com.cho_co_song_i.yummy.yummy.controller;
 
 import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
@@ -10,16 +11,12 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 
-@RestController
 @RequestMapping("/search")
+@RestController
+@RequiredArgsConstructor
 @Slf4j
 public class SearchController {
     private final SearchService searchService;
-
-    public SearchController(SearchService searchService) {
-        this.searchService = searchService;
-    }
-
     @Value("${spring.elasticsearch.index.store}")
     private String storeIndex;
 

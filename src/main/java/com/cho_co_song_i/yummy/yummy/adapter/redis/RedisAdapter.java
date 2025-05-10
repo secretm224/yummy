@@ -45,7 +45,7 @@ public class RedisAdapter {
             String json = redisData.toString();
             return objectMapper.readValue(json, typeReference);
         } catch(Exception e) {
-            throw new RuntimeException("[Error][RedisService->getValue] Failed to parse Redis data", e);
+            throw new RuntimeException("[Error][RedisAdapter->getValue] Failed to parse Redis data", e);
         }
     }
 
@@ -62,7 +62,7 @@ public class RedisAdapter {
             redisTemplate.opsForValue().set(key, json);
             return true;
         } catch (Exception e) {
-            throw new RuntimeException("[Error][RedisService->set] {} ", e);
+            throw new RuntimeException("[Error][RedisAdapter->set] {} ", e);
         }
     }
 
@@ -80,7 +80,7 @@ public class RedisAdapter {
             redisTemplate.opsForValue().set(key, json, ttl);
             return true;
         } catch (Exception e) {
-            throw new RuntimeException("[Error][RedisService->set] Failed to set Redis value", e);
+            throw new RuntimeException("[Error][RedisAdapter->set] Failed to set Redis value", e);
         }
     }
 }
