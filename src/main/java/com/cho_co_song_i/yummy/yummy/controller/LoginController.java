@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
 
 
-@Controller
+@RestController
 @RequestMapping("/login")
 @Slf4j
 @RequiredArgsConstructor
@@ -64,13 +65,14 @@ public class LoginController {
      * @return
      */
     @PostMapping("/standardLogin")
-    public ResponseEntity<PublicStatus> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) {
-        try {
-            return ResponseEntity.ok(yummyLoginService.standardLoginUser(standardLoginDto, res, req));
-        } catch(Exception e) {
-            log.error("[Error][LoginController->StandardLogin] {}", e.getMessage(), e);
-            return ResponseEntity.ok(PublicStatus.AUTH_ERROR);
-        }
+    public ResponseEntity<PublicStatus> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
+//        try {
+//            return ResponseEntity.ok(yummyLoginService.standardLoginUser(standardLoginDto, res, req));
+//        } catch(Exception e) {
+//            log.error("[Error][LoginController->StandardLogin] {}", e.getMessage(), e);
+//            return ResponseEntity.ok(PublicStatus.AUTH_ERROR);
+//        }
+        return ResponseEntity.ok(yummyLoginService.standardLoginUser(standardLoginDto, res, req));
     }
 
     /**
@@ -108,13 +110,17 @@ public class LoginController {
      */
     @PostMapping("/oauth2/kakao")
     @ResponseBody
-    public ResponseEntity<PublicStatus> KakaoLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) {
-        try {
-            return ResponseEntity.ok(kakoLoginService.handleOAuthLogin(loginDto, res, req));
-        } catch(Exception e) {
-            log.error("[Error][LoginController->KakaoLogin] {}", e.getMessage(), e);
-            return ResponseEntity.ok(PublicStatus.SERVER_ERR);
-        }
+    public PublicStatus KakaoLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) throws Exception{
+        return kakoLoginService.handleOAuthLogin(loginDto, res, req);
+    }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.OK)
+    public PublicStatus handleLoginError(Exception e, HttpServletRequest request) {
+        String path   = request.getRequestURI();
+        String method = request.getMethod();
+        log.error("[Error][{} {}] {}", method, path, e.getMessage(), e);
+        return PublicStatus.SERVER_ERR;
     }
 
     @GetMapping("/test")
