@@ -5,8 +5,11 @@ import com.cho_co_song_i.yummy.yummy.service.SearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -20,27 +23,32 @@ public class SearchController {
     @Value("${spring.elasticsearch.index.store}")
     private String storeIndex;
 
-    @GetMapping("/test")
-    public CompletableFuture<List<SearchStoreDto>> testSearch(
-            @RequestParam("index") String index,
-            @RequestParam("field") String field,
-            @RequestParam("query") String query
-    ) {
-        return searchService.searchDocuments(index, field, query);
-    }
-
     @GetMapping("allData")
-    public CompletableFuture<List<SearchStoreDto>> getAllStores() {
-        return searchService.getSearchAllStores(storeIndex);
+    public ResponseEntity<List<SearchStoreDto>> getAllStores() {
+        try {
+            return ResponseEntity.ok(searchService.getSearchAllStores(storeIndex));
+        } catch(Exception e) {
+            log.error("[Error][SearchController->getAllStores] {}", e.getMessage(), e);
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.emptyList());
+        }
     }
 
     @GetMapping("totalSearch")
-    public CompletableFuture<List<SearchStoreDto>> getTotalSearch(
+    public ResponseEntity<List<SearchStoreDto>> getTotalSearch(
             @RequestParam(value = "searchText", required = false) String searchText,
             @RequestParam(value = "selectMajor", required = false, defaultValue = "0") int selectMajor,
             @RequestParam(value = "selectSub", required = false, defaultValue = "0") int selectSub,
             @RequestParam(value = "zeroPossible", required = false, defaultValue = "false") boolean zeroPossible
     ) {
-        return searchService.getTotalSearchDatas(storeIndex, searchText, selectMajor, selectSub, zeroPossible);
+        try {
+            return ResponseEntity.ok(searchService.getTotalSearchDatas(storeIndex, searchText, selectMajor, selectSub, zeroPossible));
+        } catch(Exception e) {
+            log.error("[Error][SearchController->getTotalSearch] {}", e.getMessage(), e);
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.emptyList());
+        }
     }
 }

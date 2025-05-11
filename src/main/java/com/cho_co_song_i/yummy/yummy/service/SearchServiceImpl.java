@@ -1,10 +1,11 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
-import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @RequiredArgsConstructor
 public class SearchServiceImpl implements SearchService {
-    private final ElasticsearchAsyncClient searchAsyncClient;
+    private final ElasticsearchClient searchClient;
 
     @SuppressWarnings("unchecked")
     private List<FieldValue> convertToFieldValues(Object values) {
@@ -50,56 +51,24 @@ public class SearchServiceImpl implements SearchService {
         }
     }
 
+    public List<SearchStoreDto> getSearchAllStores(String indexName) throws Exception {
 
-    // master merge test
-    public CompletableFuture<List<SearchStoreDto>> searchDocuments(String index, String field, String query) {
+        SearchRequest searchRequest = SearchRequest.of(s -> s
+                .index(indexName)
+                .size(10000)
+                .query(q -> q
+                        .matchAll(m -> m)));
 
-        SearchRequest searchRequest = new SearchRequest.Builder()
-                .index(index)
-                .query(q -> q.match(m -> m
-                        .field(field)
-                        .query(query)
-                ))
-                .build();
 
-        return searchAsyncClient.search(searchRequest, SearchStoreDto.class)
-                .thenApply(resp -> resp.hits().hits().stream()
-                        .map(Hit::source)
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toList()));
+        SearchResponse<SearchStoreDto> resp = searchClient.search(searchRequest, SearchStoreDto.class);
+
+        return resp.hits().hits().stream()
+                .map(Hit::source)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 
-    /**
-     * 지도 데이터 -> Elasticsearch 에서 모든 음식점 데이터를 가져와준다.
-     * @return 모든 지도 데이터 객체 리스트 -> 향후에 로직 수정 필요
-     */
-    public CompletableFuture<List<SearchStoreDto>> getSearchAllStores(String indexName) {
-
-        try {
-
-            SearchRequest searchRequest = SearchRequest.of(s -> s
-                    .index(indexName)
-                    .size(10000)
-                    .query(q -> q
-                            .matchAll(m -> m)));
-
-            return searchAsyncClient.search(searchRequest, SearchStoreDto.class)
-                    .thenApply(resp -> resp.hits().hits().stream()
-                            .map(Hit::source)
-                            .filter(Objects::nonNull)
-                            .collect(Collectors.toList()))
-                    .exceptionally(ex -> {
-                        log.error("[Error][SearchService -> getSearchAllStores] {}", ex.getMessage());
-                        return List.of();
-                    });
-
-        } catch (Exception e) {
-            log.error("[Error][SearchService -> getSearchAllStores] {}", e.getMessage());
-            return CompletableFuture.completedFuture(List.of());
-        }
-    }
-
-    public CompletableFuture<Optional<SearchStoreDto>> getStoreByName(String indexName, String storeName) {
+    public Optional<SearchStoreDto> getStoreByName(String indexName, String storeName) throws Exception {
         SearchRequest searchRequest = SearchRequest.of(s -> s
                 .index(indexName)
                 .size(1)
@@ -112,27 +81,22 @@ public class SearchServiceImpl implements SearchService {
                 )
         );
 
-        return searchAsyncClient.search(searchRequest, SearchStoreDto.class)
-                .thenApply(resp ->
-                        resp.hits().hits().stream()
-                                .map(hit -> hit.source())
-                                .filter(Objects::nonNull)
-                                .findFirst()
-                )
-                .exceptionally(ex -> {
-                    log.error("[Error][SearchService -> getStoreByName] {}", ex.getMessage());
-                    return Optional.empty();
-                });
+        SearchResponse<SearchStoreDto> resp = searchClient.search(searchRequest, SearchStoreDto.class);
+
+        return resp.hits().hits().stream()
+                .map(Hit::source)
+                .filter(Objects::nonNull)
+                .findFirst();
     }
 
-    public CompletableFuture<List<SearchStoreDto>> getStoresByPage (
+    public List<SearchStoreDto> getStoresByPage (
             String indexName,
             int page,
             int size
-    ) {
+    ) throws Exception {
         int from = (page - 1) * size;
 
-        SearchRequest req = SearchRequest.of(s -> s
+        SearchRequest searchRequest = SearchRequest.of(s -> s
                 .index(indexName)
                 .from(from)       // 건너뛸 도큐먼트 수
                 .size(size)
@@ -147,59 +111,49 @@ public class SearchServiceImpl implements SearchService {
                 )
         );
 
-        return searchAsyncClient.search(req, SearchStoreDto.class)
-                .thenApply(resp ->
-                        resp.hits().hits().stream()
-                                .map(Hit::source)
-                                .filter(Objects::nonNull)
-                                .toList()
-                );
+        SearchResponse<SearchStoreDto> resp = searchClient.search(searchRequest, SearchStoreDto.class);
+
+        return resp.hits().hits().stream()
+                .map(Hit::source)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 
-    public CompletableFuture<List<SearchStoreDto>> getTotalSearchDatas(String indexName, String searchText, int selectMajor, int selectSub, boolean zeroPossible) {
+    public List<SearchStoreDto> getTotalSearchDatas(String indexName, String searchText, int selectMajor, int selectSub, boolean zeroPossible) throws Exception {
 
-        try {
-            BoolQuery.Builder boolQuery = new BoolQuery.Builder();
+        BoolQuery.Builder boolQuery = new BoolQuery.Builder();
 
-            if (zeroPossible) {
-                boolQuery.filter(f -> f.term(t -> t.field("zero_possible").value(true)));
-            }
-
-            if (selectMajor != 0) {
-                List<Integer> selectMajorList = List.of(selectMajor);
-                boolQuery.must(m -> m.terms(t -> t.field("major_type").terms(t1 -> t1.value(convertToFieldValues(selectMajorList)))));
-            }
-
-            if (selectSub != 0) {
-                List<Integer> selectSubList = List.of(selectMajor);
-                boolQuery.must(m -> m.terms(t -> t.field("major_type").terms(t1 -> t1.value(convertToFieldValues(selectSubList)))));
-            }
-
-            if (!searchText.isEmpty()) {
-                boolQuery.should(m -> m.match(mq -> mq.field("name").query(searchText).boost(2.0f)));
-                boolQuery.should(m -> m.match(mq -> mq.field("address").query(searchText).boost(1.5f)));
-                boolQuery.minimumShouldMatch("1");
-            }
-
-            SearchRequest searchRequest = SearchRequest.of(s -> s
-                    .index(indexName)
-                    .query(q -> q.bool(boolQuery.build()))
-                    .size(10000)
-            );
-
-            return searchAsyncClient.search(searchRequest, SearchStoreDto.class)
-                    .thenApply(resp -> resp.hits().hits().stream()
-                            .map(Hit::source)
-                            .filter(Objects::nonNull)
-                            .collect(Collectors.toList()))
-                    .exceptionally(ex -> {
-                        log.error("[Error][SearchService -> getTotalSearchDatas] {}", ex.getMessage());
-                        return List.of();
-                    });
-
-        } catch(Exception e) {
-            log.error("[Error][SearchService -> getTotalSearchDatas] {}", e.getMessage());
-            return CompletableFuture.completedFuture(List.of());
+        if (zeroPossible) {
+            boolQuery.filter(f -> f.term(t -> t.field("zero_possible").value(true)));
         }
+
+        if (selectMajor != 0) {
+            List<Integer> selectMajorList = List.of(selectMajor);
+            boolQuery.must(m -> m.terms(t -> t.field("major_type").terms(t1 -> t1.value(convertToFieldValues(selectMajorList)))));
+        }
+
+        if (selectSub != 0) {
+            List<Integer> selectSubList = List.of(selectMajor);
+            boolQuery.must(m -> m.terms(t -> t.field("major_type").terms(t1 -> t1.value(convertToFieldValues(selectSubList)))));
+        }
+
+        if (!searchText.isEmpty()) {
+            boolQuery.should(m -> m.match(mq -> mq.field("name").query(searchText).boost(2.0f)));
+            boolQuery.should(m -> m.match(mq -> mq.field("address").query(searchText).boost(1.5f)));
+            boolQuery.minimumShouldMatch("1");
+        }
+
+        SearchRequest searchRequest = SearchRequest.of(s -> s
+                .index(indexName)
+                .query(q -> q.bool(boolQuery.build()))
+                .size(10000)
+        );
+
+        SearchResponse<SearchStoreDto> resp = searchClient.search(searchRequest, SearchStoreDto.class);
+
+        return resp.hits().hits().stream()
+                .map(Hit::source)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 }
