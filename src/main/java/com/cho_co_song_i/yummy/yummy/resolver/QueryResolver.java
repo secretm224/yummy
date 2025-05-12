@@ -65,17 +65,11 @@ public class QueryResolver {
         }
      */
     @QueryMapping(name = "SearchStoreAllData")
-    public List<SearchStoreDto> getSearchAllStores() {
+    public List<SearchStoreDto> findSearchAllStores() throws Exception {
         if (!StringUtils.hasText(storeIndex)) {
             return Collections.emptyList();
         }
-
-        try {
-            return searchService.getSearchAllStores(storeIndex);
-        } catch (Exception e) {
-            log.error("Failed to fetch SearchStoreAllData for index='{}'", storeIndex, e);
-            return Collections.emptyList();
-        }
+        return searchService.findSearchAllStores(storeIndex);
     }
 
     /*
@@ -150,18 +144,12 @@ public class QueryResolver {
 
      */
     @QueryMapping(name = "SearchStoreName")
-    public SearchStoreDto GetSearchStoreName(@Argument("SearchStoreName") String storeName){
+    public SearchStoreDto GetSearchStoreName(@Argument("SearchStoreName") String storeName) throws Exception {
         if (!StringUtils.hasText(storeName)) {
             log.warn("검색할 매장 이름이 비어 있습니다.");
             return null;
         }
-
-        try {
-            return searchService.getStoreByName(storeIndex, storeName).orElse(null);
-        } catch(Exception e) {
-            log.error("[Error][QueryResolver->GetSearchStoreName] {}", e.getMessage(), e);
-            return null;
-        }
+        return searchService.findStoreByName(storeIndex, storeName).orElse(null);
     }
 
     /*
@@ -188,17 +176,12 @@ public class QueryResolver {
     public List<SearchStoreDto> searchStoreList(
             @Argument("page") int page,
             @Argument("size") int size
-    ) {
+    ) throws Exception {
         if (!StringUtils.hasText(storeIndex)) {
             return Collections.emptyList();
         }
 
-        try {
-            return searchService.getStoresByPage(storeIndex, page, size);
-        } catch (Exception e) {
-            log.error("[Error][QueryResolver->searchStoreList] {}", e.getMessage(), e);
-            return Collections.emptyList();
-        }
+        return searchService.findStoresByPage(storeIndex, page, size);
     }
 
 //    query{
@@ -209,8 +192,9 @@ public class QueryResolver {
 //        }
 //    }
     @QueryMapping(name="StoreMajorsTypeList")
-    public List<StoreTypeMajorDto> GetStoreMajorsType(){
-        return storeService.getStoreTypeMajors();
+    public List<StoreTypeMajorDto> findStoreMajorsType() throws Exception {
+
+        return storeService.findStoreTypeMajors();
     }
 //    query{
 //        StoreSubMajorsTypeList(major_code:1){
@@ -221,8 +205,8 @@ public class QueryResolver {
 //
 //    }
     @QueryMapping(name="StoreSubMajorsTypeList")
-    public List<StoreTypeSubDto>GetStoreSubMajorsType(@Argument("major_code") int major_code){
-        return storeService.getStoreTypeSubs((long)major_code);
+    public List<StoreTypeSubDto>GetStoreSubMajorsType(@Argument("major_code") int major_code) throws Exception {
+        return storeService.findStoreTypeSubs((long)major_code);
     }
 
 }

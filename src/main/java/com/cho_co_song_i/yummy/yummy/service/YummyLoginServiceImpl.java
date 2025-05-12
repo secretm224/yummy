@@ -49,7 +49,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
      * @param userTbl
      * @return
      */
-    private Boolean tempLoginUserCheck(UserTbl userTbl) {
+    private Boolean isTempLoginUser(UserTbl userTbl) {
 
         UserTempPwTbl userTempPw = queryFactory
                 .selectFrom(userTempPwTbl)
@@ -80,7 +80,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
      * @param userNum
      * @return
      */
-    private UserTbl getUserLoginInfoByNo(Long userNum) {
+    private UserTbl findUserLoginInfoByNo(Long userNum) {
         return queryFactory
                 .selectFrom(userTbl)
                 .where(userTbl.userNo.eq(userNum))
@@ -92,7 +92,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
      * @param user
      * @param tokenId
      */
-    private void insertUserTokenId(UserTbl user, String tokenId) {
+    private void inputUserTokenId(UserTbl user, String tokenId) {
         UserTokenIdTbl userTokenIdTbl = new UserTokenIdTbl();
         userTokenIdTbl.setUser(user);
 
@@ -108,8 +108,9 @@ public class YummyLoginServiceImpl implements YummyLoginService {
      * 유저 정보 조회 - Redis 로부터 유저 정보를 조회해준다.
      * @param userNo
      * @return
+     * @throws Exception
      */
-    private Optional<UserBasicInfoDto> fetchUserProfileFromRedis(String userNo) {
+    private Optional<UserBasicInfoDto> findUserProfileFromRedis(String userNo) throws Exception {
         String keyPrefix = String.format("%s:%s", userInfoKey, userNo);
         UserBasicInfoDto userDto = redisAdapter.getValue(keyPrefix, new TypeReference<UserBasicInfoDto>() {});
 
@@ -122,8 +123,9 @@ public class YummyLoginServiceImpl implements YummyLoginService {
      * @param userNo
      * @param tokenId
      * @return
+     * @throws Exception
      */
-    private boolean tryRefreshAccessToken(HttpServletResponse res, String userNo, String tokenId) {
+    private boolean refreshAccessTokenIfPresent(HttpServletResponse res, String userNo, String tokenId) throws Exception {
         String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNo, tokenId);
         String refreshToken = redisAdapter.getValue(refreshKey, new TypeReference<String>() {});
 
@@ -138,7 +140,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         return true;
     }
 
-    public void handlePostLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo) {
+    public void processCommonLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo) {
 
         /* 유저 정보 */
         UserTbl user = loginInfo.getUserTbl();
@@ -153,7 +155,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         String refreshToken = jwtProviderService.generateRefreshToken(userNoStr);
 
         /* 2. Refresh Token 을 Redis 에 넣어준다. && DB 에는 Tokenid 를 넣어준다. */
-        insertUserTokenId(user, tokenId);
+        inputUserTokenId(user, tokenId);
         String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNoStr, tokenId);
         redisAdapter.set(refreshKey, refreshToken, Duration.ofDays(7));
 
@@ -186,6 +188,10 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     }
 
 
+    private void test() {
+        throw new RuntimeException("일부러");
+    }
+
     public StandardLoginBasicResDto verifyLoginUserInfo(StandardLoginDto standardLoginDto) throws Exception {
 
         /* 1. 사용자 조회 */
@@ -197,7 +203,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         }
 
         /* 2. 사용자가 임시비밀번호를 발급받은 사용자인지 체크 */
-        boolean tempUserYn = tempLoginUserCheck(user);
+        boolean tempUserYn = isTempLoginUser(user);
 
         /* 3. 비밀번호 해시 비교 */
         String hashedInput = HashUtil.hashWithSalt(standardLoginDto.getUserPw(), user.getUserPwSalt());
@@ -213,10 +219,10 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public PublicStatus oauthLogin(Long userNum, HttpServletResponse res) throws Exception {
+    public PublicStatus processOauthLogin(Long userNum, HttpServletResponse res) {
 
         /* 1. 유저정보 조회 */
-        UserTbl user = getUserLoginInfoByNo(userNum);
+        UserTbl user = findUserLoginInfoByNo(userNum);
 
         if (user == null) {
             log.info("[YummyLoginService->oauthLogin][Login] No User: {}", userNum);
@@ -226,12 +232,12 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         log.info("[YummyLoginService->oauthLogin][Login] Login successful: {}", user.getUserId());
 
         /* 2. 사용자가 임시비밀번호를 발급받은 사용자인지 체크 */
-        boolean tempUserYn = tempLoginUserCheck(user);
+        boolean tempUserYn = isTempLoginUser(user);
 
         StandardLoginBasicResDto loginRes = new StandardLoginBasicResDto(PublicStatus.SUCCESS, user, tempUserYn);
 
         /* 3. 로그인 처리 */
-        handlePostLogin(res, loginRes);
+        processCommonLogin(res, loginRes);
 
         return PublicStatus.SUCCESS;
     }
@@ -249,12 +255,12 @@ public class YummyLoginServiceImpl implements YummyLoginService {
             return PublicStatus.AUTH_ERROR;
         }
 
-        handlePostLogin(res, loginRes);
+        processCommonLogin(res, loginRes);
 
         return PublicStatus.SUCCESS;
     }
 
-    public ServiceResponse<Optional<UserBasicInfoDto>> checkLoginUser(HttpServletResponse res, HttpServletRequest req) {
+    public ServiceResponse<Optional<UserBasicInfoDto>> verifyLoginUser(HttpServletResponse res, HttpServletRequest req) throws Exception {
 
         /* 1. 액세스 토큰 확인 */
         JwtValidationResult jwtResult = userService.validateJwtAndCleanIfInvalid("yummy-access-token", res, req);
@@ -271,7 +277,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
             }
 
             /* 임시 비밀번호 발급받지 않은 경우 -> 회원정보 가져가준다. */
-            return ServiceResponse.of(PublicStatus.SUCCESS, fetchUserProfileFromRedis(userNo));
+            return ServiceResponse.of(PublicStatus.SUCCESS, findUserProfileFromRedis(userNo));
         }
 
         /* 3. 액세스 토큰 기간 만료 */
@@ -279,8 +285,8 @@ public class YummyLoginServiceImpl implements YummyLoginService {
             String tokenId = userService.getClaimFromJwt(jwtResult, "tokenId", String.class);
 
             /* 리프레시 토큰을 통해서 액세스 토큰 재 발행 */
-            if (tryRefreshAccessToken(res, userNo, tokenId)) {
-                return ServiceResponse.of(PublicStatus.SUCCESS, fetchUserProfileFromRedis(userNo));
+            if (refreshAccessTokenIfPresent(res, userNo, tokenId)) {
+                return ServiceResponse.of(PublicStatus.SUCCESS, findUserProfileFromRedis(userNo));
             } else {
                 log.warn("[Warn][YummyLoginService->checkLoginUser] refreshToken expired or does not exist: userNo={}", userNo);
                 return ServiceResponse.empty(PublicStatus.AUTH_ERROR);

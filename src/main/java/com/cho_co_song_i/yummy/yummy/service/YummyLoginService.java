@@ -13,13 +13,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.util.Optional;
 
 public interface YummyLoginService {
-
     /**
      * Oauth2 / Standard Login 공통 처리 함수
      * @param res
      * @param loginInfo
      */
-    void handlePostLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo);
+    void processCommonLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo);
 
     /**
      * 유저의 로그아웃을 위해서 로그인관련 인증 토큰을 다 제거해주는 함수
@@ -40,9 +39,8 @@ public interface YummyLoginService {
      * @param userNum
      * @param res
      * @return
-     * @throws Exception
      */
-    PublicStatus oauthLogin(Long userNum, HttpServletResponse res) throws Exception;
+    PublicStatus processOauthLogin(Long userNum, HttpServletResponse res);
 
 
     /**
@@ -68,16 +66,7 @@ public interface YummyLoginService {
      * @param res
      * @param req
      * @return
+     * @throws Exception
      */
-    ServiceResponse<Optional<UserBasicInfoDto>> checkLoginUser(HttpServletResponse res, HttpServletRequest req);
-
-
-
-
-
-
-
-
-
-
+    ServiceResponse<Optional<UserBasicInfoDto>> verifyLoginUser(HttpServletResponse res, HttpServletRequest req) throws Exception;
 }

@@ -71,7 +71,10 @@ public class LocationServiceImpl implements LocationService {
         );
     }
 
-    /* ** Fetch Join / Join 비교 ** -> JPA 를 사용하면서 굉장히 중요한 부분 (TEST)  */
+    /* **
+        [TEST CODE]
+        Fetch Join / Join 비교 ** -> JPA 를 사용하면서 굉장히 중요한 부분 (TEST)
+    */
     public void getTestDtos(Long locationCountyCode) {
 
         BooleanBuilder conditions = new BooleanBuilder();
@@ -101,40 +104,26 @@ public class LocationServiceImpl implements LocationService {
 
     }
 
-    public List<LocationCountyDto> getAllLocationCounty() {
-        try {
+    public List<LocationCountyDto> findAllLocationCounty() throws Exception {
+        List<LocationCountyDto> locationCountyList =
+                redisAdapter.getValue(locationCounty, new TypeReference<List<LocationCountyDto>>() {});
 
-            List<LocationCountyDto> locationCountyList =
-                    redisAdapter.getValue(locationCounty, new TypeReference<List<LocationCountyDto>>() {});
+        if (locationCountyList.isEmpty()) {
+            /* Redis 에서 데이터를 받아오지 못한 경우 */
+            List<LocationCountyTbl> locationCountyListDb = locationRepository.findAll();
 
-            if (locationCountyList.isEmpty()) {
-                /* Redis 에서 데이터를 받아오지 못한 경우 */
-                List<LocationCountyTbl> locationCountyListDb = locationRepository.findAll();
-
-                return locationCountyListDb.stream()
+            return locationCountyListDb.stream()
                     .map(this::convertCountyToDto)
                     .collect(Collectors.toList());
 
-            } else {
-                return locationCountyList;
-            }
-
-        } catch(Exception e) {
-            log.error("[Error][LocationService->getAllLocationCounty] {}", e.getMessage(), e);
-            return Collections.emptyList();
+        } else {
+            return locationCountyList;
         }
     }
 
-    public List<LocationCityDto> getLocationCities(Long locationCountyCode) {
-
-        List<LocationCityDto> locationCityList = new ArrayList<>();
-
-        try {
-            String locationCityKey = String.format("%s:%s", locationCity, locationCountyCode);
-            locationCityList = redisAdapter.getValue(locationCityKey, new TypeReference<List<LocationCityDto>>() {});
-        } catch(Exception e) {
-            log.error("[Error][LocationService->getLocationCities] {}", e.getMessage(), e);
-        }
+    public List<LocationCityDto> findLocationCities(Long locationCountyCode) throws Exception {
+        String locationCityKey = String.format("%s:%s", locationCity, locationCountyCode);
+        List<LocationCityDto> locationCityList = redisAdapter.getValue(locationCityKey, new TypeReference<List<LocationCityDto>>() {});
 
         if (locationCityList == null || locationCityList.isEmpty()) {
             /* Redis 에서 데이터를 못가져오거나 데이터가 존재하지 않을 경우 */
@@ -152,34 +141,21 @@ public class LocationServiceImpl implements LocationService {
                 query.where(conditions);
             }
 
-            try {
-                List<LocationCityTbl> locationCityTblList = query.fetch();
+            List<LocationCityTbl> locationCityTblList = query.fetch();
 
-                return locationCityTblList.stream()
-                        .map(this::convertCityToDto)
-                        .collect(Collectors.toList());
-
-            } catch(Exception e) {
-                log.error("[Error][LocationService->getLocationCities] {}", e.getMessage(), e);
-                return Collections.emptyList();
-            }
+            return locationCityTblList.stream()
+                    .map(this::convertCityToDto)
+                    .collect(Collectors.toList());
 
         } else {
-            return locationCityList;
+            return Collections.emptyList();
         }
     }
 
-    public List<LocationDistrictDto> getLocationDistrict(Long locationCityCode) {
+    public List<LocationDistrictDto> findLocationDistrict(Long locationCityCode) throws Exception {
 
-        List<LocationDistrictDto> locationDistrictList = new ArrayList<>();
-
-        try {
-            String locationDistrictKey = String.format("%s:%s", locationDistrict, locationCityCode);
-            locationDistrictList = redisAdapter.getValue(locationDistrictKey, new TypeReference<List<LocationDistrictDto>>() {});
-        } catch(Exception e) {
-            log.error("[Error][LocationService->getLocationDistrict] {}", e.getMessage(), e);
-        }
-
+        String locationDistrictKey = String.format("%s:%s", locationDistrict, locationCityCode);
+        List<LocationDistrictDto> locationDistrictList = redisAdapter.getValue(locationDistrictKey, new TypeReference<List<LocationDistrictDto>>() {});
 
         if (locationDistrictList == null || locationDistrictList.isEmpty()) {
 
@@ -199,45 +175,39 @@ public class LocationServiceImpl implements LocationService {
                 query.where(conditions);
             }
 
-            try {
-                List<LocationDistrictTbl> locationDistricts = query.fetch();
+            List<LocationDistrictTbl> locationDistricts = query.fetch();
 
-                return locationDistricts.stream()
-                        .map(this::convertDistrictToDto)
-                        .collect(Collectors.toList());
-
-            } catch(Exception e) {
-                log.error("[Error][LocationService->getLocationDistrict] {}", e.getMessage(), e);
-                return Collections.emptyList();
-            }
+            return locationDistricts.stream()
+                    .map(this::convertDistrictToDto)
+                    .collect(Collectors.toList());
 
         } else {
-            return locationDistrictList;
+            return Collections.emptyList();
         }
     }
 
-    public void addStoreLocationInfoTbl(AddStoreDto addStoreDto, Long storeSeq, Date now) {
+    public void inputStoreLocationInfoTbl(AddStoreDto addStoreDto, Long storeSeq, Date now) {
 
         if (storeSeq <= 0) {
-            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] 'storeSeq' data must be at least 1 natural number.");
+            throw new IllegalArgumentException("[Error][LocationService->inputStoreLocationInfoTbl] 'storeSeq' data must be at least 1 natural number.");
         }
         if (addStoreDto.getLocationCounty() == null || addStoreDto.getLocationCounty().isEmpty()) {
-            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] The location county name is missing.");
+            throw new IllegalArgumentException("[Error][LocationService->inputStoreLocationInfoTbl] The location county name is missing.");
         }
         if (addStoreDto.getLocationCity() == null || addStoreDto.getLocationCity().isEmpty()) {
-            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] The location city name is missing.");
+            throw new IllegalArgumentException("[Error][LocationService->inputStoreLocationInfoTbl] The location city name is missing.");
         }
         if (addStoreDto.getLocationDistrict() == null || addStoreDto.getLocationDistrict().isEmpty()) {
-            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] The location district name is missing.");
+            throw new IllegalArgumentException("[Error][LocationService->inputStoreLocationInfoTbl] The location district name is missing.");
         }
         if (addStoreDto.getAddress() == null || addStoreDto.getAddress().isEmpty()) {
-            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] The address name is missing.");
+            throw new IllegalArgumentException("[Error][LocationService->inputStoreLocationInfoTbl] The address name is missing.");
         }
         if (addStoreDto.getLat() == null) {
-            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] The lat value is missing.");
+            throw new IllegalArgumentException("[Error][LocationService->inputStoreLocationInfoTbl] The lat value is missing.");
         }
         if (addStoreDto.getLng() == null) {
-            throw new IllegalArgumentException("[Error][LocationService->addStoreLocation] The lng value is missing.");
+            throw new IllegalArgumentException("[Error][LocationService->inputStoreLocationInfoTbl] The lng value is missing.");
         }
 
         StoreLocationInfoTbl storeLocationInfoTbl = new StoreLocationInfoTbl();
@@ -255,15 +225,13 @@ public class LocationServiceImpl implements LocationService {
         storeLocationInfoRepository.save(storeLocationInfoTbl);
     }
 
-
-
-    public void addZeroPossibleMarket(AddStoreDto addStoreDto, Long storeSeq, Date now) {
+    public void inputZeroPossibleMarket(AddStoreDto addStoreDto, Long storeSeq, Date now) {
 
         if (storeSeq <= 0) {
-            throw new IllegalArgumentException("[Error][LocationService->addZeroPossibleMarket] 'storeSeq' data must be at least 1 natural number.");
+            throw new IllegalArgumentException("[Error][LocationService->inputZeroPossibleMarket] 'storeSeq' data must be at least 1 natural number.");
         }
         if (addStoreDto.getName() == null || addStoreDto.getName().isEmpty()) {
-            throw new IllegalArgumentException("[Error][LocationService->addZeroPossibleMarket] The store name is missing.");
+            throw new IllegalArgumentException("[Error][LocationService->inputZeroPossibleMarket] The store name is missing.");
         }
 
         /* ZeroPossibleMarket 객체 */
@@ -278,17 +246,17 @@ public class LocationServiceImpl implements LocationService {
         zeroPossibleMarketRepository.save(zeroPossibleMarket);
     }
 
-    public void addStoreTypeLinkTbl(AddStoreDto addStoreDto, Long storeSeq, Date now) {
+    public void inputStoreTypeLinkTbl(AddStoreDto addStoreDto, Long storeSeq, Date now) {
 
         // 일부로 에러를 발생시켜줌
         if (storeSeq <= 0) {
-            throw new IllegalArgumentException("[Error][LocationService->addStoreTypeLink] 'storeSeq' data must be at least 1 natural number.");
+            throw new IllegalArgumentException("[Error][LocationService->inputStoreTypeLinkTbl] 'storeSeq' data must be at least 1 natural number.");
         }
         if (addStoreDto == null) {
-            throw new IllegalArgumentException("[Error][LocationService->addStoreTypeLink] AddStoreDto object is null.");
+            throw new IllegalArgumentException("[Error][LocationService->inputStoreTypeLinkTbl] AddStoreDto object is null.");
         }
         if (addStoreDto.getSubType() <= 0) {
-            throw new IllegalArgumentException("[Error][LocationService->addStoreTypeLink] 'subType' data must be at least 1 natural number.");
+            throw new IllegalArgumentException("[Error][LocationService->inputStoreTypeLinkTbl] 'subType' data must be at least 1 natural number.");
         }
 
         /* StoreTypeLink 객체 */

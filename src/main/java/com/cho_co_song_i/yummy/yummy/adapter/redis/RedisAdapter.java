@@ -33,20 +33,17 @@ public class RedisAdapter {
      * @param typeReference
      * @return
      * @param <T>
+     * @throws Exception
      */
-    public <T> T getValue(String key, TypeReference<T> typeReference) {
+    public <T> T getValue(String key, TypeReference<T> typeReference) throws Exception {
         Object redisData = redisTemplate.opsForValue().get(key);
 
         if (redisData == null) {
             return null;
         }
 
-        try {
-            String json = redisData.toString();
-            return objectMapper.readValue(json, typeReference);
-        } catch(Exception e) {
-            throw new RuntimeException("[Error][RedisAdapter->getValue] Failed to parse Redis data", e);
-        }
+        String json = redisData.toString();
+        return objectMapper.readValue(json, typeReference);
     }
 
     /**

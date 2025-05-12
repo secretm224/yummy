@@ -19,18 +19,19 @@ public interface JoinMamberService {
      * @return
      * @throws Exception
      */
-    PublicStatus findPw(FindPwDto findPwDto) throws Exception;
+    PublicStatus recoverUserPw(FindPwDto findPwDto) throws Exception;
     /**
      * 회원의 아이디를 찾아주는 함수
      * @param findIdDto
      * @return
      * @throws Exception
      */
-    PublicStatus findId(FindIdDto findIdDto) throws Exception;
+    PublicStatus recoverUserId(FindIdDto findIdDto) throws Exception;
     /**
      * 회원가입 해주는 서비스 함수
      * @param joinMemberDto
      * @return
+     * @throws Exception
      */
     PublicStatus joinMember(HttpServletResponse res, HttpServletRequest req, JoinMemberDto joinMemberDto) throws Exception;
     /**

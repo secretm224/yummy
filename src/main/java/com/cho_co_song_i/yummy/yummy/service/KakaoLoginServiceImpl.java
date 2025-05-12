@@ -102,7 +102,6 @@ public class KakaoLoginServiceImpl implements LoginService {
         }
     }
 
-
     /**
      * 유저의 Kakao Oauth에 대한 정보를 반환해주는 함수
      * @param code
@@ -190,7 +189,7 @@ public class KakaoLoginServiceImpl implements LoginService {
 
         if (userOAuthResponse.getPublicStatus() == PublicStatus.SUCCESS) {
             /* Oauth2 인증 성공해서 유저 정보가 있는 경우 */
-            return yummyLoginServiceImpl.oauthLogin(userOAuthResponse.getUserNum(), res);
+            return yummyLoginServiceImpl.processOauthLogin(userOAuthResponse.getUserNum(), res);
         } else if (userOAuthResponse.getPublicStatus() == PublicStatus.JOIN_TARGET_MEMBER) {
             /*
              * 유저에게 신규 가입 또는 기존회원 연동 하게 시킴.

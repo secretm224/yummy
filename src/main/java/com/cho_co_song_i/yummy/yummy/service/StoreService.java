@@ -16,21 +16,21 @@ public interface StoreService {
      *
      * @return
      */
-    List<StoreDto> getAllStores();
+    List<StoreDto> findAllStores();
 
     /**
      *
      * @param id
      * @return
      */
-    Optional<StoreDto> getStoreById(Long id);
+    Optional<StoreDto> findStoreById(Long id);
 
     /**
      *
      * @param seq
      * @return
      */
-    Optional<StoreLocationInfoTbl> getStoreLocationInfo(Long seq);
+    Optional<StoreLocationInfoTbl> findStoreLocationInfo(Long seq);
 
     /**
      *
@@ -45,27 +45,30 @@ public interface StoreService {
      * @param dto
      * @return
      */
-    StoreDto updateStore(Long id, StoreDto dto);
+    StoreDto modifyStore(Long id, StoreDto dto);
 
     /**
      * Store 객체를 디비에 저장해주는 함수
      * @param addStoreDto
      * @return
+     * @throws Exception
      */
-    Boolean addStore(AddStoreDto addStoreDto);
+    Boolean isAddedStore(AddStoreDto addStoreDto) throws Exception;
 
     /**
      * 음식점 대분류 데이터를 가져와주는 함수
      * @return
+     * @throws Exception
      */
-    List<StoreTypeMajorDto> getStoreTypeMajors();
+    List<StoreTypeMajorDto> findStoreTypeMajors() throws Exception;
 
     /**
-     *
+     * 음식점 소분류 데이터를 가져와주는 함수
      * @param majorType
      * @return
+     * @throws Exception
      */
-    List<StoreTypeSubDto> getStoreTypeSubs(Long majorType);
+    List<StoreTypeSubDto> findStoreTypeSubs(Long majorType) throws Exception;
 
     /**
      *
@@ -74,13 +77,13 @@ public interface StoreService {
      * @param latY
      * @return
      */
-    Optional<JsonNode> StoreDetailQuery(String storeName , BigDecimal lngX, BigDecimal latY);
+    Optional<JsonNode> inputDetailQuery(String storeName , BigDecimal lngX, BigDecimal latY);
 
     /**
      *
      * @return
      */
-    Optional<JsonNode> UpdateStoreDetail();
+    Optional<JsonNode> modifyStoreDetail();
 
 
 }

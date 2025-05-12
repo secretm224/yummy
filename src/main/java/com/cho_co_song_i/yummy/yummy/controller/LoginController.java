@@ -63,15 +63,10 @@ public class LoginController {
      * @param res
      * @param req
      * @return
+     * @throws Exception
      */
     @PostMapping("/standardLogin")
-    public ResponseEntity<PublicStatus> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
-//        try {
-//            return ResponseEntity.ok(yummyLoginService.standardLoginUser(standardLoginDto, res, req));
-//        } catch(Exception e) {
-//            log.error("[Error][LoginController->StandardLogin] {}", e.getMessage(), e);
-//            return ResponseEntity.ok(PublicStatus.AUTH_ERROR);
-//        }
+    public ResponseEntity<PublicStatus> standardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
         return ResponseEntity.ok(yummyLoginService.standardLoginUser(standardLoginDto, res, req));
     }
 
@@ -81,7 +76,7 @@ public class LoginController {
      * @return
      */
     @PostMapping("/standardLogout")
-    public ResponseEntity<Void> StandardLogout(HttpServletResponse res) {
+    public ResponseEntity<Void> standardLogout(HttpServletResponse res) {
         yummyLoginService.standardLogoutUser(res);
         return ResponseEntity.noContent().build();
     }
@@ -95,9 +90,9 @@ public class LoginController {
      */
     @PostMapping("/auth/loginCheck")
     @ResponseBody
-    public ResponseEntity<ServiceResponse<Optional<UserBasicInfoDto>>> LoginCheck(HttpServletResponse res , HttpServletRequest req) {
+    public ResponseEntity<ServiceResponse<Optional<UserBasicInfoDto>>> verifyLoginUser(HttpServletResponse res , HttpServletRequest req) throws Exception {
         /* 로그인 체크 처리 */
-        ServiceResponse<Optional<UserBasicInfoDto>> result = yummyLoginService.checkLoginUser(res, req);
+        ServiceResponse<Optional<UserBasicInfoDto>> result = yummyLoginService.verifyLoginUser(res, req);
         return ResponseEntity.ok(result);
     }
 
@@ -110,17 +105,8 @@ public class LoginController {
      */
     @PostMapping("/oauth2/kakao")
     @ResponseBody
-    public PublicStatus KakaoLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) throws Exception{
+    public PublicStatus kakaoLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) throws Exception{
         return kakoLoginService.handleOAuthLogin(loginDto, res, req);
-    }
-
-    @ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.OK)
-    public PublicStatus handleLoginError(Exception e, HttpServletRequest request) {
-        String path   = request.getRequestURI();
-        String method = request.getMethod();
-        log.error("[Error][{} {}] {}", method, path, e.getMessage(), e);
-        return PublicStatus.SERVER_ERR;
     }
 
     @GetMapping("/test")

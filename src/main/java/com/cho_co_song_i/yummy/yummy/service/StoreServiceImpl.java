@@ -130,19 +130,19 @@ public class StoreServiceImpl implements StoreService {
         );
     }
 
-    public List<StoreDto> getAllStores() {
+    public List<StoreDto> findAllStores() {
         List<Store> stores = storeRepository.findAll();
         return stores.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
 
-    public Optional<StoreDto> getStoreById(Long id) {
+    public Optional<StoreDto> findStoreById(Long id) {
         return storeRepository.findById(id)
                 .map(this::convertToDto);
     }
 
-    public Optional<StoreLocationInfoTbl> getStoreLocationInfo(Long seq) {
+    public Optional<StoreLocationInfoTbl> findStoreLocationInfo(Long seq) {
         return storeLocationInfoRepository.findById(seq);
     }
 
@@ -152,7 +152,7 @@ public class StoreServiceImpl implements StoreService {
         return convertToDto(store);
     }
 
-    public StoreDto updateStore(Long id, StoreDto dto) {
+    public StoreDto modifyStore(Long id, StoreDto dto) {
         Optional<Store> optionalStore = storeRepository.findById(id);
 
         Instant nowInstant = Instant.now();
@@ -178,64 +178,51 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public Boolean addStore(AddStoreDto addStoreDto) {
+    public Boolean isAddedStore(AddStoreDto addStoreDto) throws Exception {
 
         /* 현재 시각 */
         Instant nowInstant = Instant.now();
         Date now = Date.from(nowInstant);
 
-        try{
-
-            if (addStoreDto == null) {
-                throw new IllegalArgumentException("[Error][StoreService->addStore] AddStoreDto object is null.");
-            }
-            if (addStoreDto.getName() == null || addStoreDto.getName().isEmpty()) {
-                throw new IllegalArgumentException("[Error][StoreService->addStore] The store name is missing.");
-            }
-            if (addStoreDto.getType() == null || addStoreDto.getType().isEmpty()) {
-                throw new IllegalArgumentException("[Error][StoreService->addStore] The store type is missing.");
-            }
-
-            /* Store 객체*/
-            Store newStore = new Store();
-            newStore.setName(addStoreDto.getName());
-            newStore.setType(addStoreDto.getType());
-            newStore.setUseYn('Y');
-            newStore.setRegDt(now);
-            newStore.setRegId("system");
-            newStore.setTel(addStoreDto.getTel());
-            newStore.setUrl(addStoreDto.getUrl());
-            newStore.markAsNew();
-
-            Long newStoreSeq = storeRepository.save(newStore).getSeq();
-            locationService.addStoreLocationInfoTbl(addStoreDto, newStoreSeq, now);
-
-
-            /* 비플페이 등록 업체라면 */
-            if (addStoreDto.getIsBeefulPay()) {
-                locationService.addZeroPossibleMarket(addStoreDto, newStoreSeq, now);
-            }
-
-            /* 음식점-타입 데이터 */
-            locationService.addStoreTypeLinkTbl(addStoreDto, newStoreSeq, now);
-
-            return true;
-        } catch(Exception e) {
-            log.error("[Error][StoreService->addStore] {}", e.getMessage());
-            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            return false;
+        if (addStoreDto == null) {
+            throw new IllegalArgumentException("[Error][StoreService->addStore] AddStoreDto object is null.");
         }
+        if (addStoreDto.getName() == null || addStoreDto.getName().isEmpty()) {
+            throw new IllegalArgumentException("[Error][StoreService->addStore] The store name is missing.");
+        }
+        if (addStoreDto.getType() == null || addStoreDto.getType().isEmpty()) {
+            throw new IllegalArgumentException("[Error][StoreService->addStore] The store type is missing.");
+        }
+
+        /* Store 객체*/
+        Store newStore = new Store();
+        newStore.setName(addStoreDto.getName());
+        newStore.setType(addStoreDto.getType());
+        newStore.setUseYn('Y');
+        newStore.setRegDt(now);
+        newStore.setRegId("system");
+        newStore.setTel(addStoreDto.getTel());
+        newStore.setUrl(addStoreDto.getUrl());
+        newStore.markAsNew();
+
+        Long newStoreSeq = storeRepository.save(newStore).getSeq();
+        locationService.inputStoreLocationInfoTbl(addStoreDto, newStoreSeq, now);
+
+
+        /* 비플페이 등록 업체라면 */
+        if (addStoreDto.getIsBeefulPay()) {
+            locationService.inputZeroPossibleMarket(addStoreDto, newStoreSeq, now);
+        }
+
+        /* 음식점-타입 데이터 */
+        locationService.inputStoreTypeLinkTbl(addStoreDto, newStoreSeq, now);
+
+        return true;
     }
 
-    public List<StoreTypeMajorDto> getStoreTypeMajors() {
+    public List<StoreTypeMajorDto> findStoreTypeMajors() throws Exception {
 
-        List<StoreTypeMajorDto> storeMajors = new ArrayList<>();
-
-        try {
-            storeMajors = redisAdapter.getValue(categoryMain, new TypeReference<List<StoreTypeMajorDto>>() {});
-        } catch(Exception e) {
-            log.error("[Error][StoreService->getStoreTypeMajors] {}", e.getMessage(), e);
-        }
+        List<StoreTypeMajorDto> storeMajors = redisAdapter.getValue(categoryMain, new TypeReference<List<StoreTypeMajorDto>>() {});
 
         if (storeMajors == null || storeMajors.isEmpty()) {
 
@@ -243,38 +230,26 @@ public class StoreServiceImpl implements StoreService {
                     .select(storeTypeMajor)
                     .from(storeTypeMajor);
 
-            try {
-                List<StoreTypeMajor> storeMajorsDb = query.fetch();
+            List<StoreTypeMajor> storeMajorsDb = query.fetch();
 
-                return storeMajorsDb.stream()
-                        .map(this::convertTypeMajorToDto)
-                        .collect(Collectors.toList());
-
-            } catch(Exception e) {
-                log.error("[Error][StoreService->getStoreTypeMajors] {}", e.getMessage(), e);
-                return Collections.emptyList();
-            }
+            return storeMajorsDb.stream()
+                    .map(this::convertTypeMajorToDto)
+                    .collect(Collectors.toList());
 
         } else {
             return storeMajors;
         }
     }
 
-    public List<StoreTypeSubDto> getStoreTypeSubs(Long majorType) {
+    public List<StoreTypeSubDto> findStoreTypeSubs(Long majorType) throws Exception {
 
         if (majorType == null || majorType <= 0) {
             log.error("[Error][StoreService->getStoreTypeSubs] `majorType` must be at least 1 natural number.");
             return Collections.emptyList();
         }
 
-        List<StoreTypeSubDto> storeTypeSubs = new ArrayList<>();
-
-        try {
-            String storeSubKey = String.format("%s:%s", categorySub, majorType);
-            storeTypeSubs = redisAdapter.getValue(storeSubKey, new TypeReference<List<StoreTypeSubDto>>() {});
-        } catch(Exception e) {
-            log.error("[Error][StoreService->getStoreTypeSubs] {}", e.getMessage(), e);
-        }
+        String storeSubKey = String.format("%s:%s", categorySub, majorType);
+        List<StoreTypeSubDto> storeTypeSubs = redisAdapter.getValue(storeSubKey, new TypeReference<List<StoreTypeSubDto>>() {});
 
         if (storeTypeSubs == null || storeTypeSubs.isEmpty()) {
             /* Redis 에서 데이터를 못가져오거나 데이터가 존재하지 않을 경우 */
@@ -287,24 +262,18 @@ public class StoreServiceImpl implements StoreService {
                                     .and(storeTypeSub.majorType.eq(majorType))
                     );
 
-            try {
-                List<StoreTypeSub> storeTypeSubsDb = query.fetch();
+            List<StoreTypeSub> storeTypeSubsDb = query.fetch();
 
-                return storeTypeSubsDb.stream()
-                        .map(this::convertTypeSubToDto)
-                        .collect(Collectors.toList());
-
-            } catch(Exception e) {
-                log.error("[Error][StoreService->getStoreTypeSubs] {}", e.getMessage(), e);
-                return Collections.emptyList();
-            }
+            return storeTypeSubsDb.stream()
+                    .map(this::convertTypeSubToDto)
+                    .collect(Collectors.toList());
         } else {
             return storeTypeSubs;
         }
     }
 
     // 비즈니스 앱 등록 이슈 해결 후 처리 예정
-    public Optional<JsonNode> StoreDetailQuery(String storeName , BigDecimal lngX, BigDecimal latY)
+    public Optional<JsonNode> inputDetailQuery(String storeName , BigDecimal lngX, BigDecimal latY)
     {
         if (storeName == null || storeName.isEmpty()) {
             return Optional.empty();
@@ -334,27 +303,23 @@ public class StoreServiceImpl implements StoreService {
                 .toUri();
 
 
-        try{
-            HttpHeaders headers = new HttpHeaders();
-            headers.add("Authorization","KakaoAK 2fcfa96247ae04a4ad26cd853f1e5551");
-            HttpEntity<Void> request = new HttpEntity<>(headers);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization","KakaoAK 2fcfa96247ae04a4ad26cd853f1e5551");
+        HttpEntity<Void> request = new HttpEntity<>(headers);
 
-            ResponseEntity<JsonNode> resp = resttemplate.exchange(
-                    apiuri, HttpMethod.GET, request, JsonNode.class
-            );
+        ResponseEntity<JsonNode> resp = resttemplate.exchange(
+                apiuri, HttpMethod.GET, request, JsonNode.class
+        );
 
-            if (resp.getStatusCode().is2xxSuccessful() && resp.hasBody()) {
-                return Optional.of(resp.getBody());
-            }else{
-                return Optional.empty();
-            }
-        }catch(Exception e){
+        if (resp.getStatusCode().is2xxSuccessful() && resp.hasBody()) {
+            return Optional.of(resp.getBody());
+        } else {
             return Optional.empty();
         }
     }
 
-    public Optional<JsonNode> UpdateStoreDetail() {
-        List<StoreDto> l_store = this.getAllStores();
+    public Optional<JsonNode> modifyStoreDetail() {
+        List<StoreDto> l_store = this.findAllStores();
         AtomicInteger successCount = new AtomicInteger(0);
         ObjectMapper mapper = new ObjectMapper();
 
@@ -363,14 +328,14 @@ public class StoreServiceImpl implements StoreService {
                 Long storeSeq = store.getSeq();
                 StoreLocationInfoDto store_location = new StoreLocationInfoDto();
                 if(storeSeq > 0){
-                    this.getStoreLocationInfo(storeSeq).ifPresent(loc -> {
+                    this.findStoreLocationInfo(storeSeq).ifPresent(loc -> {
                         store_location.setSeq(store.getSeq());
                         store_location.setLng(loc.getLng());
                         store_location.setLat(loc.getLat());
                     });
                 }
 
-                this.StoreDetailQuery(store.getName(),store_location.getLng(),
+                this.inputDetailQuery(store.getName(),store_location.getLng(),
                                                       store_location.getLat()).
                                                       ifPresent(jsonNode -> {
                                                           //카테고리 추가 예정
@@ -389,7 +354,7 @@ public class StoreServiceImpl implements StoreService {
                                                               store.setUrl(url);
                                                               store.setChgId("Store>UpdateStoreDetail");
 
-                                                              StoreDto update_dto = this.updateStore(store.getSeq(),store);
+                                                              StoreDto update_dto = this.modifyStore(store.getSeq(),store);
                                                               if(update_dto != null){
                                                                   successCount.incrementAndGet();
                                                               }
@@ -400,6 +365,7 @@ public class StoreServiceImpl implements StoreService {
             }
 
         }
+
         ObjectNode result = mapper.createObjectNode()
                                   .put("success", successCount.get() > 0)
                                   .put("successCount", successCount.get());

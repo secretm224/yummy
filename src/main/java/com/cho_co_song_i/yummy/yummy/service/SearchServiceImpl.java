@@ -24,6 +24,17 @@ import java.util.stream.Collectors;
 public class SearchServiceImpl implements SearchService {
     private final ElasticsearchClient searchClient;
 
+
+    /* ERROR 테스트용 */
+    private void test() throws Exception {
+        int a = 1 / 0;
+    }
+
+    /* ERROR 테스트용2 */
+    private void test2() {
+        throw new RuntimeException("HOHO");
+    }
+
     @SuppressWarnings("unchecked")
     private List<FieldValue> convertToFieldValues(Object values) {
         if (values instanceof List<?>) {  /* 리스트 타입 처리 */
@@ -51,7 +62,7 @@ public class SearchServiceImpl implements SearchService {
         }
     }
 
-    public List<SearchStoreDto> getSearchAllStores(String indexName) throws Exception {
+    public List<SearchStoreDto> findSearchAllStores(String indexName) throws Exception {
 
         SearchRequest searchRequest = SearchRequest.of(s -> s
                 .index(indexName)
@@ -68,7 +79,7 @@ public class SearchServiceImpl implements SearchService {
                 .collect(Collectors.toList());
     }
 
-    public Optional<SearchStoreDto> getStoreByName(String indexName, String storeName) throws Exception {
+    public Optional<SearchStoreDto> findStoreByName(String indexName, String storeName) throws Exception {
         SearchRequest searchRequest = SearchRequest.of(s -> s
                 .index(indexName)
                 .size(1)
@@ -89,7 +100,7 @@ public class SearchServiceImpl implements SearchService {
                 .findFirst();
     }
 
-    public List<SearchStoreDto> getStoresByPage (
+    public List<SearchStoreDto> findStoresByPage (
             String indexName,
             int page,
             int size
@@ -119,7 +130,7 @@ public class SearchServiceImpl implements SearchService {
                 .collect(Collectors.toList());
     }
 
-    public List<SearchStoreDto> getTotalSearchDatas(String indexName, String searchText, int selectMajor, int selectSub, boolean zeroPossible) throws Exception {
+    public List<SearchStoreDto> findTotalSearchDatas(String indexName, String searchText, int selectMajor, int selectSub, boolean zeroPossible) throws Exception {
 
         BoolQuery.Builder boolQuery = new BoolQuery.Builder();
 

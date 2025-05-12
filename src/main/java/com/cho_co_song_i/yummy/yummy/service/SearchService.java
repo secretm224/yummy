@@ -13,7 +13,7 @@ public interface SearchService {
      * @return
      * @throws Exception
      */
-    List<SearchStoreDto> getSearchAllStores(String indexName) throws Exception;
+    List<SearchStoreDto> findSearchAllStores(String indexName) throws Exception;
     /**
      * 가게 이름으로 단건 조회 (secretm test)
      * @param indexName Elasticsearch 인덱스명
@@ -21,7 +21,7 @@ public interface SearchService {
      * @return 이름과 유사한 문서 중 첫 번째를 Optional로 감싸서 반환
      * @throws Exception
      */
-    Optional<SearchStoreDto> getStoreByName(String indexName, String storeName) throws Exception;
+    Optional<SearchStoreDto> findStoreByName(String indexName, String storeName) throws Exception;
     /**
      * Elasticsearch 에서 모든 도큐먼트를 페이징 조회
      *
@@ -30,7 +30,7 @@ public interface SearchService {
      * @param size      페이지당 항목 수
      * @return List<SearchStoreDto>
      */
-    List<SearchStoreDto> getStoresByPage(String indexName, int page, int size) throws Exception;
+    List<SearchStoreDto> findStoresByPage(String indexName, int page, int size) throws Exception;
     /**
      * 통함검색 알고리즘
      * @param indexName
@@ -41,6 +41,6 @@ public interface SearchService {
      * @return
      * @throws Exception
      */
-    List<SearchStoreDto> getTotalSearchDatas(String indexName, String searchText, int selectMajor, int selectSub, boolean zeroPossible) throws Exception;
+    List<SearchStoreDto> findTotalSearchDatas(String indexName, String searchText, int selectMajor, int selectSub, boolean zeroPossible) throws Exception;
 
 }

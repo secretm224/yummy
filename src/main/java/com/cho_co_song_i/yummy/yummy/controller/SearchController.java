@@ -24,31 +24,17 @@ public class SearchController {
     private String storeIndex;
 
     @GetMapping("allData")
-    public ResponseEntity<List<SearchStoreDto>> getAllStores() {
-        try {
-            return ResponseEntity.ok(searchService.getSearchAllStores(storeIndex));
-        } catch(Exception e) {
-            log.error("[Error][SearchController->getAllStores] {}", e.getMessage(), e);
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Collections.emptyList());
-        }
+    public ResponseEntity<List<SearchStoreDto>> findAllStores() throws Exception {
+        return ResponseEntity.ok(searchService.findSearchAllStores(storeIndex));
     }
 
     @GetMapping("totalSearch")
-    public ResponseEntity<List<SearchStoreDto>> getTotalSearch(
+    public ResponseEntity<List<SearchStoreDto>> findTotalSearch(
             @RequestParam(value = "searchText", required = false) String searchText,
             @RequestParam(value = "selectMajor", required = false, defaultValue = "0") int selectMajor,
             @RequestParam(value = "selectSub", required = false, defaultValue = "0") int selectSub,
             @RequestParam(value = "zeroPossible", required = false, defaultValue = "false") boolean zeroPossible
-    ) {
-        try {
-            return ResponseEntity.ok(searchService.getTotalSearchDatas(storeIndex, searchText, selectMajor, selectSub, zeroPossible));
-        } catch(Exception e) {
-            log.error("[Error][SearchController->getTotalSearch] {}", e.getMessage(), e);
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Collections.emptyList());
-        }
+    ) throws Exception {
+        return ResponseEntity.ok(searchService.findTotalSearchDatas(storeIndex, searchText, selectMajor, selectSub, zeroPossible));
     }
 }

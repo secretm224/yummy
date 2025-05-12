@@ -28,25 +28,42 @@ public class LocationController {
 //        return ResponseEntity.ok("test");
 //    }
 
+    /**
+     *
+     * @return
+     * @throws Exception
+     */
     @GetMapping("/county")
-    public ResponseEntity<List<LocationCountyDto>> getAllLocationCounty() {
-        List<LocationCountyDto> locationCounties = locationService.getAllLocationCounty();
+    public ResponseEntity<List<LocationCountyDto>> findAllLocationCounty() throws Exception {
+        List<LocationCountyDto> locationCounties = locationService.findAllLocationCounty();
         return ResponseEntity.ok(locationCounties);
     }
 
+    /**
+     *
+     * @param locationCountyCode
+     * @return
+     * @throws Exception
+     */
     @GetMapping("/city")
-    public ResponseEntity<List<LocationCityDto>> getLocationCities(
+    public ResponseEntity<List<LocationCityDto>> findLocationCities(
             @RequestParam(value = "countySeq", required = false) Long locationCountyCode
-    ) {
-        List<LocationCityDto> locationCities = locationService.getLocationCities(locationCountyCode);
+    ) throws Exception {
+        List<LocationCityDto> locationCities = locationService.findLocationCities(locationCountyCode);
         return ResponseEntity.ok(locationCities);
     }
 
+    /**
+     *
+     * @param locationCityCode
+     * @return
+     * @throws Exception
+     */
     @GetMapping("/district")
-    public ResponseEntity<List<LocationDistrictDto>> getLocationDistricts(
+    public ResponseEntity<List<LocationDistrictDto>> findLocationDistricts(
             @RequestParam(value = "citySeq", required = false) Long locationCityCode
-    ) {
-        List<LocationDistrictDto> locationDistricts = locationService.getLocationDistrict(locationCityCode);
+    ) throws Exception {
+        List<LocationDistrictDto> locationDistricts = locationService.findLocationDistrict(locationCityCode);
         return ResponseEntity.ok(locationDistricts);
     }
 }
