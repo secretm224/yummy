@@ -4,27 +4,28 @@ import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreTypeMajorDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreTypeSubDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
+import com.cho_co_song_i.yummy.yummy.service.StoreService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
-import com.cho_co_song_i.yummy.yummy.service.StoreService;
+import org.springframework.util.StringUtils;
 
+import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 @Controller
+@Slf4j
+@RequiredArgsConstructor
 public class QueryResolver {
 
-    @Autowired
-    private SearchService _searchService;
+    private final SearchService searchService;
+    private final StoreService storeService;
 
-    @Autowired
-    private  StoreService _store_service;
-
-    @Autowired
-    private Environment env;
+    @Value("${spring.elasticsearch.index.store}")
+    private String storeIndex;
 
     @QueryMapping
     public String hello() {
@@ -35,8 +36,6 @@ public class QueryResolver {
     public String helloWithName(@Argument("name") String name) {
         return "안녕하세요, " + (name != null ? name : "손님") + "!";
     }
-
-
 
     /*
         header 추가
@@ -66,12 +65,11 @@ public class QueryResolver {
         }
      */
     @QueryMapping(name = "SearchStoreAllData")
-    public CompletableFuture<List<SearchStoreDto>> getSearchAllStores() {
-        String store_index = env.getProperty("spring.elasticsearch.index.store");
-        if (store_index != null && !store_index.isEmpty()) {
-            return _searchService.getSearchAllStores(store_index);
+    public List<SearchStoreDto> findSearchAllStores() throws Exception {
+        if (!StringUtils.hasText(storeIndex)) {
+            return Collections.emptyList();
         }
-        return CompletableFuture.completedFuture(List.of());
+        return searchService.findSearchAllStores(storeIndex);
     }
 
     /*
@@ -146,10 +144,12 @@ public class QueryResolver {
 
      */
     @QueryMapping(name = "SearchStoreName")
-    public CompletableFuture<SearchStoreDto> GetSearchStoreName(@Argument("SearchStoreName")String SearchStoreName){
-        String store_index = env.getProperty("spring.elasticsearch.index.store");
-        return _searchService.getStoreByName(store_index,SearchStoreName)
-                                 .thenApply(optional -> optional.orElse(null));
+    public SearchStoreDto GetSearchStoreName(@Argument("SearchStoreName") String storeName) throws Exception {
+        if (!StringUtils.hasText(storeName)) {
+            log.warn("검색할 매장 이름이 비어 있습니다.");
+            return null;
+        }
+        return searchService.findStoreByName(storeIndex, storeName).orElse(null);
     }
 
     /*
@@ -173,12 +173,15 @@ public class QueryResolver {
         }
      */
     @QueryMapping(name = "SearchStoreList")
-    public CompletableFuture<List<SearchStoreDto>> searchStoreList(
+    public List<SearchStoreDto> searchStoreList(
             @Argument("page") int page,
             @Argument("size") int size
-    ) {
-        String index = env.getProperty("spring.elasticsearch.index.store");
-        return _searchService.getStoresByPage(index, page, size);
+    ) throws Exception {
+        if (!StringUtils.hasText(storeIndex)) {
+            return Collections.emptyList();
+        }
+
+        return searchService.findStoresByPage(storeIndex, page, size);
     }
 
 //    query{
@@ -189,8 +192,9 @@ public class QueryResolver {
 //        }
 //    }
     @QueryMapping(name="StoreMajorsTypeList")
-    public List<StoreTypeMajorDto> GetStoreMajorsType(){
-        return _store_service.getStoreTypeMajors();
+    public List<StoreTypeMajorDto> findStoreMajorsType() throws Exception {
+
+        return storeService.findStoreTypeMajors();
     }
 //    query{
 //        StoreSubMajorsTypeList(major_code:1){
@@ -201,8 +205,8 @@ public class QueryResolver {
 //
 //    }
     @QueryMapping(name="StoreSubMajorsTypeList")
-    public List<StoreTypeSubDto>GetStoreSubMajorsType(@Argument("major_code") int major_code){
-        return _store_service.getStoreTypeSubs((long)major_code);
+    public List<StoreTypeSubDto>GetStoreSubMajorsType(@Argument("major_code") int major_code) throws Exception {
+        return storeService.findStoreTypeSubs((long)major_code);
     }
 
 }

@@ -1,4 +1,4 @@
-package com.cho_co_song_i.yummy.yummy.configuration;
+package com.cho_co_song_i.yummy.yummy.adapter.redis;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -10,14 +10,10 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-import java.util.List;
-
 @Configuration
 public class RedisConfig {
-
     @Value("${spring.redis.password}")
     private String redisPassWord;
-
     @Value("${spring.redis.cluster.nodes}")
     private String uris;
 

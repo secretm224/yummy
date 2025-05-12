@@ -8,8 +8,8 @@ import com.cho_co_song_i.yummy.yummy.service.*;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -19,23 +19,15 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
 
 
-@Controller
+@RestController
 @RequestMapping("/login")
 @Slf4j
+@RequiredArgsConstructor
 public class LoginController {
-
-    private final LoginService kakoLoginService;
-    private final LoginService naverLoginService;
-    private final LoginService googleLoginService;
+    private final KakaoLoginServiceImpl kakoLoginService;
+    private final NaverLoginServiceImpl naverLoginService;
+    private final GoogleLoginServiceImpl googleLoginService;
     private final YummyLoginService yummyLoginService;
-
-    public LoginController(KakaoLoginServiceImpl kakoLoginService, NaverLoginServiceImpl naverLoginService,
-                           GoogleLoginServiceImpl googleLoginService, YummyLoginService yummyLoginService){
-        this.kakoLoginService = kakoLoginService;
-        this.naverLoginService = naverLoginService;
-        this.googleLoginService = googleLoginService;
-        this.yummyLoginService = yummyLoginService;
-    }
 
     @GetMapping
     public String Login(Model model) {
@@ -71,15 +63,11 @@ public class LoginController {
      * @param res
      * @param req
      * @return
+     * @throws Exception
      */
     @PostMapping("/standardLogin")
-    public ResponseEntity<PublicStatus> StandardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) {
-        try {
-            return ResponseEntity.ok(yummyLoginService.standardLoginUser(standardLoginDto, res, req));
-        } catch(Exception e) {
-            log.error("[Error][LoginController->StandardLogin] {}", e.getMessage(), e);
-            return ResponseEntity.ok(PublicStatus.AUTH_ERROR);
-        }
+    public ResponseEntity<PublicStatus> standardLogin(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
+        return ResponseEntity.ok(yummyLoginService.standardLoginUser(standardLoginDto, res, req));
     }
 
     /**
@@ -88,7 +76,7 @@ public class LoginController {
      * @return
      */
     @PostMapping("/standardLogout")
-    public ResponseEntity<Void> StandardLogout(HttpServletResponse res) {
+    public ResponseEntity<Void> standardLogout(HttpServletResponse res) {
         yummyLoginService.standardLogoutUser(res);
         return ResponseEntity.noContent().build();
     }
@@ -102,9 +90,9 @@ public class LoginController {
      */
     @PostMapping("/auth/loginCheck")
     @ResponseBody
-    public ResponseEntity<ServiceResponse<Optional<UserBasicInfoDto>>> LoginCheck(HttpServletResponse res , HttpServletRequest req) {
+    public ResponseEntity<ServiceResponse<Optional<UserBasicInfoDto>>> verifyLoginUser(HttpServletResponse res , HttpServletRequest req) throws Exception {
         /* 로그인 체크 처리 */
-        ServiceResponse<Optional<UserBasicInfoDto>> result = yummyLoginService.checkLoginUser(res, req);
+        ServiceResponse<Optional<UserBasicInfoDto>> result = yummyLoginService.verifyLoginUser(res, req);
         return ResponseEntity.ok(result);
     }
 
@@ -117,13 +105,8 @@ public class LoginController {
      */
     @PostMapping("/oauth2/kakao")
     @ResponseBody
-    public ResponseEntity<PublicStatus> KakaoLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) {
-        try {
-            return ResponseEntity.ok(kakoLoginService.handleOAuthLogin(loginDto, res, req));
-        } catch(Exception e) {
-            log.error("[Error][LoginController->KakaoLogin] {}", e.getMessage(), e);
-            return ResponseEntity.ok(PublicStatus.SERVER_ERR);
-        }
+    public PublicStatus kakaoLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) throws Exception{
+        return kakoLoginService.handleOAuthLogin(loginDto, res, req);
     }
 
     @GetMapping("/test")

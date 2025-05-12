@@ -1,13 +1,13 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
+import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.AddStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreTypeMajorDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreTypeSubDto;
-import com.cho_co_song_i.yummy.yummy.service.LocationService;
-import com.cho_co_song_i.yummy.yummy.service.RedisService;
 import com.cho_co_song_i.yummy.yummy.service.StoreService;
 import com.fasterxml.jackson.databind.JsonNode;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,29 +17,23 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
+@RequiredArgsConstructor
 @Slf4j
 @RequestMapping("/stores")
 public class StoreController {
 
     private final StoreService storeService;
-    private final LocationService locationService;
-    private final RedisService redisService;
-
-    public StoreController(StoreService storeService, LocationService locationService, RedisService redisService) {
-        this.storeService = storeService;
-        this.locationService = locationService;
-        this.redisService = redisService;
-    }
+    private final RedisAdapter redisAdapter;
 
     @GetMapping
-    public ResponseEntity<List<StoreDto>> getAllStores() {
-        List<StoreDto> stores = storeService.getAllStores();
+    public ResponseEntity<List<StoreDto>> findAllStores() {
+        List<StoreDto> stores = storeService.findAllStores();
         return ResponseEntity.ok(stores);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<StoreDto> getStoreById(@PathVariable Long id) {
-        return storeService.getStoreById(id)
+    public ResponseEntity<StoreDto> findStoreById(@PathVariable Long id) {
+        return storeService.findStoreById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -51,8 +45,8 @@ public class StoreController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<StoreDto> updateStore(@PathVariable Long id, @RequestBody StoreDto dto) {
-        StoreDto updatedStore = storeService.updateStore(id, dto);
+    public ResponseEntity<StoreDto> modifyStore(@PathVariable Long id, @RequestBody StoreDto dto) {
+        StoreDto updatedStore = storeService.modifyStore(id, dto);
         if (updatedStore != null) {
             return ResponseEntity.ok(updatedStore);
         } else {
@@ -61,49 +55,49 @@ public class StoreController {
     }
 
     @PostMapping("/addStore")
-    public ResponseEntity<Boolean> addStore(@RequestBody AddStoreDto addStoreDto) {
-        Boolean addStore = storeService.addStore(addStoreDto);
+    public ResponseEntity<Boolean> inputStore(@RequestBody AddStoreDto addStoreDto) throws Exception {
+        Boolean addStore = storeService.isAddedStore(addStoreDto);
         return ResponseEntity.ok(addStore);
     }
 
     @GetMapping("/getTypeMajor")
-    public ResponseEntity<List<StoreTypeMajorDto>> getStoreTypeMajor() {
-        List<StoreTypeMajorDto> storeTypeMajors = storeService.getStoreTypeMajors();
+    public ResponseEntity<List<StoreTypeMajorDto>> findStoreTypeMajor() throws Exception {
+        List<StoreTypeMajorDto> storeTypeMajors = storeService.findStoreTypeMajors();
         return ResponseEntity.ok(storeTypeMajors);
     }
 
     @GetMapping("/getTypeSub")
-    public ResponseEntity<List<StoreTypeSubDto>> getStoreTypeSub(
+    public ResponseEntity<List<StoreTypeSubDto>> findStoreTypeSub(
             @RequestParam(value = "majorType", required = false) Long majorType
-    ) {
-        List<StoreTypeSubDto> storeTypeMajors = storeService.getStoreTypeSubs(majorType);
+    ) throws Exception {
+        List<StoreTypeSubDto> storeTypeMajors = storeService.findStoreTypeSubs(majorType);
         return ResponseEntity.ok(storeTypeMajors);
     }
 
     @GetMapping("/redisTest")
     public ResponseEntity<Boolean> redisTest() {
 
-        System.out.println(redisService.get("categories:main"));
+        System.out.println(redisAdapter.get("categories:main"));
         return ResponseEntity.ok(true);
     }
 
     @GetMapping("/StoreDetailQuery")
-    public Optional<JsonNode> StoreDetailQuery(@RequestParam(value = "storeName", required = true) String storeName,
+    public Optional<JsonNode> inputDetailQuery(@RequestParam(value = "storeName", required = true) String storeName,
                                                @RequestParam(value = "lngX", required = false) BigDecimal lngX,
                                                @RequestParam(value = "latY", required = false) BigDecimal latY
-    ){
-        return storeService.StoreDetailQuery(storeName,lngX,latY);
+    ) {
+        return storeService.inputDetailQuery(storeName,lngX,latY);
     }
 
     @GetMapping("/UpdateDetailInfo")
-    public ResponseEntity<StoreDto> UpdateStoreDetail(@RequestParam(value = "id", required = false) long id,
+    public ResponseEntity<StoreDto> modifyStoreDetail(@RequestParam(value = "id", required = false) long id,
                                                       @RequestParam(value = "tel", required = false) String tel,
                                                       @RequestParam(value = "url", required = false) String url){
         if(id <=0){
             return ResponseEntity.badRequest().build();
         }
 
-        Optional<StoreDto> optionalStore = storeService.getStoreById(id);
+        Optional<StoreDto> optionalStore = storeService.findStoreById(id);
         if (optionalStore.isEmpty()) {
             return ResponseEntity.notFound().build(); // id로 Store를 못찾으면 404 리턴
         }
@@ -113,13 +107,13 @@ public class StoreController {
         storeDto.setUrl(url);
         storeDto.setChgId("Store>UpdateStoreDetail");
 
-       StoreDto update_store = storeService.updateStore(id,storeDto);
+       StoreDto update_store = storeService.modifyStore(id,storeDto);
         return ResponseEntity.ok(update_store);
     }
 
     @GetMapping("/UpdateStoreInfobyKaKao")
-    public ResponseEntity<Optional<JsonNode>> UpdateStoreInfobyKaKao(){
-        Optional<JsonNode> result = storeService.UpdateStoreDetail();
+    public ResponseEntity<Optional<JsonNode>> modifyStoreInfobyKaKao(){
+        Optional<JsonNode> result = storeService.modifyStoreDetail();
         return ResponseEntity.ok(result);
     }
 

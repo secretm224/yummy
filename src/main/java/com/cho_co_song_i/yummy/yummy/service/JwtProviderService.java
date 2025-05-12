@@ -1,6 +1,5 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
-import com.cho_co_song_i.yummy.yummy.dto.ErrorResponse;
 import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
@@ -11,14 +10,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 @Slf4j

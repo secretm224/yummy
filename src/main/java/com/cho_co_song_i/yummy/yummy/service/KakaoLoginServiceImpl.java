@@ -1,5 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
+import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.OauthLoginDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserOAuthInfoDto;
@@ -11,6 +12,7 @@ import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -24,12 +26,10 @@ import java.util.Map;
 
 import static com.cho_co_song_i.yummy.yummy.utils.JwtUtil.decodeJwtPayload;
 
-
-
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class KakaoLoginServiceImpl implements LoginService {
-
     @Value("${kakao.auth.url}")
     private String kakaoAuthUrl;
     @Value("${kakao.redirect.url}")
@@ -47,24 +47,11 @@ public class KakaoLoginServiceImpl implements LoginService {
     private String userInfoKey;
 
     private final RestTemplate restTemplate;
-    private final RedisService redisService;
+    private final RedisAdapter redisAdapter;
     private final UserService userService;
     private final JwtProviderService jwtProviderService;
-    private final EventProducerService eventProducerService;
-    private final YummyLoginService yummyLoginService;
-
-
-    public KakaoLoginServiceImpl(RestTemplate restTemplate,
-                                 RedisService redisService, JwtProviderService jwtProviderService,
-                                 UserService userService, EventProducerService eventProducerService,
-                                 YummyLoginService yummyLoginService) {
-        this.restTemplate = restTemplate;
-        this.redisService = redisService;
-        this.jwtProviderService = jwtProviderService;
-        this.userService = userService;
-        this.eventProducerService = eventProducerService;
-        this.yummyLoginService = yummyLoginService;
-    }
+    private final EventProducerServiceImpl eventProducerServiceImpl;
+    private final YummyLoginServiceImpl yummyLoginServiceImpl;
 
     /**
      * 카카오 OAuth 인증과정에서 받은 code를 이용해서 access_token을 요청하고, 그 결과를 KakaoToken 으로 반환하는 메서드. test
@@ -115,7 +102,6 @@ public class KakaoLoginServiceImpl implements LoginService {
         }
     }
 
-
     /**
      * 유저의 Kakao Oauth에 대한 정보를 반환해주는 함수
      * @param code
@@ -126,7 +112,7 @@ public class KakaoLoginServiceImpl implements LoginService {
         /* User 정보 */
         UserOAuthInfoDto userKakaoInfo = exchangeCodeForKakaoUser(code);
         String userToken = userKakaoInfo.getUserTokenId();
-        UserAuthTbl userAuth = yummyLoginService.getUserAuthTbl(userToken, OauthChannelStatus.kakao);
+        UserAuthTbl userAuth = yummyLoginServiceImpl.getUserAuthTbl(userToken, OauthChannelStatus.kakao);
 
         if (userAuth == null) {
             /* 연동한적이 없거나, 가입하지 않은 경우 -> 가입유도 or 기존 아이디에 oauth2 추가 */
@@ -141,7 +127,7 @@ public class KakaoLoginServiceImpl implements LoginService {
 
         /* Redis 에 유저 정보 저장 */
         String basicUserInfo = String.format("%s:%s", userInfoKey, userNo);
-        redisService.set(basicUserInfo, userBasicInfo);
+        redisAdapter.set(basicUserInfo, userBasicInfo);
 
         /* 연동 이력이 존재하는 경우 -> jwt 토큰 발급 */
         return new UserOAuthResponse(PublicStatus.SUCCESS, userToken, userAuth.getUser().getUserNo());
@@ -196,14 +182,14 @@ public class KakaoLoginServiceImpl implements LoginService {
     public PublicStatus handleOAuthLogin(OauthLoginDto loginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
 
         /* 로그인 시도 기록 */
-        eventProducerService.produceLoginAttemptEvent(req);
+        eventProducerServiceImpl.produceLoginAttemptEvent(req);
 
         /* 유저의 Kakao Oauth에 대한 정보 */
         UserOAuthResponse userOAuthResponse = getOauthLoginInfo(loginDto.getCode());
 
         if (userOAuthResponse.getPublicStatus() == PublicStatus.SUCCESS) {
             /* Oauth2 인증 성공해서 유저 정보가 있는 경우 */
-            return yummyLoginService.oauthLogin(userOAuthResponse.getUserNum(), res);
+            return yummyLoginServiceImpl.processOauthLogin(userOAuthResponse.getUserNum(), res);
         } else if (userOAuthResponse.getPublicStatus() == PublicStatus.JOIN_TARGET_MEMBER) {
             /*
              * 유저에게 신규 가입 또는 기존회원 연동 하게 시킴.

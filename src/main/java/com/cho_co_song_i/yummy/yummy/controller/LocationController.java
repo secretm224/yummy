@@ -9,44 +9,61 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/location")
 public class LocationController {
     private final LocationService locationService;
 
-    public LocationController(LocationService locationService) { this.locationService = locationService; }
-
     /* N+1 문제를 테스트하기 위한 컨트롤러 */
-    @GetMapping("/test")
-    public ResponseEntity<String> getTest(
-            @RequestParam(value = "countySeq", required = false) Long locationCountyCode
-    ) {
-        locationService.getTestDtos(locationCountyCode);
-        return ResponseEntity.ok("test");
-    }
+//    @GetMapping("/test")
+//    public ResponseEntity<String> getTest(
+//            @RequestParam(value = "countySeq", required = false) Long locationCountyCode
+//    ) {
+//        locationService.getTestDtos(locationCountyCode);
+//        return ResponseEntity.ok("test");
+//    }
 
+    /**
+     *
+     * @return
+     * @throws Exception
+     */
     @GetMapping("/county")
-    public ResponseEntity<List<LocationCountyDto>> getAllLocationCounty() {
-        List<LocationCountyDto> locationCounties = locationService.getAllLocationCounty();
+    public ResponseEntity<List<LocationCountyDto>> findAllLocationCounty() throws Exception {
+        List<LocationCountyDto> locationCounties = locationService.findAllLocationCounty();
         return ResponseEntity.ok(locationCounties);
     }
 
+    /**
+     *
+     * @param locationCountyCode
+     * @return
+     * @throws Exception
+     */
     @GetMapping("/city")
-    public ResponseEntity<List<LocationCityDto>> getLocationCities(
+    public ResponseEntity<List<LocationCityDto>> findLocationCities(
             @RequestParam(value = "countySeq", required = false) Long locationCountyCode
-    ) {
-        List<LocationCityDto> locationCities = locationService.getLocationCities(locationCountyCode);
+    ) throws Exception {
+        List<LocationCityDto> locationCities = locationService.findLocationCities(locationCountyCode);
         return ResponseEntity.ok(locationCities);
     }
 
+    /**
+     *
+     * @param locationCityCode
+     * @return
+     * @throws Exception
+     */
     @GetMapping("/district")
-    public ResponseEntity<List<LocationDistrictDto>> getLocationDistricts(
+    public ResponseEntity<List<LocationDistrictDto>> findLocationDistricts(
             @RequestParam(value = "citySeq", required = false) Long locationCityCode
-    ) {
-        List<LocationDistrictDto> locationDistricts = locationService.getLocationDistrict(locationCityCode);
+    ) throws Exception {
+        List<LocationDistrictDto> locationDistricts = locationService.findLocationDistrict(locationCityCode);
         return ResponseEntity.ok(locationDistricts);
     }
 }

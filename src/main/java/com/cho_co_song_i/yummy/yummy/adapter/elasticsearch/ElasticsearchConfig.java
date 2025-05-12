@@ -1,7 +1,6 @@
-package com.cho_co_song_i.yummy.yummy.configuration;
+package com.cho_co_song_i.yummy.yummy.adapter.elasticsearch;
 
-
-import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,7 +16,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.List;
 import java.util.stream.Stream;
 
 @Configuration
@@ -33,7 +31,7 @@ public class ElasticsearchConfig {
     private String password;
 
     @Bean
-    public ElasticsearchAsyncClient elasticAsyncClient() {
+    public ElasticsearchClient elasticClient() {
         BasicCredentialsProvider credentialProvider = new BasicCredentialsProvider();
         credentialProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(userName, password));
 
@@ -67,6 +65,6 @@ public class ElasticsearchConfig {
         JacksonJsonpMapper jsonMapper = new JacksonJsonpMapper(mapper);
         RestClientTransport transport = new RestClientTransport(restClient, jsonMapper);
 
-        return new ElasticsearchAsyncClient(transport);
+        return new ElasticsearchClient(transport);
     }
 }

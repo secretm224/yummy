@@ -2,7 +2,7 @@ package com.cho_co_song_i.yummy.yummy.controller;
 
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
-import com.cho_co_song_i.yummy.yummy.service.JoinMemberService;
+import com.cho_co_song_i.yummy.yummy.service.JoinMamberService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -15,61 +15,52 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 public class JoinMemberController {
 
-    private final JoinMemberService joinMemberService;
+    private final JoinMamberService joinMamberService;
 
-    public JoinMemberController(JoinMemberService joinMemberService) {
-        this.joinMemberService = joinMemberService;
+    public JoinMemberController(JoinMamberService joinMamberService) {
+        this.joinMamberService = joinMamberService;
     }
 
     /**
      * 회원가입 해주는 컨트롤러 함수
      * @param joinMemberDto
+     * @param res
+     * @param req
      * @return
+     * @throws Exception
      */
     @PostMapping("/join")
     @ResponseBody
-    public ResponseEntity<PublicStatus> joinMember(@RequestBody JoinMemberDto joinMemberDto, HttpServletResponse res, HttpServletRequest req) {
-
-        try {
-            PublicStatus result = joinMemberService.joinMember(res, req, joinMemberDto);
-            return ResponseEntity.ok(result);
-        } catch(Exception e) {
-            log.error("{}", e.getMessage(), e);
-            return ResponseEntity.ok(PublicStatus.SERVER_ERR);
-        }
+    public ResponseEntity<PublicStatus> joinMember(
+            @RequestBody JoinMemberDto joinMemberDto,
+            HttpServletResponse res,
+            HttpServletRequest req
+    ) throws Exception {
+        return ResponseEntity.ok(joinMamberService.joinMember(res, req, joinMemberDto));
     }
 
     /**
      * 아이디를 찾아주는 컨트롤러
      * @param findIdDto
      * @return
+     * @throws Exception
      */
     @PostMapping("/findId")
     @ResponseBody
-    public ResponseEntity<PublicStatus> findId(@RequestBody FindIdDto findIdDto) {
-        try {
-            return ResponseEntity.ok(joinMemberService.findId(findIdDto));
-        } catch(Exception e) {
-            log.error("[Error][JoinMemberController->findId] {}", e.getMessage(), e);
-            return ResponseEntity.ok(PublicStatus.SERVER_ERR);
-        }
+    public ResponseEntity<PublicStatus> recoverUserId(@RequestBody FindIdDto findIdDto) throws Exception {
+        return ResponseEntity.ok(joinMamberService.recoverUserId(findIdDto));
     }
 
     /**
      * 비밀번호를 찾아주는 컨트롤러
      * @param findPwDto
      * @return
+     * @throws Exception
      */
     @PostMapping("/findPw")
     @ResponseBody
-    public ResponseEntity<PublicStatus> findPw(@RequestBody FindPwDto findPwDto) {
-        try {
-            PublicStatus result = joinMemberService.findPw(findPwDto);
-            return ResponseEntity.ok(result);
-        } catch(Exception e) {
-            log.error("{}", e.getMessage(), e);
-            return ResponseEntity.ok(PublicStatus.SERVER_ERR);
-        }
+    public ResponseEntity<PublicStatus> recoverUserPw(@RequestBody FindPwDto findPwDto) throws Exception {
+        return ResponseEntity.ok(joinMamberService.recoverUserPw(findPwDto));
     }
 
     /**
@@ -78,16 +69,16 @@ public class JoinMemberController {
      * @param res
      * @param req
      * @return
+     * @throws Exception
      */
     @PostMapping("/changePw")
     @ResponseBody
-    public ResponseEntity<PublicStatus> changePasswd(@RequestBody ChangePwDto changePwDto, HttpServletResponse res, HttpServletRequest req) {
-        try {
-            return ResponseEntity.ok(joinMemberService.changePasswd(res, req, changePwDto));
-        } catch (Exception e) {
-            log.error("{}", e.getMessage(), e);
-            return ResponseEntity.ok(PublicStatus.SERVER_ERR);
-        }
+    public ResponseEntity<PublicStatus> changePasswd(
+            @RequestBody ChangePwDto changePwDto,
+            HttpServletResponse res,
+            HttpServletRequest req
+    ) throws Exception {
+        return ResponseEntity.ok(joinMamberService.changePasswd(res, req, changePwDto));
     }
 
     /**
@@ -96,16 +87,16 @@ public class JoinMemberController {
      * @param res
      * @param req
      * @return
+     * @throws Exception
      */
     @PostMapping("/linkUserByOauth")
     @ResponseBody
-    public ResponseEntity<PublicStatus> linkMemberByOauth(@RequestBody StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) {
-        try {
-            return ResponseEntity.ok(joinMemberService.linkMemberByOauth(standardLoginDto, res, req));
-        } catch(Exception e) {
-            log.error("[Error][JoinMemberController->linkMemberByOauth] {}", e.getMessage(), e);
-            return ResponseEntity.ok(PublicStatus.SERVER_ERR);
-        }
+    public ResponseEntity<PublicStatus> linkMemberByOauth(
+            @RequestBody StandardLoginDto standardLoginDto,
+            HttpServletResponse res,
+            HttpServletRequest req
+    ) throws Exception {
+        return ResponseEntity.ok(joinMamberService.linkMemberByOauth(standardLoginDto, res, req));
     }
 
 

@@ -16,12 +16,12 @@ public class MutationResolver {
     private final StoreService storeService;
 
     @MutationMapping
-    public Boolean addStore(@Argument("addStoreDto") AddStoreDto addStoreDto) {
-        return storeService.addStore(addStoreDto);
+    public Boolean addStore(@Argument("addStoreDto") AddStoreDto addStoreDto) throws Exception {
+        return storeService.isAddedStore(addStoreDto);
     }
 
     @MutationMapping
     public Optional<JsonNode> UpdateStoreDetail() {
-        return storeService.UpdateStoreDetail();
+        return storeService.modifyStoreDetail();
     }
 }
