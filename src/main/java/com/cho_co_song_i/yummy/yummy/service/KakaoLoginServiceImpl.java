@@ -67,7 +67,7 @@ public class KakaoLoginServiceImpl implements LoginService {
     }
 
     /**
-     * 카카오 OAuth 인증과정에서 받은 code를 이용해서 access_token을 요청하고, 그 결과를 KakaoToken 으로 반환하는 메서드.
+     * 카카오 OAuth 인증과정에서 받은 code를 이용해서 access_token을 요청하고, 그 결과를 KakaoToken 으로 반환하는 메서드. test
      * @param code
      * @return
      */
