@@ -83,10 +83,10 @@ public class StoreController {
 
     @GetMapping("/StoreDetailQuery")
     public Optional<JsonNode> inputDetailQuery(@RequestParam(value = "storeName", required = true) String storeName,
-                                               @RequestParam(value = "lngX", required = false) BigDecimal lngX,
-                                               @RequestParam(value = "latY", required = false) BigDecimal latY
+                                               @RequestParam(value = "lng", required = false) BigDecimal lng,
+                                               @RequestParam(value = "lat", required = false) BigDecimal lat
     ) {
-        return storeService.inputDetailQuery(storeName,lngX,latY);
+        return storeService.inputDetailQuery(storeName, lng, lat);
     }
 
     @GetMapping("/UpdateDetailInfo")
@@ -108,7 +108,7 @@ public class StoreController {
         storeDto.setChgId("Store>UpdateStoreDetail");
 
        StoreDto update_store = storeService.modifyStore(id,storeDto);
-        return ResponseEntity.ok(update_store);
+       return ResponseEntity.ok(update_store);
     }
 
     @GetMapping("/UpdateStoreInfobyKaKao")

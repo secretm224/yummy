@@ -62,9 +62,10 @@ public class StoreServiceImpl implements StoreService {
     private String categoryMain;
     @Value("${spring.redis.category_sub}")
     private String categorySub;
-
-    private static final String KAKAO_SEARCH_API_URL =
-            "https://dapi.kakao.com/v2/local/search/keyword.json";
+    @Value("${kakao.search.api-url}")
+    private String KAKAO_SEARCH_API_URL;
+    @Value("${kakao.search.header}")
+    private String KAKAO_SEARCH_HEADER;
 
     /**
      * Entity -> DTO 변환
@@ -274,28 +275,29 @@ public class StoreServiceImpl implements StoreService {
     }
 
     // 비즈니스 앱 등록 이슈 해결 후 처리 예정
-    public Optional<JsonNode> inputDetailQuery(String storeName , BigDecimal lngX, BigDecimal latY)
+    public Optional<JsonNode> inputDetailQuery(String storeName , BigDecimal lng, BigDecimal lat)
     {
         if (storeName == null || storeName.isEmpty()) {
             return Optional.empty();
         }
 
-        String apiKey = "2fcfa96247ae04a4ad26cd853f1e5551";
+        /* api 키는 아직 안쓰는듯?.. */
+        //String apiKey = "2fcfa96247ae04a4ad26cd853f1e5551";
         String categoryGroupCode = "FD6";
         String page = "1";
         String size = "1";
 
         UriComponentsBuilder builder = UriComponentsBuilder
-                .fromHttpUrl(KAKAO_SEARCH_API_URL)
+                .fromUriString(KAKAO_SEARCH_API_URL)
                 .queryParam("page", page)
                 .queryParam("size", size)
                 .queryParam("category_group_code", categoryGroupCode)
                 .queryParam("query", storeName);
 
-        if (lngX != null && latY != null &&
-            lngX.compareTo(BigDecimal.ZERO) > 0 && latY.compareTo(BigDecimal.ZERO) > 0) {
-            builder.queryParam("x", lngX)
-                   .queryParam("y", latY);
+        if (lng != null && lat != null &&
+            lng.compareTo(BigDecimal.ZERO) > 0 && lat.compareTo(BigDecimal.ZERO) > 0) {
+            builder.queryParam("x", lng)
+                   .queryParam("y", lat);
         }
 
         URI apiuri = builder
@@ -305,7 +307,7 @@ public class StoreServiceImpl implements StoreService {
 
 
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization","KakaoAK 2fcfa96247ae04a4ad26cd853f1e5551");
+        headers.add("Authorization",KAKAO_SEARCH_HEADER);
         HttpEntity<Void> request = new HttpEntity<>(headers);
 
         ResponseEntity<JsonNode> resp = resttemplate.exchange(
