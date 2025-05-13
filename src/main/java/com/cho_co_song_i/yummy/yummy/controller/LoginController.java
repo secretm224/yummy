@@ -5,14 +5,15 @@ import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.service.*;
 
 
+import com.cho_co_song_i.yummy.yummy.serviceImpl.GoogleLoginServiceImpl;
+import com.cho_co_song_i.yummy.yummy.serviceImpl.KakaoLoginServiceImpl;
+import com.cho_co_song_i.yummy.yummy.serviceImpl.NaverLoginServiceImpl;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 

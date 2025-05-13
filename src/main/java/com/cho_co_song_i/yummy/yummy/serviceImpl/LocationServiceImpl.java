@@ -1,4 +1,4 @@
-package com.cho_co_song_i.yummy.yummy.service;
+package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.*;
@@ -7,6 +7,7 @@ import com.cho_co_song_i.yummy.yummy.repository.LocationCountyRepository;
 import com.cho_co_song_i.yummy.yummy.repository.StoreLocationInfoRepository;
 import com.cho_co_song_i.yummy.yummy.repository.StoreTypeLinkRepository;
 import com.cho_co_song_i.yummy.yummy.repository.ZeroPossibleMarketRepository;
+import com.cho_co_song_i.yummy.yummy.service.LocationService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
