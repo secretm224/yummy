@@ -10,8 +10,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
+import com.cho_co_song_i.yummy.yummy.dto.JoinEmailCodeDto;
+
 
 @Service
 @Slf4j
@@ -57,6 +58,13 @@ public class EventProducerServiceImpl implements EventProducerService {
                 new SendIdFormDto(LocalDateTime.now(), userId, userEmail));
     }
 
-
+    public void produceJoinEmailCode(String userEmail , String EmailCode) throws Exception{
+        kafkaAdapter.sendMessageJson("yummy-join-hist",
+                                     new JoinEmailCodeDto(
+                                             LocalDateTime.now(),
+                                             userEmail,
+                                             EmailCode
+                                     ));
+    }
 
 }

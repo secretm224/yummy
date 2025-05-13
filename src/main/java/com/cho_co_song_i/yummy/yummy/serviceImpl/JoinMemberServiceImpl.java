@@ -24,11 +24,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserEmailTbl.userEmailTbl;
@@ -777,5 +779,43 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         CookieUtil.clearCookie(res, "yummy-oauth-token");
 
         return PublicStatus.SUCCESS;
+    }
+
+    public PublicStatus generateVerificationCode(String userEmail) throws Exception{
+        String code = String.format("%06d", new Random().nextInt(999999)); // 6자리 숫자
+
+        if(!code.isEmpty()){
+            String prifix = "dev:join:email_code";
+            String key = String.format("%s:%s:%s",prifix,userEmail,code);
+            System.out.println("[DEBUG] Redis Key: " + key);
+            eventProducerServiceImpl.produceJoinEmailCode(userEmail,code);
+            boolean isVerifcationCode = redisAdapter.set(key,
+                                                         code,
+                                                         Duration.ofMinutes(3));
+//          String value = redisAdapter.get(codekey).toString();
+//          System.out.println("[DEBUG] Redis Value: " + value);
+            if(isVerifcationCode)
+                return PublicStatus.SUCCESS;
+            else
+                return PublicStatus.EMAIL_ERR;
+
+        }else{
+            return PublicStatus.EMAIL_ERR;
+        }
+    }
+
+    public PublicStatus checkVerificationCode(String userEmail,int code) throws Exception{
+        if(userEmail.isEmpty() || code <=0){
+            return PublicStatus.EMAIL_ERR;
+        }
+
+        String prifix = "dev:join:email_code";
+        String key = String.format("%s:%s:%s",prifix,userEmail,code);
+        String value = redisAdapter.get(key).toString();
+        if(!value.isEmpty()){
+            return PublicStatus.SUCCESS;
+        }else{
+            return PublicStatus.EMAIL_ERR;
+        }
     }
 }
