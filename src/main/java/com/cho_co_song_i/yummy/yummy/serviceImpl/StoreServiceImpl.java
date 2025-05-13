@@ -1,4 +1,4 @@
-package com.cho_co_song_i.yummy.yummy.service;
+package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.*;
@@ -8,6 +8,8 @@ import com.cho_co_song_i.yummy.yummy.entity.StoreTypeMajor;
 import com.cho_co_song_i.yummy.yummy.entity.StoreTypeSub;
 import com.cho_co_song_i.yummy.yummy.repository.StoreLocationInfoRepository;
 import com.cho_co_song_i.yummy.yummy.repository.StoreRepository;
+import com.cho_co_song_i.yummy.yummy.service.LocationService;
+import com.cho_co_song_i.yummy.yummy.service.StoreService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,7 +27,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 

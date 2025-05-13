@@ -1,9 +1,10 @@
-package com.cho_co_song_i.yummy.yummy.service;
+package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.adapter.kafka.KafkaAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.SendIdFormDto;
 import com.cho_co_song_i.yummy.yummy.dto.SendPwFormDto;
 import com.cho_co_song_i.yummy.yummy.dto.TryLoginHistDto;
+import com.cho_co_song_i.yummy.yummy.service.EventProducerService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

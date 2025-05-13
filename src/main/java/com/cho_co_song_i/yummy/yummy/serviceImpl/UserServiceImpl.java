@@ -1,4 +1,4 @@
-package com.cho_co_song_i.yummy.yummy.service;
+package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
 import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
@@ -6,6 +6,8 @@ import com.cho_co_song_i.yummy.yummy.dto.UserOAuthInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.UserLocationDetailTbl;
 import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
+import com.cho_co_song_i.yummy.yummy.service.JwtProviderService;
+import com.cho_co_song_i.yummy.yummy.service.UserService;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.servlet.http.HttpServletRequest;
