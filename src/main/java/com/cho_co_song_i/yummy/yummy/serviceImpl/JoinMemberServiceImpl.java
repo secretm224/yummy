@@ -729,9 +729,11 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         /* 휴대전화번호 검사 */
         PublicStatus checkUserPhoneNumber = isValidUserPhoneNumber(joinMemberDto.getPhoneNumber());
         if (checkUserPhoneNumber != PublicStatus.SUCCESS) {
-            return checkUserPhoneNumber;
+            return PublicStatus.PHONE_DUPLICATED;
         }
 
+
+        System.out.println(validateOauthAndInputUser(res, req, joinMemberDto));
         /* 신규회원 저장 */
         return validateOauthAndInputUser(res, req, joinMemberDto);
     }
@@ -811,8 +813,15 @@ public class JoinMemberServiceImpl implements JoinMamberService {
 
         String prifix = "dev:join:email_code";
         String key = String.format("%s:%s:%s",prifix,userEmail,code);
-        String value = redisAdapter.get(key).toString();
-        if(!value.isEmpty()){
+        Object value = redisAdapter.get(key);
+
+        if(value != null){
+
+            String  verifiedPrifix = "email:verified:";
+
+
+
+
             return PublicStatus.SUCCESS;
         }else{
             return PublicStatus.EMAIL_ERR;

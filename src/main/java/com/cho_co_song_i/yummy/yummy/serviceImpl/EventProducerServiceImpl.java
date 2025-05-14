@@ -1,6 +1,7 @@
 package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.adapter.kafka.KafkaAdapter;
+import com.cho_co_song_i.yummy.yummy.dto.JoinEmailCodeDto;
 import com.cho_co_song_i.yummy.yummy.dto.SendIdFormDto;
 import com.cho_co_song_i.yummy.yummy.dto.SendPwFormDto;
 import com.cho_co_song_i.yummy.yummy.dto.TryLoginHistDto;
@@ -10,8 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
 import java.time.LocalDateTime;
-import com.cho_co_song_i.yummy.yummy.dto.JoinEmailCodeDto;
 
 
 @Service
@@ -58,8 +59,10 @@ public class EventProducerServiceImpl implements EventProducerService {
                 new SendIdFormDto(LocalDateTime.now(), userId, userEmail));
     }
 
+    //dev-yummy-join-hist
+    //yummy-join-hist
     public void produceJoinEmailCode(String userEmail , String EmailCode) throws Exception{
-        kafkaAdapter.sendMessageJson("yummy-join-hist",
+        kafkaAdapter.sendMessageJson("dev-yummy-join-hist",
                                      new JoinEmailCodeDto(
                                              LocalDateTime.now(),
                                              userEmail,
