@@ -83,7 +83,20 @@ public interface StoreService {
      *
      * @return
      */
-    Optional<JsonNode> modifyStoreDetail();
+    Optional<JsonNode> modifyAllStoreDetail();
 
+    /**
+     *
+     * @return
+     */
+    Optional<JsonNode> modifyEmptyStoreDetail();
 
+    /**
+     * 특정 id와 tel, url 을 입력하면 특정 id 의 tel, url 을 원하는 데이터로 입력해준다.
+     * @param id
+     * @param tel
+     * @param url
+     * @return
+     */
+    StoreDto modifyStoreDetail(long id, String tel, String url);
 }
