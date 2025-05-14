@@ -72,9 +72,6 @@ public class StoreLocationInfoTbl implements Persistable<Long> {
         this.isNew = true;
     }
 
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "seq", referencedColumnName = "seq", insertable = false, updatable = false)
+    @OneToOne(mappedBy = "storeLocations", fetch = FetchType.LAZY)
     private Store store;
-
 }

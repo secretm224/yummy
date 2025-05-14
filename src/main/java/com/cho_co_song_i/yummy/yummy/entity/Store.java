@@ -73,13 +73,11 @@ public class Store implements Persistable<Long> {
     @OneToMany(mappedBy = "store", fetch = FetchType.LAZY)
     private List<StoreTypeLinkTbl> storeTypeLinks = new ArrayList<>();
 
-//    @OneToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name="seq")
-    @OneToMany(mappedBy = "store", fetch = FetchType.LAZY)
-    private List<StoreLocationInfoTbl> storeLocations = new ArrayList<>();
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name="seq")
+    private StoreLocationInfoTbl storeLocations;
 
-//    @OneToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name="seq")
-    @OneToMany(mappedBy = "store", fetch = FetchType.LAZY)
-    private List<ZeroPossibleMarket> zeroPossibles = new ArrayList<>();
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name="seq")
+    private ZeroPossibleMarket zeroPossibles;
 }

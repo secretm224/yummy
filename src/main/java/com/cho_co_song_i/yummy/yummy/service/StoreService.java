@@ -71,7 +71,7 @@ public interface StoreService {
     List<StoreTypeSubDto> findStoreTypeSubs(Long majorType) throws Exception;
 
     /**
-     *
+     * Kakao Search 를 통해서 음식점의 상세정보를 가져와주는 함수
      * @param storeName
      * @param lngX
      * @param latY
@@ -80,23 +80,25 @@ public interface StoreService {
     Optional<JsonNode> inputDetailQuery(String storeName , BigDecimal lngX, BigDecimal latY);
 
     /**
-     *
+     * Store 테이블 모든 데이터 대상으로 Kakao Search 를 연동해서
+     * 음식점의 tel, url 정보를 입력해주는 함수
      * @return
      */
     Optional<JsonNode> modifyAllStoreDetail();
 
     /**
-     *
+     * Store 테이블에서 tel, url 컬럼 내용이 존재하지 않는 row 대상으로
+     * Kakao Search 를 연동해서 음식점의 tel, url 정보를 입력해주는 함수
      * @return
      */
     Optional<JsonNode> modifyEmptyStoreDetail();
 
-    /**
-     * 특정 id와 tel, url 을 입력하면 특정 id 의 tel, url 을 원하는 데이터로 입력해준다.
-     * @param id
-     * @param tel
-     * @param url
-     * @return
-     */
-    StoreDto modifyStoreDetail(long id, String tel, String url);
+//    /**
+//     * 특정 id와 tel, url 을 입력하면 특정 id 의 tel, url 을 원하는 데이터로 입력해준다.
+//     * @param id
+//     * @param tel
+//     * @param url
+//     * @return
+//     */
+//    StoreDto modifyStoreDetail(long id, String tel, String url);
 }

@@ -90,17 +90,17 @@ public class StoreController {
         return storeService.inputDetailQuery(storeName, lng, lat);
     }
 
-    @GetMapping("/UpdateDetailInfo")
-    public ResponseEntity<StoreDto> modifyAllStoreDetail(@RequestParam(value = "id", required = false) long id,
-                                                         @RequestParam(value = "tel", required = false) String tel,
-                                                         @RequestParam(value = "url", required = false) String url) {
-
-        StoreDto updated = storeService.modifyStoreDetail(id, tel, url);
-        return ResponseEntity.ok(updated);
-    }
+//    @GetMapping("/UpdateDetailInfo")
+//    public ResponseEntity<StoreDto> modifyAllStoreDetail(@RequestParam(value = "id", required = false) long id,
+//                                                         @RequestParam(value = "tel", required = false) String tel,
+//                                                         @RequestParam(value = "url", required = false) String url) {
+//
+//        StoreDto updated = storeService.modifyStoreDetail(id, tel, url);
+//        return ResponseEntity.ok(updated);
+//    }
 
     @GetMapping("/UpdateAllStoreInfobyKaKao")
-    public ResponseEntity<Optional<JsonNode>> modifyStoreInfobyKaKao(){
+    public ResponseEntity<Optional<JsonNode>> modifyAllStoreInfobyKaKao(){
         Optional<JsonNode> result = storeService.modifyAllStoreDetail();
         return ResponseEntity.ok(result);
     }

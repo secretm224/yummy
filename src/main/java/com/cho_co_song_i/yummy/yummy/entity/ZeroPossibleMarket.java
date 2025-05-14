@@ -57,10 +57,7 @@ public class ZeroPossibleMarket implements Persistable<Long> {
         this.isNew = true;
     }
 
-//    @OneToOne(mappedBy = "zeroPossibles", fetch = FetchType.LAZY)
-//    private Store store;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "seq", referencedColumnName = "seq", insertable = false, updatable = false)
+    @OneToOne(mappedBy = "zeroPossibles", fetch = FetchType.LAZY)
     private Store store;
 }
