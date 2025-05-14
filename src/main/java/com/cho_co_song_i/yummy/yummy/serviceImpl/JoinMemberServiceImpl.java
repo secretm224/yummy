@@ -727,7 +727,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         /* 휴대전화번호 검사 */
         PublicStatus checkUserPhoneNumber = isValidUserPhoneNumber(joinMemberDto.getPhoneNumber());
         if (checkUserPhoneNumber != PublicStatus.SUCCESS) {
-            return checkUserPhoneNumber;
+            return PublicStatus.PHONE_DUPLICATED;
         }
 
         /* 신규회원 저장 */
