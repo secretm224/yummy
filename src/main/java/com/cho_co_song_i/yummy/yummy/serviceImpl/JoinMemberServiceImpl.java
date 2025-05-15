@@ -676,7 +676,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
     public PublicStatus joinMember(HttpServletResponse res, HttpServletRequest req, JoinMemberDto joinMemberDto) throws Exception {
 
         /* UserID 확인 */
-        JoinMemberIdStatus checkId = checkUserId(joinMemberDto.getUserId());
+        JoinMemberIdStatus checkId = checkUserId(joinMemberDto.getUserId().trim());
 
         if (checkId == JoinMemberIdStatus.NONFORMAT) {
             return PublicStatus.ID_ERR;
@@ -691,31 +691,39 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         }
 
         /* UserPasswd 비밀번호 확인 */
-        boolean checkPwCheck = isValidUserPwCheck(joinMemberDto.getPassword(), joinMemberDto.getPasswordCheck());
+        boolean checkPwCheck = isValidUserPwCheck(joinMemberDto.getPassword().trim(), joinMemberDto.getPasswordCheck().trim());
         if (!checkPwCheck) {
             return PublicStatus.PW_CHECK_ERR;
         }
 
         /* Email 검사 */
-        boolean checkEmail = isValidUserEmail(joinMemberDto.getEmail());
+        boolean checkEmail = isValidUserEmail(joinMemberDto.getEmail().trim());
         if (!checkEmail) {
             return PublicStatus.EMAIL_ERR;
         }
 
+        String  verifiedPrifix = "email:verified:";
+        String  verifiedKey = String.format("%s:%s",verifiedPrifix,joinMemberDto.getEmail().trim());
+        Object  verifiedYN = redisAdapter.get(verifiedKey);
+
+        if(verifiedYN == null || (verifiedYN != null && "N".equals(verifiedYN.toString()))){
+            return PublicStatus.EMAIL_NOT_VERIFIED;
+        }
+
         /* 이름 검사 */
-        boolean checkUserName = isValidUserName(joinMemberDto.getName());
+        boolean checkUserName = isValidUserName(joinMemberDto.getName().trim());
         if (!checkUserName) {
             return PublicStatus.NAME_ERR;
         }
 
         /* 생년월일 검사 */
-        boolean checkUserBirthday = isValidUserBirthday(joinMemberDto.getBirthDate());
+        boolean checkUserBirthday = isValidUserBirthday(joinMemberDto.getBirthDate().trim());
         if (!checkUserBirthday) {
             return PublicStatus.BIRTH_ERR;
         }
 
         /* 통신사 검사 */
-        boolean checkUserTelecom = isValidUserMobileCarrier(joinMemberDto.getTelecom());
+        boolean checkUserTelecom = isValidUserMobileCarrier(joinMemberDto.getTelecom().trim());
         if (!checkUserTelecom) {
             return PublicStatus.TELECOM_ERR;
         }
@@ -727,13 +735,11 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         }
 
         /* 휴대전화번호 검사 */
-        PublicStatus checkUserPhoneNumber = isValidUserPhoneNumber(joinMemberDto.getPhoneNumber());
+        PublicStatus checkUserPhoneNumber = isValidUserPhoneNumber(joinMemberDto.getPhoneNumber().trim());
         if (checkUserPhoneNumber != PublicStatus.SUCCESS) {
             return PublicStatus.PHONE_DUPLICATED;
         }
 
-
-        System.out.println(validateOauthAndInputUser(res, req, joinMemberDto));
         /* 신규회원 저장 */
         return validateOauthAndInputUser(res, req, joinMemberDto);
     }
@@ -789,13 +795,20 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         if(!code.isEmpty()){
             String prifix = "dev:join:email_code";
             String key = String.format("%s:%s:%s",prifix,userEmail,code);
+
             System.out.println("[DEBUG] Redis Key: " + key);
-            eventProducerServiceImpl.produceJoinEmailCode(userEmail,code);
+
+            //eventProducerServiceImpl.produceJoinEmailCode(userEmail,code);
+            eventProducerServiceImpl.produceUserTempPw("", userEmail, code);
+
+
             boolean isVerifcationCode = redisAdapter.set(key,
                                                          code,
                                                          Duration.ofMinutes(3));
+
 //          String value = redisAdapter.get(codekey).toString();
 //          System.out.println("[DEBUG] Redis Value: " + value);
+
             if(isVerifcationCode)
                 return PublicStatus.SUCCESS;
             else
@@ -818,11 +831,14 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         if(value != null){
 
             String  verifiedPrifix = "email:verified:";
-
-
-
-
-            return PublicStatus.SUCCESS;
+            String  verifiedKey = String.format("%s:%s",verifiedPrifix,userEmail);
+            boolean isverifieded = redisAdapter.set(verifiedKey,
+                                                    "Y",
+                                                     Duration.ofMinutes(30));
+            if(isverifieded)
+                return PublicStatus.SUCCESS;
+            else
+                return PublicStatus.EMAIL_ERR;
         }else{
             return PublicStatus.EMAIL_ERR;
         }
