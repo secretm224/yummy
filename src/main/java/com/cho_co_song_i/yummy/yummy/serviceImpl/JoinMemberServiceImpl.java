@@ -102,7 +102,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
                         userTbl.userNm.eq(findIdDto.getUserNm()),
                         userPhoneNumberTbl.id.phoneNumber.eq(findIdDto.getPhoneNumber()),
                         userPhoneNumberTbl.telecomName.eq(findIdDto.getTelecom()),
-                        userEmailTbl.id.userEmailAddress.eq(findIdDto.getEmail())
+                        userEmailTbl.userEmailAddress.eq(findIdDto.getEmail())
                 )
                 .fetchFirst();
     }
@@ -120,7 +120,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
                 .where(
                         userTbl.userNm.eq(dto.getUserNm()),
                         userTbl.userId.eq(dto.getUserId()),
-                        userEmailTbl.id.userEmailAddress.eq(dto.getEmail())
+                        userEmailTbl.userEmailAddress.eq(dto.getEmail())
                 )
                 .fetchFirst();
     }
@@ -224,10 +224,10 @@ public class JoinMemberServiceImpl implements JoinMamberService {
      * @param email
      */
     private void inputUserEmail(UserTbl user, String email) {
-        UserEmailTblId userEmailTblId = new UserEmailTblId(user.getUserNo(), email);
         UserEmailTbl userEmailTbl = new UserEmailTbl();
         userEmailTbl.setUser(user);
-        userEmailTbl.setId(userEmailTblId);
+        userEmailTbl.setUserNo(user.getUserNo());
+        userEmailTbl.setUserEmailAddress(email);
         userEmailTbl.setRegDt(new Date());
         userEmailTbl.setRegId("system");
         userEmailTbl.setChgDt(null);
@@ -308,13 +308,41 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         return userPw.equals(userPwCheck);
     }
 
-
     /**
-     * 이메일 주소 검증
+     * 유저가 입력한 이메일을 검증해주는 함수
      * @param email
      * @return
      */
-    private boolean isValidUserEmail(String email) {
+    private PublicStatus isValidUserEmail(String email) {
+
+        boolean isEmailFormat = isValidUserEmailFormat(email);
+        if (!isEmailFormat) {
+            return PublicStatus.EMAIL_FORMAT_ERR;
+        }
+
+        boolean isDupEmail = isDuplicatedUserEmail(email);
+        if (!isDupEmail) {
+            return PublicStatus.EMIL_DUPLICATED;
+        }
+
+        return PublicStatus.SUCCESS;
+    }
+
+    /**
+     * 회원이 입력한 이메일 주소가 기존에 사용중인 이메일 주소인지 확인해주는 함수
+     * @param email
+     * @return
+     */
+    private boolean isDuplicatedUserEmail(String email) {
+        return userEmailRepository.existsByEmail(email);
+    }
+
+    /**
+     * 이메일 주소 양식 검증
+     * @param email
+     * @return
+     */
+    private boolean isValidUserEmailFormat(String email) {
 
         if (email == null || email.isEmpty()) {
             return false;
@@ -602,9 +630,9 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         }
 
         /* 이메일 검사 */
-        boolean checkEmail = isValidUserEmail(findPwDto.getEmail());
+        boolean checkEmail = isValidUserEmailFormat(findPwDto.getEmail());
         if (!checkEmail) {
-            return PublicStatus.EMAIL_ERR;
+            return PublicStatus.EMAIL_FORMAT_ERR;
         }
 
         /* 2.사용자 조회 */
@@ -647,9 +675,9 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         }
 
         /* 이메일 검사 */
-        boolean checkEmail = isValidUserEmail(findIdDto.getEmail());
+        boolean checkEmail = isValidUserEmailFormat(findIdDto.getEmail());
         if (!checkEmail) {
-            return PublicStatus.EMAIL_ERR;
+            return PublicStatus.EMAIL_FORMAT_ERR;
         }
 
         /**
@@ -695,9 +723,9 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         }
 
         /* Email 검사 */
-        boolean checkEmail = isValidUserEmail(joinMemberDto.getEmail());
-        if (!checkEmail) {
-            return PublicStatus.EMAIL_ERR;
+        PublicStatus checkEmail = isValidUserEmail(joinMemberDto.getEmail());
+        if (checkEmail != PublicStatus.SUCCESS) {
+            return checkEmail;
         }
 
         /* 이름 검사 */

@@ -4,6 +4,8 @@ public enum PublicStatus {
     SUCCESS,
     NAME_ERR,
     ID_ERR,
+    EMAIL_FORMAT_ERR,
+    EMIL_DUPLICATED,
     EMAIL_ERR,
     PW_FIND_ERR,
     PW_CHECK_ERR,

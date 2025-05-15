@@ -13,9 +13,13 @@ import java.util.Date;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserEmailTbl implements Persistable<UserEmailTblId> {
-    @EmbeddedId
-    private UserEmailTblId id;
+public class UserEmailTbl implements Persistable<Long> {
+    @Id
+    @Column(name = "user_no", nullable = false)
+    private Long userNo;
+
+    @Column(name = "user_email_address", nullable = false, length = 255, unique = true)
+    private String userEmailAddress;
 
     @Column(name = "reg_dt", nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
@@ -36,10 +40,10 @@ public class UserEmailTbl implements Persistable<UserEmailTblId> {
     private boolean isNew = false;
 
     @Override
-    public UserEmailTblId getId() { return this.id; }
+    public Long getId() { return this.userNo; }
 
     @Override
-    public boolean isNew() { return isNew || this.id == null; }
+    public boolean isNew() { return isNew || this.userNo == null; }
 
     /* ✅ 새로운 엔티티를 표시하는 메서드 */
     public void markAsNew() { this.isNew = true; }
