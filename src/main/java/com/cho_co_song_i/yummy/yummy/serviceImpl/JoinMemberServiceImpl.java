@@ -334,7 +334,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
      * @return
      */
     private boolean isDuplicatedUserEmail(String email) {
-        return userEmailRepository.existsByEmail(email);
+        return userEmailRepository.existsByEmail(email) == 0;
     }
 
     /**

@@ -10,7 +10,7 @@ import java.util.Optional;
 public interface UserEmailRepository extends JpaRepository<UserEmailTbl, Long> {
 
     @Query(value = "SELECT EXISTS (SELECT 1 FROM user_email_tbl WHERE user_email_address = :email)", nativeQuery = true)
-    boolean existsByEmail(@Param("email") String email);
+    Long existsByEmail(@Param("email") String email);
 
 
 }
