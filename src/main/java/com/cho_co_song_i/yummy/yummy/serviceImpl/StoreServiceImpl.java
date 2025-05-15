@@ -204,6 +204,11 @@ public class StoreServiceImpl implements StoreService {
                 .fetch();
     }
 
+
+    private void test() {
+        throw new IllegalArgumentException("test");
+    }
+
     /**
      * Store 테이블에 tel, url 정보를 업데이트 해주는 함수 (일괄 업데이트)
      * @param updateMap
@@ -457,22 +462,22 @@ public class StoreServiceImpl implements StoreService {
         return modifyStoreDetail(emptyStore);
     }
 
-//    @Transactional(rollbackFor = Exception.class)
-//    public StoreDto modifyStoreDetail(long id, String tel, String url) {
-//
-//        if (id <= 0) {
-//            throw new IllegalArgumentException("Invalid store ID");
-//        }
-//
-//        Optional<StoreDto> optionalStore = findStoreById(id);
-//        optionalStore.orElseThrow(() -> new NoSuchElementException("Store not found"));
-//
-//        StoreDto storeDto = optionalStore.get();
-//        storeDto.setTel(tel);
-//        storeDto.setUrl(url);
-//        storeDto.setChgId("Store>UpdateStoreDetail");
-//
-//        return modifyStore(id,storeDto);
-//    }
+    @Transactional(rollbackFor = Exception.class)
+    public StoreDto modifySingleStoreDetail(long id, String tel, String url) {
+
+        if (id <= 0) {
+            throw new IllegalArgumentException("Invalid store ID");
+        }
+
+        Optional<StoreDto> optionalStore = findStoreById(id);
+        optionalStore.orElseThrow(() -> new NoSuchElementException("Store not found"));
+
+        StoreDto storeDto = optionalStore.get();
+        storeDto.setTel(tel);
+        storeDto.setUrl(url);
+        storeDto.setChgId("Store>UpdateStoreDetail");
+
+        return modifyStore(id,storeDto);
+    }
 
 }

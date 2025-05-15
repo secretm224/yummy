@@ -90,25 +90,23 @@ public class StoreController {
         return storeService.inputDetailQuery(storeName, lng, lat);
     }
 
-//    @GetMapping("/UpdateDetailInfo")
-//    public ResponseEntity<StoreDto> modifyAllStoreDetail(@RequestParam(value = "id", required = false) long id,
-//                                                         @RequestParam(value = "tel", required = false) String tel,
-//                                                         @RequestParam(value = "url", required = false) String url) {
-//
-//        StoreDto updated = storeService.modifyStoreDetail(id, tel, url);
-//        return ResponseEntity.ok(updated);
-//    }
+    @GetMapping("/updateStoreDetailInfo")
+    public ResponseEntity<StoreDto> modifySingleStoreDetail(@RequestParam(value = "id", required = false) long id,
+                                                         @RequestParam(value = "tel", required = false) String tel,
+                                                         @RequestParam(value = "url", required = false) String url) {
+        StoreDto updated = storeService.modifySingleStoreDetail(id, tel, url);
+        return ResponseEntity.ok(updated);
+    }
 
-    @GetMapping("/UpdateAllStoreInfobyKaKao")
+    @GetMapping("/updateAllStoreInfobyKaKao")
     public ResponseEntity<Optional<JsonNode>> modifyAllStoreInfobyKaKao(){
         Optional<JsonNode> result = storeService.modifyAllStoreDetail();
         return ResponseEntity.ok(result);
     }
 
-    @GetMapping("/UpdateStoreInfobyKaKao")
+    @GetMapping("/updateStoreInfobyKaKao")
     public ResponseEntity<Optional<JsonNode>> modifyEmptyStoreInfobyKaKao(){
         Optional<JsonNode> result = storeService.modifyEmptyStoreDetail();
         return ResponseEntity.ok(result);
     }
-
 }
