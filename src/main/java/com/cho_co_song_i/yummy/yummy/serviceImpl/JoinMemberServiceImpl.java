@@ -808,4 +808,59 @@ public class JoinMemberServiceImpl implements JoinMamberService {
 
         return PublicStatus.SUCCESS;
     }
+
+    public PublicStatus generateVerificationCode(String userEmail) throws Exception{
+        String code = String.format("%06d", new Random().nextInt(999999)); // 6자리 숫자
+
+        if(!code.isEmpty()){
+            String prifix = "dev:join:email_code";
+            String key = String.format("%s:%s:%s",prifix,userEmail,code);
+
+            System.out.println("[DEBUG] Redis Key: " + key);
+
+            //eventProducerServiceImpl.produceJoinEmailCode(userEmail,code);
+            eventProducerServiceImpl.produceUserTempPw("", userEmail, code);
+
+
+            boolean isVerifcationCode = redisAdapter.set(key,
+                    code,
+                    Duration.ofMinutes(3));
+
+//          String value = redisAdapter.get(codekey).toString();
+//          System.out.println("[DEBUG] Redis Value: " + value);
+
+            if(isVerifcationCode)
+                return PublicStatus.SUCCESS;
+            else
+                return PublicStatus.EMAIL_ERR;
+
+        }else{
+            return PublicStatus.EMAIL_ERR;
+        }
+    }
+
+    public PublicStatus checkVerificationCode(String userEmail,int code) throws Exception{
+        if(userEmail.isEmpty() || code <=0){
+            return PublicStatus.EMAIL_ERR;
+        }
+
+        String prifix = "dev:join:email_code";
+        String key = String.format("%s:%s:%s",prifix,userEmail,code);
+        Object value = redisAdapter.get(key);
+
+        if(value != null){
+
+            String  verifiedPrifix = "email:verified:";
+            String  verifiedKey = String.format("%s:%s",verifiedPrifix,userEmail);
+            boolean isverifieded = redisAdapter.set(verifiedKey,
+                    "Y",
+                    Duration.ofMinutes(30));
+            if(isverifieded)
+                return PublicStatus.SUCCESS;
+            else
+                return PublicStatus.EMAIL_ERR;
+        }else{
+            return PublicStatus.EMAIL_ERR;
+        }
+    }
 }
