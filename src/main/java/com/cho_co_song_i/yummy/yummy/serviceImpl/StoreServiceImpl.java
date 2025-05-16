@@ -15,12 +15,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -38,6 +42,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static com.cho_co_song_i.yummy.yummy.entity.QStore.store;
+import static com.cho_co_song_i.yummy.yummy.entity.QStoreLocationInfoTbl.storeLocationInfoTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreTypeMajor.storeTypeMajor;
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreTypeSub.storeTypeSub;
 
@@ -131,6 +137,131 @@ public class StoreServiceImpl implements StoreService {
                 storeTypeSub.getTypeName()
         );
     }
+
+
+    /**
+     * json 내부의 데이터를 파싱해주는 함수
+     * @param json
+     * @return
+     */
+    private Optional<DetailInfo> parseDetailInfo(JsonNode json) {
+        if (json == null
+                || !json.has("documents")
+                || !json.get("documents").isArray()
+                || json.get("documents").isEmpty()) {
+            return Optional.empty();
+        }
+
+        JsonNode first = json.get("documents").get(0);
+
+        String tel = Optional.ofNullable(first.get("phone"))
+                .map(JsonNode::asText)
+                .orElse(null);
+
+        String url = Optional.ofNullable(first.get("place_url"))
+                .map(JsonNode::asText)
+                .orElse(null);
+
+        return Optional.of(new DetailInfo(tel, url));
+    }
+
+    /**
+     * tel, url 정보가 없는 Store, storeLocationInfoTbl 의 특정 데이터들만 쿼리해주는 함수
+     * 특정 컬럼만 가져와줘서 최대한 데이터 규모를 줄여준다.
+     * @return
+     */
+    private List<StoreLocationDto> findTelUrlEmptyData() {
+        return queryFactory
+                .select(Projections.constructor(StoreLocationDto.class,
+                        store.seq, store.name,
+                        storeLocationInfoTbl.lat, storeLocationInfoTbl.lng
+                ))
+                .from(store)
+                .innerJoin(store.storeLocations, storeLocationInfoTbl)
+                .where(
+                        store.tel.isEmpty()
+                                .or(store.url.isEmpty())
+                                .or(store.tel.isNull())
+                                .or(store.url.isNull())
+                )
+                .fetch();
+    }
+
+    /**
+     * 모든 Store, storeLocationInfoTbl 의 특정 데이터들만 쿼리해주는 함수
+     * 특정 컬럼만 가져와줘서 최대한 데이터 규모를 줄여준다.
+     * -> 향후에 데이터 사이즈가 커진다면 해당 메소드는 부하가 클 가능성이 있음.
+     * @return
+     */
+    private List<StoreLocationDto> findTelUrlAllData() {
+        return queryFactory
+                .select(Projections.constructor(StoreLocationDto.class,
+                        store.seq, store.name,
+                        storeLocationInfoTbl.lat, storeLocationInfoTbl.lng
+                ))
+                .from(store)
+                .innerJoin(store.storeLocations, storeLocationInfoTbl)
+                .fetch();
+    }
+
+
+    private void test() {
+        throw new IllegalArgumentException("test");
+    }
+
+    /**
+     * Store 테이블에 tel, url 정보를 업데이트 해주는 함수 (일괄 업데이트)
+     * @param updateMap
+     */
+    private void bulkUpdateTelAndUrl(Map<Long, DetailInfo> updateMap) {
+        List<Long> ids = new ArrayList<>(updateMap.keySet());
+
+        List<Store> stores = storeRepository.findAllById(ids); /* SELECT IN 쿼리 한 번 */
+
+        /* tel, url 컬럼 업데이트 */
+        for (Store store : stores) {
+            DetailInfo info = updateMap.get(store.getSeq());
+            store.setTel(info.tel());
+            store.setUrl(info.url());
+            store.setChgId("Store>UpdateStoreDetail");
+        }
+    }
+
+    /**
+     * Store 테이블을 StoreLocationDto 존재하는 데이터를 기반으로 update 해주는 함수
+     * @param storeLocationDtos
+     * @return
+     */
+    private Optional<JsonNode> modifyStoreDetail(List<StoreLocationDto> storeLocationDtos) {
+        ObjectMapper mapper = new ObjectMapper();
+        int successCount = 0;
+
+        if (!storeLocationDtos.isEmpty()) {
+            Map<Long, DetailInfo> updateMap = new HashMap<>();
+
+            for (StoreLocationDto store : storeLocationDtos) {
+                inputDetailQuery(store.getName(), store.getLng(), store.getLat())
+                        .ifPresent(jsonNode -> {
+                            Optional<DetailInfo> detailOpt = parseDetailInfo(jsonNode);
+                            detailOpt.ifPresent(detail -> {
+                                updateMap.put(store.getSeq(), detail);
+                            });
+                        });
+            }
+
+            if (!updateMap.isEmpty()) {
+                bulkUpdateTelAndUrl(updateMap);
+                successCount += updateMap.size();
+            }
+        }
+
+        ObjectNode result = mapper.createObjectNode()
+                .put("success", successCount > 0)
+                .put("successCount", successCount);
+
+        return Optional.of(result);
+    }
+
 
     public List<StoreDto> findAllStores() {
         List<Store> stores = storeRepository.findAll();
@@ -274,15 +405,12 @@ public class StoreServiceImpl implements StoreService {
         }
     }
 
-    // 비즈니스 앱 등록 이슈 해결 후 처리 예정
     public Optional<JsonNode> inputDetailQuery(String storeName , BigDecimal lng, BigDecimal lat)
     {
         if (storeName == null || storeName.isEmpty()) {
             return Optional.empty();
         }
 
-        /* api 키는 아직 안쓰는듯?.. */
-        //String apiKey = "2fcfa96247ae04a4ad26cd853f1e5551";
         String categoryGroupCode = "FD6";
         String page = "1";
         String size = "1";
@@ -321,59 +449,35 @@ public class StoreServiceImpl implements StoreService {
         }
     }
 
-    public Optional<JsonNode> modifyStoreDetail() {
-        List<StoreDto> l_store = this.findAllStores();
-        AtomicInteger successCount = new AtomicInteger(0);
-        ObjectMapper mapper = new ObjectMapper();
+    @Transactional(rollbackFor = Exception.class)
+    public Optional<JsonNode> modifyAllStoreDetail() {
+        List<StoreLocationDto> allStore = findTelUrlAllData();
+        return modifyStoreDetail(allStore);
+    }
 
-        if(!l_store.isEmpty()) {
-            for (StoreDto store : l_store) {
-                Long storeSeq = store.getSeq();
-                StoreLocationInfoDto store_location = new StoreLocationInfoDto();
-                if(storeSeq > 0){
-                    this.findStoreLocationInfo(storeSeq).ifPresent(loc -> {
-                        store_location.setSeq(store.getSeq());
-                        store_location.setLng(loc.getLng());
-                        store_location.setLat(loc.getLat());
-                    });
-                }
+    @Transactional(rollbackFor = Exception.class)
+    public Optional<JsonNode> modifyEmptyStoreDetail() {
+        /* tel, url 이 없는 Store 정보만 쿼리한다.*/
+        List<StoreLocationDto> emptyStore = findTelUrlEmptyData();
+        return modifyStoreDetail(emptyStore);
+    }
 
-                this.inputDetailQuery(store.getName(),store_location.getLng(),
-                                                      store_location.getLat()).
-                                                      ifPresent(jsonNode -> {
-                                                          //카테고리 추가 예정
-                                                          if (jsonNode.has("documents") && jsonNode.get("documents").isArray() && jsonNode.get("documents").size() > 0) {
-                                                              JsonNode firstDoc = jsonNode.get("documents").get(0);
+    @Transactional(rollbackFor = Exception.class)
+    public StoreDto modifySingleStoreDetail(long id, String tel, String url) {
 
-                                                              String tel = Optional.ofNullable(firstDoc.get("phone"))
-                                                                      .map(JsonNode::asText)
-                                                                      .orElse(null);
-
-                                                              String url = Optional.ofNullable(firstDoc.get("place_url"))
-                                                                      .map(JsonNode::asText)
-                                                                      .orElse(null);
-
-                                                              store.setTel(tel);
-                                                              store.setUrl(url);
-                                                              store.setChgId("Store>UpdateStoreDetail");
-
-                                                              StoreDto update_dto = this.modifyStore(store.getSeq(),store);
-                                                              if(update_dto != null){
-                                                                  successCount.incrementAndGet();
-                                                              }
-                                                          }
-                                                          //updateStore
-                                                      });
-
-            }
-
+        if (id <= 0) {
+            throw new IllegalArgumentException("Invalid store ID");
         }
 
-        ObjectNode result = mapper.createObjectNode()
-                                  .put("success", successCount.get() > 0)
-                                  .put("successCount", successCount.get());
+        Optional<StoreDto> optionalStore = findStoreById(id);
+        optionalStore.orElseThrow(() -> new NoSuchElementException("Store not found"));
 
-        return Optional.of(result);
+        StoreDto storeDto = optionalStore.get();
+        storeDto.setTel(tel);
+        storeDto.setUrl(url);
+        storeDto.setChgId("Store>UpdateStoreDetail");
+
+        return modifyStore(id,storeDto);
     }
 
 }

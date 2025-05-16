@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @RestController
@@ -89,32 +90,23 @@ public class StoreController {
         return storeService.inputDetailQuery(storeName, lng, lat);
     }
 
-    @GetMapping("/UpdateDetailInfo")
-    public ResponseEntity<StoreDto> modifyStoreDetail(@RequestParam(value = "id", required = false) long id,
-                                                      @RequestParam(value = "tel", required = false) String tel,
-                                                      @RequestParam(value = "url", required = false) String url){
-        if(id <=0){
-            return ResponseEntity.badRequest().build();
-        }
-
-        Optional<StoreDto> optionalStore = storeService.findStoreById(id);
-        if (optionalStore.isEmpty()) {
-            return ResponseEntity.notFound().build(); // id로 Store를 못찾으면 404 리턴
-        }
-
-        StoreDto storeDto = optionalStore.get();
-        storeDto.setTel(tel);
-        storeDto.setUrl(url);
-        storeDto.setChgId("Store>UpdateStoreDetail");
-
-       StoreDto update_store = storeService.modifyStore(id,storeDto);
-       return ResponseEntity.ok(update_store);
+    @GetMapping("/updateStoreDetailInfo")
+    public ResponseEntity<StoreDto> modifySingleStoreDetail(@RequestParam(value = "id", required = false) long id,
+                                                         @RequestParam(value = "tel", required = false) String tel,
+                                                         @RequestParam(value = "url", required = false) String url) {
+        StoreDto updated = storeService.modifySingleStoreDetail(id, tel, url);
+        return ResponseEntity.ok(updated);
     }
 
-    @GetMapping("/UpdateStoreInfobyKaKao")
-    public ResponseEntity<Optional<JsonNode>> modifyStoreInfobyKaKao(){
-        Optional<JsonNode> result = storeService.modifyStoreDetail();
+    @GetMapping("/updateAllStoreInfobyKaKao")
+    public ResponseEntity<Optional<JsonNode>> modifyAllStoreInfobyKaKao(){
+        Optional<JsonNode> result = storeService.modifyAllStoreDetail();
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/updateStoreInfobyKaKao")
+    public ResponseEntity<Optional<JsonNode>> modifyEmptyStoreInfobyKaKao(){
+        Optional<JsonNode> result = storeService.modifyEmptyStoreDetail();
+        return ResponseEntity.ok(result);
+    }
 }

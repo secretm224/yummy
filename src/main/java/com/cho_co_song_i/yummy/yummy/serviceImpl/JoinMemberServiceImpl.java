@@ -104,7 +104,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
                         userTbl.userNm.eq(findIdDto.getUserNm()),
                         userPhoneNumberTbl.id.phoneNumber.eq(findIdDto.getPhoneNumber()),
                         userPhoneNumberTbl.telecomName.eq(findIdDto.getTelecom()),
-                        userEmailTbl.id.userEmailAddress.eq(findIdDto.getEmail())
+                        userEmailTbl.userEmailAddress.eq(findIdDto.getEmail())
                 )
                 .fetchFirst();
     }
@@ -122,7 +122,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
                 .where(
                         userTbl.userNm.eq(dto.getUserNm()),
                         userTbl.userId.eq(dto.getUserId()),
-                        userEmailTbl.id.userEmailAddress.eq(dto.getEmail())
+                        userEmailTbl.userEmailAddress.eq(dto.getEmail())
                 )
                 .fetchFirst();
     }
@@ -310,13 +310,41 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         return userPw.equals(userPwCheck);
     }
 
-
     /**
-     * 이메일 주소 검증
+     * 유저가 입력한 이메일을 검증해주는 함수
      * @param email
      * @return
      */
-    private boolean isValidUserEmail(String email) {
+    private PublicStatus isValidUserEmail(String email) {
+
+        boolean isEmailFormat = isValidUserEmailFormat(email);
+        if (!isEmailFormat) {
+            return PublicStatus.EMAIL_FORMAT_ERR;
+        }
+
+        boolean isDupEmail = isDuplicatedUserEmail(email);
+        if (!isDupEmail) {
+            return PublicStatus.EMIL_DUPLICATED;
+        }
+
+        return PublicStatus.SUCCESS;
+    }
+
+    /**
+     * 회원이 입력한 이메일 주소가 기존에 사용중인 이메일 주소인지 확인해주는 함수
+     * @param email
+     * @return
+     */
+    private boolean isDuplicatedUserEmail(String email) {
+        return userEmailRepository.existsByEmail(email) == 0;
+    }
+
+    /**
+     * 이메일 주소 양식 검증
+     * @param email
+     * @return
+     */
+    private boolean isValidUserEmailFormat(String email) {
 
         if (email == null || email.isEmpty()) {
             return false;
@@ -604,9 +632,9 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         }
 
         /* 이메일 검사 */
-        boolean checkEmail = isValidUserEmail(findPwDto.getEmail());
+        boolean checkEmail = isValidUserEmailFormat(findPwDto.getEmail());
         if (!checkEmail) {
-            return PublicStatus.EMAIL_ERR;
+            return PublicStatus.EMAIL_FORMAT_ERR;
         }
 
         /* 2.사용자 조회 */
@@ -649,9 +677,9 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         }
 
         /* 이메일 검사 */
-        boolean checkEmail = isValidUserEmail(findIdDto.getEmail());
+        boolean checkEmail = isValidUserEmailFormat(findIdDto.getEmail());
         if (!checkEmail) {
-            return PublicStatus.EMAIL_ERR;
+            return PublicStatus.EMAIL_FORMAT_ERR;
         }
 
         /**
@@ -676,7 +704,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
     public PublicStatus joinMember(HttpServletResponse res, HttpServletRequest req, JoinMemberDto joinMemberDto) throws Exception {
 
         /* UserID 확인 */
-        JoinMemberIdStatus checkId = checkUserId(joinMemberDto.getUserId().trim());
+        JoinMemberIdStatus checkId = checkUserId(joinMemberDto.getUserId());
 
         if (checkId == JoinMemberIdStatus.NONFORMAT) {
             return PublicStatus.ID_ERR;
@@ -691,39 +719,31 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         }
 
         /* UserPasswd 비밀번호 확인 */
-        boolean checkPwCheck = isValidUserPwCheck(joinMemberDto.getPassword().trim(), joinMemberDto.getPasswordCheck().trim());
+        boolean checkPwCheck = isValidUserPwCheck(joinMemberDto.getPassword(), joinMemberDto.getPasswordCheck());
         if (!checkPwCheck) {
             return PublicStatus.PW_CHECK_ERR;
         }
 
         /* Email 검사 */
-        boolean checkEmail = isValidUserEmail(joinMemberDto.getEmail().trim());
-        if (!checkEmail) {
-            return PublicStatus.EMAIL_ERR;
-        }
-
-        String  verifiedPrifix = "email:verified:";
-        String  verifiedKey = String.format("%s:%s",verifiedPrifix,joinMemberDto.getEmail().trim());
-        Object  verifiedYN = redisAdapter.get(verifiedKey);
-
-        if(verifiedYN == null || (verifiedYN != null && "N".equals(verifiedYN.toString()))){
-            return PublicStatus.EMAIL_NOT_VERIFIED;
+        PublicStatus checkEmail = isValidUserEmail(joinMemberDto.getEmail());
+        if (checkEmail != PublicStatus.SUCCESS) {
+            return checkEmail;
         }
 
         /* 이름 검사 */
-        boolean checkUserName = isValidUserName(joinMemberDto.getName().trim());
+        boolean checkUserName = isValidUserName(joinMemberDto.getName());
         if (!checkUserName) {
             return PublicStatus.NAME_ERR;
         }
 
         /* 생년월일 검사 */
-        boolean checkUserBirthday = isValidUserBirthday(joinMemberDto.getBirthDate().trim());
+        boolean checkUserBirthday = isValidUserBirthday(joinMemberDto.getBirthDate());
         if (!checkUserBirthday) {
             return PublicStatus.BIRTH_ERR;
         }
 
         /* 통신사 검사 */
-        boolean checkUserTelecom = isValidUserMobileCarrier(joinMemberDto.getTelecom().trim());
+        boolean checkUserTelecom = isValidUserMobileCarrier(joinMemberDto.getTelecom());
         if (!checkUserTelecom) {
             return PublicStatus.TELECOM_ERR;
         }
@@ -735,7 +755,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         }
 
         /* 휴대전화번호 검사 */
-        PublicStatus checkUserPhoneNumber = isValidUserPhoneNumber(joinMemberDto.getPhoneNumber().trim());
+        PublicStatus checkUserPhoneNumber = isValidUserPhoneNumber(joinMemberDto.getPhoneNumber());
         if (checkUserPhoneNumber != PublicStatus.SUCCESS) {
             return PublicStatus.PHONE_DUPLICATED;
         }
@@ -787,60 +807,5 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         CookieUtil.clearCookie(res, "yummy-oauth-token");
 
         return PublicStatus.SUCCESS;
-    }
-
-    public PublicStatus generateVerificationCode(String userEmail) throws Exception{
-        String code = String.format("%06d", new Random().nextInt(999999)); // 6자리 숫자
-
-        if(!code.isEmpty()){
-            String prifix = "dev:join:email_code";
-            String key = String.format("%s:%s:%s",prifix,userEmail,code);
-
-            System.out.println("[DEBUG] Redis Key: " + key);
-
-            //eventProducerServiceImpl.produceJoinEmailCode(userEmail,code);
-            eventProducerServiceImpl.produceUserTempPw("", userEmail, code);
-
-
-            boolean isVerifcationCode = redisAdapter.set(key,
-                                                         code,
-                                                         Duration.ofMinutes(3));
-
-//          String value = redisAdapter.get(codekey).toString();
-//          System.out.println("[DEBUG] Redis Value: " + value);
-
-            if(isVerifcationCode)
-                return PublicStatus.SUCCESS;
-            else
-                return PublicStatus.EMAIL_ERR;
-
-        }else{
-            return PublicStatus.EMAIL_ERR;
-        }
-    }
-
-    public PublicStatus checkVerificationCode(String userEmail,int code) throws Exception{
-        if(userEmail.isEmpty() || code <=0){
-            return PublicStatus.EMAIL_ERR;
-        }
-
-        String prifix = "dev:join:email_code";
-        String key = String.format("%s:%s:%s",prifix,userEmail,code);
-        Object value = redisAdapter.get(key);
-
-        if(value != null){
-
-            String  verifiedPrifix = "email:verified:";
-            String  verifiedKey = String.format("%s:%s",verifiedPrifix,userEmail);
-            boolean isverifieded = redisAdapter.set(verifiedKey,
-                                                    "Y",
-                                                     Duration.ofMinutes(30));
-            if(isverifieded)
-                return PublicStatus.SUCCESS;
-            else
-                return PublicStatus.EMAIL_ERR;
-        }else{
-            return PublicStatus.EMAIL_ERR;
-        }
     }
 }

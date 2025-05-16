@@ -1,9 +1,8 @@
 package com.cho_co_song_i.yummy.yummy.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.domain.Persistable;
 
 import java.util.ArrayList;
@@ -71,15 +70,14 @@ public class Store implements Persistable<Long> {
         this.isNew = true;
     }
 
-
     @OneToMany(mappedBy = "store", fetch = FetchType.LAZY)
     private List<StoreTypeLinkTbl> storeTypeLinks = new ArrayList<>();
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name="seq")
     private StoreLocationInfoTbl storeLocations;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name="seq")
     private ZeroPossibleMarket zeroPossibles;
 }

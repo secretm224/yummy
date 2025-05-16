@@ -72,8 +72,6 @@ public class StoreLocationInfoTbl implements Persistable<Long> {
         this.isNew = true;
     }
 
-
     @OneToOne(mappedBy = "storeLocations", fetch = FetchType.LAZY)
     private Store store;
-
 }
