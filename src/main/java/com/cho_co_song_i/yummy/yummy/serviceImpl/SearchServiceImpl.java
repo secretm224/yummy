@@ -4,9 +4,11 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
+import com.cho_co_song_i.yummy.yummy.dto.AutoCompleteDto;
 import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
 import lombok.RequiredArgsConstructor;
@@ -100,6 +102,7 @@ public class SearchServiceImpl implements SearchService {
                 .findFirst();
     }
 
+
     public List<SearchStoreDto> findStoresByPage (
             String indexName,
             int page,
@@ -163,6 +166,28 @@ public class SearchServiceImpl implements SearchService {
         SearchResponse<SearchStoreDto> resp = searchClient.search(searchRequest, SearchStoreDto.class);
 
         return resp.hits().hits().stream()
+                .map(Hit::source)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    public List<AutoCompleteDto> findAutoSearchKeyword(String indexName, String searchText) throws Exception {
+
+        SearchRequest searchRequest = SearchRequest.of(s -> s
+                .index(indexName)
+                .query(q -> q
+                        .multiMatch(m -> m
+                                .query(searchText)
+                                .fields("name.autocomplete^3", "name.basic", "name_chosung^2")
+                                .type(TextQueryType.BestFields)
+                        )
+                )
+                .size(10)
+        );
+
+        SearchResponse<AutoCompleteDto> response = searchClient.search(searchRequest, AutoCompleteDto.class);
+
+        return response.hits().hits().stream()
                 .map(Hit::source)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());

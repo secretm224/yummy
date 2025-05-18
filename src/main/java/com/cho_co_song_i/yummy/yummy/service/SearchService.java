@@ -1,5 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
+import com.cho_co_song_i.yummy.yummy.dto.AutoCompleteDto;
 import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
 
 import java.util.List;
@@ -42,5 +43,14 @@ public interface SearchService {
      * @throws Exception
      */
     List<SearchStoreDto> findTotalSearchDatas(String indexName, String searchText, int selectMajor, int selectSub, boolean zeroPossible) throws Exception;
+
+    /**
+     * 자동완성 키워드 알고리즘
+     * @param indexName
+     * @param searchText
+     * @return
+     * @throws Exception
+     */
+    List<AutoCompleteDto> findAutoSearchKeyword(String indexName, String searchText) throws Exception;
 
 }

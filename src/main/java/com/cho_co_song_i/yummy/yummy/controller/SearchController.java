@@ -1,17 +1,15 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
+import com.cho_co_song_i.yummy.yummy.dto.AutoCompleteDto;
 import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 
 @RequestMapping("/search")
@@ -22,6 +20,8 @@ public class SearchController {
     private final SearchService searchService;
     @Value("${spring.elasticsearch.index.store}")
     private String storeIndex;
+    @Value("${spring.elasticsearch.index.auto-complete}")
+    private String autoKeywordIndex;
 
     @GetMapping("allData")
     public ResponseEntity<List<SearchStoreDto>> findAllStores() throws Exception {
@@ -36,5 +36,12 @@ public class SearchController {
             @RequestParam(value = "zeroPossible", required = false, defaultValue = "false") boolean zeroPossible
     ) throws Exception {
         return ResponseEntity.ok(searchService.findTotalSearchDatas(storeIndex, searchText, selectMajor, selectSub, zeroPossible));
+    }
+
+    @GetMapping("autoKeyword")
+    public ResponseEntity<List<AutoCompleteDto>> findAutoKeyword(
+            @RequestParam(value = "searchText", required = false) String searchText
+    ) throws Exception {
+        return ResponseEntity.ok(searchService.findAutoSearchKeyword(autoKeywordIndex, searchText));
     }
 }
