@@ -1,9 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
-import com.cho_co_song_i.yummy.yummy.dto.ServiceResponse;
-import com.cho_co_song_i.yummy.yummy.dto.StandardLoginBasicResDto;
-import com.cho_co_song_i.yummy.yummy.dto.StandardLoginDto;
-import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
+import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.entity.UserAuthTbl;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
@@ -36,11 +33,11 @@ public interface YummyLoginService {
 
     /**
      * Oauth2 를 통한 로그인 처리
-     * @param userNum
+     * @param userOAuthResponse
      * @param res
      * @return
      */
-    PublicStatus processOauthLogin(Long userNum, HttpServletResponse res);
+    PublicStatus processOauthLogin(UserOAuthResponse userOAuthResponse, HttpServletResponse res);
 
 
     /**

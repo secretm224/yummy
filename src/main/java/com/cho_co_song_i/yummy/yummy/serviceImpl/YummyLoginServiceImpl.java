@@ -222,13 +222,13 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public PublicStatus processOauthLogin(Long userNum, HttpServletResponse res) {
+    public PublicStatus processOauthLogin(UserOAuthResponse userOAuthResponse, HttpServletResponse res) {
 
         /* 1. 유저정보 조회 */
-        UserTbl user = findUserLoginInfoByNo(userNum);
+        UserTbl user = findUserLoginInfoByNo(userOAuthResponse.getUserNum());
 
         if (user == null) {
-            log.info("[YummyLoginService->oauthLogin][Login] No User: {}", userNum);
+            log.info("[YummyLoginService->oauthLogin][Login] No User: {}", userOAuthResponse.getUserNum());
             return PublicStatus.AUTH_ERROR;
         }
 

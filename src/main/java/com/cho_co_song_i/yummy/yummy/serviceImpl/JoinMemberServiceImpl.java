@@ -784,6 +784,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         /* Oauth id token & Login 채널 */
         String idToken = userService.getSubjectFromJwt(jwtRes);
         String loginChannel = userService.getClaimFromJwt(jwtRes, "oauthChannel", String.class);
+        // 여기서 pic url 정보도 넣어주면 좋을거같은데...?...위험하려나? -> Redis 에서 가져오는 처리도 괜찮을거 같아보임.
 
         if (!OauthChannelStatus.isValid(loginChannel)) {
             return PublicStatus.AUTH_ERROR;
@@ -797,6 +798,12 @@ public class JoinMemberServiceImpl implements JoinMamberService {
 
         /* idToken 유저와 매칭시켜서 디비에 저장해준다. */
         inputUserAuth(user, idToken, loginChannel);
+
+        /* 여기서 유저의 사진정보를 저장해줘야 할듯 -> idToken 을 가지고 데이터를 가져와주면 된다. */
+        if (loginChannel.equals("kakao")) {
+
+        }
+
 
         /* 그외 로그인 완료처리 진행... */
         yummyLoginServiceImpl.processCommonLogin(res, loginInfo);

@@ -4,6 +4,7 @@ import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
 import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserOAuthInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
+import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -17,12 +18,14 @@ public interface UserService {
     UserBasicInfoDto getUserBasicInfos(UserTbl user);
 
     /**
-     * 유저의 기본정보(Oauth)를 가져와주는 함수
-     * @param UserNo
+     * 프로필 사진 테이블을 update 또는 insert 해준다.
+     * @param userNo
      * @param userOAuthInfoDto
+     * @param loginChannel
      * @return
+     * @throws Exception
      */
-    UserBasicInfoDto getUserInfos(Long UserNo, UserOAuthInfoDto userOAuthInfoDto);
+    void modifyUserPic(Long userNo, UserOAuthInfoDto userOAuthInfoDto, OauthChannelStatus loginChannel) throws Exception;
 
     /**
      * Jwt 의 토큰을 검증하고 그 내부의 내용을 반환해주는 함수.

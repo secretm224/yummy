@@ -57,7 +57,7 @@ public class KakaoLoginServiceImpl implements LoginService {
     private final YummyLoginServiceImpl yummyLoginServiceImpl;
 
     /**
-     * 카카오 OAuth 인증과정에서 받은 code를 이용해서 access_token을 요청하고, 그 결과를 KakaoToken 으로 반환하는 메서드. test
+     * 카카오 OAuth 인증과정에서 받은 code를 이용해서 access_token을 요청하고, 그 결과를 KakaoToken 으로 반환하는 메서드.
      * @param code
      * @return
      */
@@ -122,15 +122,15 @@ public class KakaoLoginServiceImpl implements LoginService {
             return new UserOAuthResponse(PublicStatus.JOIN_TARGET_MEMBER, userToken, null);
         }
 
-        /* 회원 정보를 Redis 에 저장해주기 위함 */
-        Long userNo = userAuth.getId().getUserNo();
+        /* 연동한적이 있는 경우 처리 */
+        //Long userNo = userAuth.getId().getUserNo();
 
         /* 유저의 기본정보 */
-        UserBasicInfoDto userBasicInfo = userService.getUserInfos(userNo, userKakaoInfo);
+        //UserBasicInfoDto userBasicInfo = userService.getUserInfoAndModifyUserPic(userNo, userKakaoInfo, OauthChannelStatus.kakao);
 
         /* Redis 에 유저 정보 저장 */
-        String basicUserInfo = String.format("%s:%s", userInfoKey, userNo);
-        redisAdapter.set(basicUserInfo, userBasicInfo);
+        //String basicUserInfo = String.format("%s:%s", userInfoKey, userNo);
+        //redisAdapter.set(basicUserInfo, userBasicInfo);
 
         /* 연동 이력이 존재하는 경우 -> jwt 토큰 발급 */
         return new UserOAuthResponse(PublicStatus.SUCCESS, userToken, userAuth.getUser().getUserNo());
@@ -192,13 +192,17 @@ public class KakaoLoginServiceImpl implements LoginService {
 
         if (userOAuthResponse.getPublicStatus() == PublicStatus.SUCCESS) {
             /* Oauth2 인증 성공해서 유저 정보가 있는 경우 */
-            return yummyLoginServiceImpl.processOauthLogin(userOAuthResponse.getUserNum(), res);
+            /* 여기서 프로필 사진을 업데이트 시켜준다. -> 이미 연동한 유저이니까. */
+            return yummyLoginServiceImpl.processOauthLogin(userOAuthResponse, res);
         } else if (userOAuthResponse.getPublicStatus() == PublicStatus.JOIN_TARGET_MEMBER) {
             /*
              * 유저에게 신규 가입 또는 기존회원 연동 하게 시킴.
              * -> 임시 jwt 토큰 발급
              */
             generateTempOauthJwtCookie(userOAuthResponse.getIdToken(), res);
+
+            /* Redis에 Kakao 회원정보 임시저장 */
+
             return PublicStatus.JOIN_TARGET_MEMBER;
         } else {
             return PublicStatus.CASE_ERR;
