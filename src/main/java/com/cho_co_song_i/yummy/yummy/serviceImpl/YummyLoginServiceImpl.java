@@ -6,7 +6,7 @@ import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
-import com.cho_co_song_i.yummy.yummy.repository.UserTokenIdRepository;
+//import com.cho_co_song_i.yummy.yummy.repository.UserTokenIdRepository;
 import com.cho_co_song_i.yummy.yummy.service.JwtProviderService;
 import com.cho_co_song_i.yummy.yummy.service.UserService;
 import com.cho_co_song_i.yummy.yummy.service.YummyLoginService;
@@ -45,7 +45,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     private final JwtProviderService jwtProviderService;
     private final EventProducerServiceImpl eventProducerServiceImpl;
     private final JPAQueryFactory queryFactory;
-    private final UserTokenIdRepository userTokenIdRepository;
+    //private final UserTokenIdRepository userTokenIdRepository;
 
     /**
      * 로그인 - 유저가 임시비밀번호 발급을 했는지 확인 (비밀번호 찾기)
@@ -91,21 +91,21 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     }
 
     /**
-     * 로그인에 성공한 유제의 토큰 아이디를 디비에 넣어준다.
+     * 로그인에 성공한 유제의 토큰 아이디를 디비에 넣어준다. -> 이게 왜 필요한지 모르겠음...?
      * @param user
      * @param tokenId
      */
-    private void inputUserTokenId(UserTbl user, String tokenId) {
-        UserTokenIdTbl userTokenIdTbl = new UserTokenIdTbl();
-        userTokenIdTbl.setUser(user);
-
-        UserTokenIdTblId userTokenIdTblId = new UserTokenIdTblId(tokenId, user.getUserNo());
-        userTokenIdTbl.setId(userTokenIdTblId);
-        userTokenIdTbl.setRegDt(new Date());
-        userTokenIdTbl.setRegId("system");
-
-        userTokenIdRepository.save(userTokenIdTbl);
-    }
+//    private void inputUserTokenId(UserTbl user, String tokenId) {
+//        UserTokenIdTbl userTokenIdTbl = new UserTokenIdTbl();
+//        userTokenIdTbl.setUser(user);
+//
+//        UserTokenIdTblId userTokenIdTblId = new UserTokenIdTblId(tokenId, user.getUserNo());
+//        userTokenIdTbl.setId(userTokenIdTblId);
+//        userTokenIdTbl.setRegDt(new Date());
+//        userTokenIdTbl.setRegId("system");
+//
+//        userTokenIdRepository.save(userTokenIdTbl);
+//    }
 
     /**
      * 유저 정보 조회 - Redis 로부터 유저 정보를 조회해준다.
@@ -143,7 +143,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         return true;
     }
 
-    public void processCommonLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo) {
+    public void processCommonLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo, OauthChannelStatus loginChannel) throws Exception {
 
         /* 유저 정보 */
         UserTbl user = loginInfo.getUserTbl();
@@ -158,7 +158,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         String refreshToken = jwtProviderService.generateRefreshToken(userNoStr);
 
         /* 2. Refresh Token 을 Redis 에 넣어준다. && DB 에는 Tokenid 를 넣어준다. */
-        inputUserTokenId(user, tokenId);
+        // inputUserTokenId(user, tokenId);
         String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNoStr, tokenId);
         redisAdapter.set(refreshKey, refreshToken, Duration.ofDays(7));
 
@@ -167,7 +167,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
 
         /* 4. 기본적인 유저의 정보를 가져와준다. */
         /* 기본 회원 정보 - 브라우저 돌아다니면서 사용할 수 있는 정보 - private 한 정보같은건 넣으면 안된다. */
-        UserBasicInfoDto userBasicInfo = userService.getUserBasicInfos(user);
+        UserBasicInfoDto userBasicInfo = userService.getUserBasicInfos(user, loginChannel);
 
         /* 5. 기본 회원정보를 Redis 에 저장한다. */
         String basicUserInfo = String.format("%s:%s", userInfoKey, userNoStr);
@@ -222,15 +222,10 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public PublicStatus processOauthLogin(UserOAuthResponse userOAuthResponse, HttpServletResponse res) {
+    public PublicStatus processOauthLogin(UserOAuthResponse userOAuthResponse, HttpServletResponse res) throws Exception {
 
         /* 1. 유저정보 조회 */
-        UserTbl user = findUserLoginInfoByNo(userOAuthResponse.getUserNum());
-
-        if (user == null) {
-            log.info("[YummyLoginService->oauthLogin][Login] No User: {}", userOAuthResponse.getUserNum());
-            return PublicStatus.AUTH_ERROR;
-        }
+        UserTbl user = userOAuthResponse.getUserTbl();
 
         log.info("[YummyLoginService->oauthLogin][Login] Login successful: {}", user.getUserId());
 
@@ -240,7 +235,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         StandardLoginBasicResDto loginRes = new StandardLoginBasicResDto(PublicStatus.SUCCESS, user, tempUserYn);
 
         /* 3. 로그인 처리 */
-        processCommonLogin(res, loginRes);
+        processCommonLogin(res, loginRes, userOAuthResponse.getLoginChannel());
 
         return PublicStatus.SUCCESS;
     }
@@ -258,7 +253,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
             return PublicStatus.AUTH_ERROR;
         }
 
-        processCommonLogin(res, loginRes);
+        processCommonLogin(res, loginRes, OauthChannelStatus.standard);
 
         return PublicStatus.SUCCESS;
     }

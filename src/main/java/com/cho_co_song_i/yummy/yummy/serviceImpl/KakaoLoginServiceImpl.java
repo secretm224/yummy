@@ -6,9 +6,14 @@ import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserOAuthInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserOAuthResponse;
 import com.cho_co_song_i.yummy.yummy.entity.UserAuthTbl;
+import com.cho_co_song_i.yummy.yummy.entity.UserPictureTbl;
+import com.cho_co_song_i.yummy.yummy.entity.UserPictureTblId;
+import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
+import com.cho_co_song_i.yummy.yummy.repository.UserPictureRepository;
+import com.cho_co_song_i.yummy.yummy.repository.UserRepository;
 import com.cho_co_song_i.yummy.yummy.service.JwtProviderService;
 import com.cho_co_song_i.yummy.yummy.service.LoginService;
 import com.cho_co_song_i.yummy.yummy.service.UserService;
@@ -20,12 +25,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Date;
 import java.util.Map;
+import java.util.Optional;
 
 import static com.cho_co_song_i.yummy.yummy.utils.JwtUtil.decodeJwtPayload;
 
@@ -55,6 +63,8 @@ public class KakaoLoginServiceImpl implements LoginService {
     private final JwtProviderService jwtProviderService;
     private final EventProducerServiceImpl eventProducerServiceImpl;
     private final YummyLoginServiceImpl yummyLoginServiceImpl;
+    private final UserPictureRepository userPictureRepository;
+    private final UserRepository userRepository;
 
     /**
      * 카카오 OAuth 인증과정에서 받은 code를 이용해서 access_token을 요청하고, 그 결과를 KakaoToken 으로 반환하는 메서드.
@@ -113,27 +123,33 @@ public class KakaoLoginServiceImpl implements LoginService {
      */
     private UserOAuthResponse getOauthLoginInfo(String code) throws Exception {
         /* User 정보 */
-        UserOAuthInfoDto userKakaoInfo = exchangeCodeForKakaoUser(code);
-        String userToken = userKakaoInfo.getUserTokenId();
-        UserAuthTbl userAuth = yummyLoginServiceImpl.getUserAuthTbl(userToken, OauthChannelStatus.kakao);
+        UserOAuthInfoDto userOAuthInfoDto = exchangeCodeForKakaoUser(code);
+        UserAuthTbl userAuth = yummyLoginServiceImpl.getUserAuthTbl(userOAuthInfoDto.getUserTokenId(), OauthChannelStatus.kakao);
 
         if (userAuth == null) {
             /* 연동한적이 없거나, 가입하지 않은 경우 -> 가입유도 or 기존 아이디에 oauth2 추가 */
-            return new UserOAuthResponse(PublicStatus.JOIN_TARGET_MEMBER, userToken, null);
+            return new UserOAuthResponse(
+                    PublicStatus.JOIN_TARGET_MEMBER,
+                    userOAuthInfoDto,
+                    OauthChannelStatus.kakao,
+                    null);
         }
 
-        /* 연동한적이 있는 경우 처리 */
-        //Long userNo = userAuth.getId().getUserNo();
+        /* 연동 이력이 존재하는 경우 */
+        Long userNo = userAuth.getId().getUserNo();
 
-        /* 유저의 기본정보 */
-        //UserBasicInfoDto userBasicInfo = userService.getUserInfoAndModifyUserPic(userNo, userKakaoInfo, OauthChannelStatus.kakao);
+        UserTbl userTbl = userRepository.findById(userNo)
+                .orElseThrow(()-> new Exception(
+                        String.format(
+                                "[Error][UserService->getUserInfoAndModifyUserPic] This user does not exist. userNo: %d",
+                                userNo)
+                ));
 
-        /* Redis 에 유저 정보 저장 */
-        //String basicUserInfo = String.format("%s:%s", userInfoKey, userNo);
-        //redisAdapter.set(basicUserInfo, userBasicInfo);
-
-        /* 연동 이력이 존재하는 경우 -> jwt 토큰 발급 */
-        return new UserOAuthResponse(PublicStatus.SUCCESS, userToken, userAuth.getUser().getUserNo());
+        return new UserOAuthResponse(
+                PublicStatus.SUCCESS,
+                userOAuthInfoDto,
+                OauthChannelStatus.kakao,
+                userTbl);
     }
 
     /**
@@ -169,6 +185,38 @@ public class KakaoLoginServiceImpl implements LoginService {
         return new UserOAuthInfoDto(userTokenId, nickName, userPicture);
     }
 
+    /**
+     * 유저의 프로필 사진 정보를 업데이트 해주는 함수 -> 기존에 연동만 되고 없을 수 있으니 insert 도 추가해야 함
+     * @param userTbl
+     * @param picUrl
+     * @throws Exception
+     */
+    private void modifyUserPictureTbl(UserTbl userTbl, String picUrl) throws Exception {
+        String channel = OauthChannelStatus.kakao.toString();
+        UserPictureTblId userPictureTblId = new UserPictureTblId(userTbl.getUserNo(), channel);
+
+        UserPictureTbl userPictureTbl = userPictureRepository.findById(userPictureTblId)
+                .orElseGet(() -> {
+                    UserPictureTbl newEntry = new UserPictureTbl();
+                    newEntry.setId(userPictureTblId);
+                    newEntry.setRegDt(new Date());
+                    newEntry.setRegId("system");
+                    newEntry.setUser(userTbl);
+                    return newEntry;
+                });
+
+        Date now = new Date();
+        userPictureTbl.setPicUrl(picUrl);
+        userPictureTbl.setActiveYn('Y');
+
+        if (userPictureTbl.getRegDt() != null) {
+            userPictureTbl.setChgDt(now);
+            userPictureTbl.setChgId("system");
+        }
+
+        userPictureRepository.save(userPictureTbl);
+    }
+
 
     /**
      * 회원이 oauth2 를 통해 기존아이디 통합 또는 회원가입을 위해 임시 jwt 쿠키를 발급해준다.
@@ -181,6 +229,7 @@ public class KakaoLoginServiceImpl implements LoginService {
         CookieUtil.addCookie(res, "yummy-oauth-token", jwtToken, 300);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public PublicStatus handleOAuthLogin(OauthLoginDto loginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
 
@@ -193,13 +242,17 @@ public class KakaoLoginServiceImpl implements LoginService {
         if (userOAuthResponse.getPublicStatus() == PublicStatus.SUCCESS) {
             /* Oauth2 인증 성공해서 유저 정보가 있는 경우 */
             /* 여기서 프로필 사진을 업데이트 시켜준다. -> 이미 연동한 유저이니까. */
+            modifyUserPictureTbl(
+                    userOAuthResponse.getUserTbl(),
+                    userOAuthResponse.getUserOAuthInfoDto().getUserPicture());
+
             return yummyLoginServiceImpl.processOauthLogin(userOAuthResponse, res);
         } else if (userOAuthResponse.getPublicStatus() == PublicStatus.JOIN_TARGET_MEMBER) {
             /*
              * 유저에게 신규 가입 또는 기존회원 연동 하게 시킴.
              * -> 임시 jwt 토큰 발급
              */
-            generateTempOauthJwtCookie(userOAuthResponse.getIdToken(), res);
+            generateTempOauthJwtCookie(userOAuthResponse.getUserOAuthInfoDto().getUserTokenId(), res);
 
             /* Redis에 Kakao 회원정보 임시저장 */
 

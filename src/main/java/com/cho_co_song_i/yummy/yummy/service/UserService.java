@@ -11,22 +11,24 @@ import jakarta.servlet.http.HttpServletResponse;
 public interface UserService {
 
     /**
-     * 유저의 기본 회원 정보. -> 뭔가 추가할게 있다면 여기랑 아래의 convertUserToBasicInfo 함수를 추가해주면 된다.
+     * Redis 에 저장할 유저의 기본 정보
      * @param user
-     * @return
-     */
-    UserBasicInfoDto getUserBasicInfos(UserTbl user);
-
-    /**
-     * 프로필 사진 테이블을 update 또는 insert 해준다.
-     * @param userNo
-     * @param userOAuthInfoDto
-     * @param loginChannel
+     * @param oauthChannelStatus
      * @return
      * @throws Exception
      */
-    void modifyUserPic(Long userNo, UserOAuthInfoDto userOAuthInfoDto, OauthChannelStatus loginChannel) throws Exception;
+    UserBasicInfoDto getUserBasicInfos(UserTbl user, OauthChannelStatus oauthChannelStatus) throws Exception;
 
+//    /**
+//     * 프로필 사진 테이블을 update 또는 insert 해준다.
+//     * @param userNo
+//     * @param userOAuthInfoDto
+//     * @param loginChannel
+//     * @return
+//     * @throws Exception
+//     */
+//    void modifyUserPic(Long userNo, UserOAuthInfoDto userOAuthInfoDto, OauthChannelStatus loginChannel) throws Exception;
+    
     /**
      * Jwt 의 토큰을 검증하고 그 내부의 내용을 반환해주는 함수.
      * - 만료된 토큰이거나, 위조된 토큰인 경우 삭제도 병행함.

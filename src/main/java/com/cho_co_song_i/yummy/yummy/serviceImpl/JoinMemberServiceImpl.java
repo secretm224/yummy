@@ -806,7 +806,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
 
 
         /* 그외 로그인 완료처리 진행... */
-        yummyLoginServiceImpl.processCommonLogin(res, loginInfo);
+        yummyLoginServiceImpl.processCommonLogin(res, loginInfo, OauthChannelStatus.valueOf(loginChannel));
 
         /* Oauth 유저 연동을 위한 임시 jwt 쿠키 제거 */
         CookieUtil.clearCookie(res, "yummy-oauth-token");

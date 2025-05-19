@@ -14,8 +14,10 @@ public interface YummyLoginService {
      * Oauth2 / Standard Login 공통 처리 함수
      * @param res
      * @param loginInfo
+     * @param loginChannel
+     * @throws Exception
      */
-    void processCommonLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo);
+    void processCommonLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo, OauthChannelStatus loginChannel) throws Exception;
 
     /**
      * 유저의 로그아웃을 위해서 로그인관련 인증 토큰을 다 제거해주는 함수
@@ -36,8 +38,9 @@ public interface YummyLoginService {
      * @param userOAuthResponse
      * @param res
      * @return
+     * @throws Exception
      */
-    PublicStatus processOauthLogin(UserOAuthResponse userOAuthResponse, HttpServletResponse res);
+    PublicStatus processOauthLogin(UserOAuthResponse userOAuthResponse, HttpServletResponse res) throws Exception;
 
 
     /**
