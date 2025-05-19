@@ -107,7 +107,7 @@ public class JoinMemberController {
      */
     @PostMapping("/VerificationEmailCode")
     @ResponseBody
-    public PublicStatus GetVerificationCode(@RequestParam("userEmail") String userEmail) throws Exception {
+    public PublicStatus getVerificationCode(@RequestParam("userEmail") String userEmail) throws Exception {
         return joinMamberService.generateVerificationCode(userEmail);
     }
 
@@ -120,7 +120,7 @@ public class JoinMemberController {
      */
     @PostMapping("/CheckVerificationCode")
     @ResponseBody
-    public PublicStatus CheckVerificationCode(@RequestParam("userEmail") String userEmail,
+    public PublicStatus checkVerificationCode(@RequestParam("userEmail") String userEmail,
                                               @RequestParam("code") int code) throws Exception{
         return joinMamberService.checkVerificationCode(userEmail,code);
     }
