@@ -454,6 +454,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
      * @return
      */
     private Boolean isValidUserPhoneNumberFormat(String phoneNumber) {
+
         if (phoneNumber == null || phoneNumber.isEmpty()) {
             return false;
         }
@@ -518,12 +519,10 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         String oauthToken = CookieUtil.getCookieValue(req, "yummy-oauth-token");
 
         if (oauthToken != null) {
-
             JwtValidationResult jwtResult = userService.validateJwtAndCleanIfInvalid("yummy-oauth-token", res, req);
 
             if (jwtResult.getStatus() == JwtValidationStatus.SUCCESS) {
-                /* ==== JWT 검증 성공 ==== */
-
+                /* ============ JWT 검증 성공 ============ */
                 /* oauth2 토큰 아이디 */
                 String idToken = jwtResult.getClaims().getSubject();
 
@@ -784,10 +783,13 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         /* 휴대전화번호 검사 */
         PublicStatus checkUserPhoneNumber = isValidUserPhoneNumber(joinMemberDto.getPhoneNumber());
         if (checkUserPhoneNumber != PublicStatus.SUCCESS) {
-            return PublicStatus.PHONE_DUPLICATED;
+            return checkUserPhoneNumber;
         }
 
-        /* 신규회원 저장 */
+        /* 신규회원 저장
+        * 여기서 Oauth 연결인지 부터 확인하고 가야할듯
+        * 쿠키시간이 만료되면 그냥 없어져버림 (이렇게 되면 그냥 회원가입만 되서 고객입장에서 난감할 수 있음)
+        * */
         return validateOauthAndInputUser(res, req, joinMemberDto);
     }
 
@@ -807,7 +809,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         JwtValidationResult jwtRes = userService.validateJwtAndCleanIfInvalid("yummy-oauth-token", res, req);
 
         if (jwtRes.getStatus() != JwtValidationStatus.SUCCESS) {
-            return PublicStatus.AUTH_ERROR;
+            return PublicStatus.REJOIN_CHECK;
         }
 
         /* Oauth id token & Login 채널 */

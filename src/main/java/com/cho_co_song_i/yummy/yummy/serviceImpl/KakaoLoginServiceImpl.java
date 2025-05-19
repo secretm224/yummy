@@ -228,7 +228,7 @@ public class KakaoLoginServiceImpl implements LoginService {
     @Override
     public void generateTempOauthJwtCookie(String idToken, HttpServletResponse res) {
         String jwtToken = jwtProviderService.generateOauthTempToken(idToken, String.valueOf(OauthChannelStatus.kakao));
-        CookieUtil.addCookie(res, "yummy-oauth-token", jwtToken, 300);
+        CookieUtil.addCookie(res, "yummy-oauth-token", jwtToken, 3600);
     }
 
     @Transactional(rollbackFor = Exception.class)
