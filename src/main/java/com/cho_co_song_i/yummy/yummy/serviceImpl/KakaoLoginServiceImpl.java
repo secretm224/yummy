@@ -56,6 +56,8 @@ public class KakaoLoginServiceImpl implements LoginService {
     private String kakaoUserInfoPrefix;
     @Value("${spring.redis.login.user_info}")
     private String userInfoKey;
+    @Value("${spring.redis.oauth-temp-info}")
+    private String oauthTempInfo;
 
     private final RestTemplate restTemplate;
     private final RedisAdapter redisAdapter;
@@ -254,7 +256,11 @@ public class KakaoLoginServiceImpl implements LoginService {
              */
             generateTempOauthJwtCookie(userOAuthResponse.getUserOAuthInfoDto().getUserTokenId(), res);
 
-            /* Redis에 Kakao 회원정보 임시저장 */
+            /* Redis에 Kakao 회원정보 임시저장 -> 토큰 아이디, 프로필 사진, 닉네임 등 임시적으로 저장해준다. */
+            redisAdapter.set(
+                    String.format("%s:%s", oauthTempInfo, userOAuthResponse.getUserOAuthInfoDto().getUserTokenId()),
+                    userOAuthResponse.getUserOAuthInfoDto()
+            );
 
             return PublicStatus.JOIN_TARGET_MEMBER;
         } else {

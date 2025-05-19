@@ -19,16 +19,6 @@ public interface UserService {
      */
     UserBasicInfoDto getUserBasicInfos(UserTbl user, OauthChannelStatus oauthChannelStatus) throws Exception;
 
-//    /**
-//     * 프로필 사진 테이블을 update 또는 insert 해준다.
-//     * @param userNo
-//     * @param userOAuthInfoDto
-//     * @param loginChannel
-//     * @return
-//     * @throws Exception
-//     */
-//    void modifyUserPic(Long userNo, UserOAuthInfoDto userOAuthInfoDto, OauthChannelStatus loginChannel) throws Exception;
-    
     /**
      * Jwt 의 토큰을 검증하고 그 내부의 내용을 반환해주는 함수.
      * - 만료된 토큰이거나, 위조된 토큰인 경우 삭제도 병행함.
@@ -55,4 +45,12 @@ public interface UserService {
      * @param <T>
      */
     <T> T getClaimFromJwt(JwtValidationResult jwtValidationResult, String claimName, Class<T> clazz);
+
+    /**
+     * UserPictureTbl 유저 프로필 정보를 저장해주는 함수
+     * @param userTbl
+     * @param oauthChannelStatus
+     * @param picUrl
+     */
+    void inputUserPictureTbl(UserTbl userTbl, OauthChannelStatus oauthChannelStatus, String picUrl);
 }

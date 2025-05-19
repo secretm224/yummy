@@ -13,6 +13,7 @@ import com.cho_co_song_i.yummy.yummy.service.UserService;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
 import com.cho_co_song_i.yummy.yummy.utils.PasswdUtil;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -54,8 +55,12 @@ public class JoinMemberServiceImpl implements JoinMamberService {
 
     @PersistenceContext
     private final EntityManager entityManager;
+
     @Value("${spring.redis.refresh-key-prefix}")
     private String refreshKeyPrefix;
+
+    @Value("${spring.redis.oauth-temp-info}")
+    private String oauthTempInfo;
 
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus connectExistUser(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
@@ -479,10 +484,10 @@ public class JoinMemberServiceImpl implements JoinMamberService {
      * @param idToken
      * @param oauthChannel
      */
-    private void inputUserAuth(UserTbl userTbl, String idToken, String oauthChannel) {
+    private void inputUserAuth(UserTbl userTbl, String idToken, OauthChannelStatus oauthChannel) {
         /* oauth2 정보 저장 */
         UserAuthTbl userAuthTbl = new UserAuthTbl();
-        UserAuthTblId userAuthTblId = new UserAuthTblId(userTbl.getUserNo(), oauthChannel, idToken);
+        UserAuthTblId userAuthTblId = new UserAuthTblId(userTbl.getUserNo(), oauthChannel.toString(), idToken);
         userAuthTbl.setUser(userTbl);
         userAuthTbl.setId(userAuthTblId);
         userAuthTbl.setReg_dt(new Date());
@@ -515,15 +520,24 @@ public class JoinMemberServiceImpl implements JoinMamberService {
                 String idToken = jwtResult.getClaims().getSubject();
 
                 /* oauth2 채널 - 카카오,네이버,구글...등등 */
-                String oauthChannel = jwtResult.getClaims().get("oauthChannel", String.class);
-
-                /* oauth2 채널 필터가 필요할듯...?*/
+                OauthChannelStatus oauthChannel = OauthChannelStatus.valueOf(
+                        jwtResult.getClaims().get("oauthChannel", String.class));
 
                 /* user 정보부터 저장 */
                 UserTbl joinUser = createJoinUser(joinMemberDto);
 
                 /* oauth2 정보도 저장 */
                 inputUserAuth(joinUser, idToken, oauthChannel);
+
+                /* 유저 프로필 사진정보 저장 */
+                String redisKeyFormat = String.format("%s:%s", oauthTempInfo, idToken);
+                UserOAuthInfoDto userOAuthInfoDto = redisAdapter
+                        .getValue(
+                                redisKeyFormat,
+                                new TypeReference<UserOAuthInfoDto>() {});
+
+                userService.inputUserPictureTbl(joinUser, oauthChannel, userOAuthInfoDto.getUserPicture());
+                redisAdapter.deleteKey(redisKeyFormat);
 
                 CookieUtil.clearCookie(res, "yummy-oauth-token");
 
@@ -545,13 +559,13 @@ public class JoinMemberServiceImpl implements JoinMamberService {
      * @param loginChannel
      * @return
      */
-    private boolean isUserAuthChannelNotExists(Long userNo, String loginChannel) {
+    private boolean isUserAuthChannelNotExists(Long userNo, OauthChannelStatus loginChannel) {
 
         Integer result = queryFactory
                 .selectOne()
                 .from(userAuthTbl)
                 .where(
-                        userAuthTbl.id.loginChannel.eq(loginChannel),
+                        userAuthTbl.id.loginChannel.eq(loginChannel.toString()),
                         userAuthTbl.id.userNo.eq(userNo)
                 )
                 .fetchFirst();
@@ -783,12 +797,9 @@ public class JoinMemberServiceImpl implements JoinMamberService {
 
         /* Oauth id token & Login 채널 */
         String idToken = userService.getSubjectFromJwt(jwtRes);
-        String loginChannel = userService.getClaimFromJwt(jwtRes, "oauthChannel", String.class);
-        // 여기서 pic url 정보도 넣어주면 좋을거같은데...?...위험하려나? -> Redis 에서 가져오는 처리도 괜찮을거 같아보임.
+        OauthChannelStatus loginChannel = OauthChannelStatus.valueOf(
+                userService.getClaimFromJwt(jwtRes, "oauthChannel", String.class));
 
-        if (!OauthChannelStatus.isValid(loginChannel)) {
-            return PublicStatus.AUTH_ERROR;
-        }
 
         /* Oauth 채널당 하나의 아이디만 연동이 가능함. -> 해당 부분을 확인해주는 로직 */
         boolean userOauthCheck = isUserAuthChannelNotExists(user.getUserNo(), loginChannel);
@@ -800,13 +811,19 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         inputUserAuth(user, idToken, loginChannel);
 
         /* 여기서 유저의 사진정보를 저장해줘야 할듯 -> idToken 을 가지고 데이터를 가져와주면 된다. */
-        if (loginChannel.equals("kakao")) {
+        String redisKeyFormat = String.format("%s:%s", oauthTempInfo, idToken);
 
-        }
+        UserOAuthInfoDto userOAuthInfoDto = redisAdapter
+                .getValue(
+                        redisKeyFormat,
+                        new TypeReference<UserOAuthInfoDto>() {});
 
+        userService.inputUserPictureTbl(user, loginChannel, userOAuthInfoDto.getUserPicture());
+
+        redisAdapter.deleteKey(redisKeyFormat);
 
         /* 그외 로그인 완료처리 진행... */
-        yummyLoginServiceImpl.processCommonLogin(res, loginInfo, OauthChannelStatus.valueOf(loginChannel));
+        yummyLoginServiceImpl.processCommonLogin(res, loginInfo, loginChannel);
 
         /* Oauth 유저 연동을 위한 임시 jwt 쿠키 제거 */
         CookieUtil.clearCookie(res, "yummy-oauth-token");

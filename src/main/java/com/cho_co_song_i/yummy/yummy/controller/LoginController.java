@@ -82,7 +82,6 @@ public class LoginController {
         return ResponseEntity.noContent().build();
     }
 
-
     /**
      * 로그인을 체크해주는 함수
      * @param res

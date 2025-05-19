@@ -6,7 +6,6 @@ import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
-//import com.cho_co_song_i.yummy.yummy.repository.UserTokenIdRepository;
 import com.cho_co_song_i.yummy.yummy.service.JwtProviderService;
 import com.cho_co_song_i.yummy.yummy.service.UserService;
 import com.cho_co_song_i.yummy.yummy.service.YummyLoginService;
@@ -23,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
-import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -158,7 +156,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         String refreshToken = jwtProviderService.generateRefreshToken(userNoStr);
 
         /* 2. Refresh Token 을 Redis 에 넣어준다. && DB 에는 Tokenid 를 넣어준다. */
-        // inputUserTokenId(user, tokenId);
+        // inputUserTokenId(user, tokenId); -> 이거 왜 있는지 모르겠음...
         String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNoStr, tokenId);
         redisAdapter.set(refreshKey, refreshToken, Duration.ofDays(7));
 
@@ -194,6 +192,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     private void test() {
         throw new RuntimeException("일부러");
     }
+
 
     public StandardLoginBasicResDto verifyLoginUserInfo(StandardLoginDto standardLoginDto) throws Exception {
 
