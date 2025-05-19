@@ -750,6 +750,12 @@ public class JoinMemberServiceImpl implements JoinMamberService {
             return checkEmail;
         }
 
+        String  verifiedKey = String.format("%s:%s",redisJoinEmailVerifiedYN,joinMemberDto.getEmail());
+        Object value = redisAdapter.get(verifiedKey);
+        if(value == null ||(value != null && !("Y".equals(value.toString())))){
+            return PublicStatus.EMAIL_NOT_VERIFIED;
+        }
+
         /* 이름 검사 */
         boolean checkUserName = isValidUserName(joinMemberDto.getName());
         if (!checkUserName) {
