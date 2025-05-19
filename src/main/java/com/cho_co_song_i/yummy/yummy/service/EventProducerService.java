@@ -25,4 +25,11 @@ public interface EventProducerService {
      */
     void produceUserIdInfo(String userId, String userEmail) throws Exception;
 
+    /**
+     * 회원가입시 이메일 검증코드 발송
+     * @param userEmail
+     * @param EmailCode
+     * @throws Exception
+     */
+    void produceJoinEmailCode(String userEmail , String EmailCode) throws Exception;
 }

@@ -99,5 +99,29 @@ public class JoinMemberController {
         return ResponseEntity.ok(joinMamberService.linkMemberByOauth(standardLoginDto, res, req));
     }
 
+    /**
+     * 회원가입 인증코드 발송
+     * @param userEmail
+     * @return
+     * @throws Exception
+     */
+    @PostMapping("/verificationEmailCode")
+    @ResponseBody
+    public PublicStatus getVerificationCode(@RequestParam("userEmail") String userEmail) throws Exception {
+        return joinMamberService.generateVerificationCode(userEmail);
+    }
 
+    /**
+     * 회원가입인증코드검증
+     * @param userEmail
+     * @param code
+     * @return
+     * @throws Exception
+     */
+    @PostMapping("/checkVerificationCode")
+    @ResponseBody
+    public PublicStatus checkVerificationCode(@RequestParam("userEmail") String userEmail,
+                                              @RequestParam("code") int code) throws Exception{
+        return joinMamberService.checkVerificationCode(userEmail,code);
+    }
 }
