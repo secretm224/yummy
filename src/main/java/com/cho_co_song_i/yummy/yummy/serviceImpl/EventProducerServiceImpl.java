@@ -32,6 +32,9 @@ public class EventProducerServiceImpl implements EventProducerService {
     @Value("${spring.topic.kafka.find-user-pw-info}")
     private String findPwTopic;
 
+    @Value("${spring.topic.kafka.login-join-emailcode}")
+    private String topicJoinEmailCode;
+
     private final KafkaAdapter kafkaAdapter;
 
     public void produceLoginAttemptEvent(HttpServletRequest req) throws Exception {
@@ -61,12 +64,12 @@ public class EventProducerServiceImpl implements EventProducerService {
 
     //dev-yummy-join-hist
     //yummy-join-hist
-    public void produceJoinEmailCode(String userEmail , String EmailCode) throws Exception{
-        kafkaAdapter.sendMessageJson("dev-yummy-join-hist",
+    public void produceJoinEmailCode(String userEmail , String emailCode) throws Exception{
+        kafkaAdapter.sendMessageJson(topicJoinEmailCode,
                                      new JoinEmailCodeDto(
                                              LocalDateTime.now(),
                                              userEmail,
-                                             EmailCode
+                                             emailCode
                                      ));
     }
 

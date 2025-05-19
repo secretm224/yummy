@@ -14,5 +14,5 @@ public class JoinEmailCodeDto {
     @Builder.Default
     private LocalDateTime now = LocalDateTime.now();
     private String userEmail;
-    private String EmailCode;
+    private String emailCode;
 }

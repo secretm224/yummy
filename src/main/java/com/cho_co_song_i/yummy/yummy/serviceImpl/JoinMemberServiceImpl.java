@@ -56,8 +56,15 @@ public class JoinMemberServiceImpl implements JoinMamberService {
 
     @PersistenceContext
     private final EntityManager entityManager;
+
     @Value("${spring.redis.refresh-key-prefix}")
     private String refreshKeyPrefix;
+
+    @Value("${spring.redis.join-email-code=dev:join:email_code}")
+    private String redisJoinEmailCode;
+
+    @Value("${spring.redis.email-verified=dev:email:verified}")
+    private String redisJoinEmailVerifiedYN;
 
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus connectExistUser(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
@@ -226,10 +233,10 @@ public class JoinMemberServiceImpl implements JoinMamberService {
      * @param email
      */
     private void inputUserEmail(UserTbl user, String email) {
-        UserEmailTblId userEmailTblId = new UserEmailTblId(user.getUserNo(), email);
         UserEmailTbl userEmailTbl = new UserEmailTbl();
         userEmailTbl.setUser(user);
-        userEmailTbl.setId(userEmailTblId);
+        userEmailTbl.setUserNo(user.getUserNo());
+        userEmailTbl.setUserEmailAddress(email);
         userEmailTbl.setRegDt(new Date());
         userEmailTbl.setRegId("system");
         userEmailTbl.setChgDt(null);
@@ -809,26 +816,18 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         return PublicStatus.SUCCESS;
     }
 
-    public PublicStatus generateVerificationCode(String userEmail) throws Exception{
-        String code = String.format("%06d", new Random().nextInt(999999)); // 6자리 숫자
+    public PublicStatus generateVerificationCode(String userEmail) throws Exception {
+        //6자리 숫자 이메일 검증 코드 발급 
+        String code = String.format("%06d", new Random().nextInt(999999)); 
 
         if(!code.isEmpty()){
-            String prifix = "dev:join:email_code";
-            String key = String.format("%s:%s:%s",prifix,userEmail,code);
-
-            System.out.println("[DEBUG] Redis Key: " + key);
-
-            //eventProducerServiceImpl.produceJoinEmailCode(userEmail,code);
-            eventProducerServiceImpl.produceUserTempPw("", userEmail, code);
-
-
+            //발급된 코드 정보를 e-mail 정보와 함께 key 생성 후 이메일 발송
+            String key = String.format("%s:%s:%s",redisJoinEmailCode,userEmail,code);
+            eventProducerServiceImpl.produceJoinEmailCode(userEmail,code);
+            //이메일 발송 후 3분 유효 기간으로 코드 정보 저장
             boolean isVerifcationCode = redisAdapter.set(key,
-                    code,
-                    Duration.ofMinutes(3));
-
-//          String value = redisAdapter.get(codekey).toString();
-//          System.out.println("[DEBUG] Redis Value: " + value);
-
+                                                         code,
+                                                         Duration.ofMinutes(3));
             if(isVerifcationCode)
                 return PublicStatus.SUCCESS;
             else
@@ -843,18 +842,23 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         if(userEmail.isEmpty() || code <=0){
             return PublicStatus.EMAIL_ERR;
         }
-
-        String prifix = "dev:join:email_code";
-        String key = String.format("%s:%s:%s",prifix,userEmail,code);
+        /*
+           코드 유효성 검증 추가
+           이메일 , 코드 정보로 저장된 데이터가 있는지 확인
+        */
+        String key = String.format("%s:%s:%s",redisJoinEmailCode,userEmail,code);
         Object value = redisAdapter.get(key);
 
         if(value != null){
-
-            String  verifiedPrifix = "email:verified:";
-            String  verifiedKey = String.format("%s:%s",verifiedPrifix,userEmail);
+            /*
+                저장 된 코드 값이 있으면 유효한 인증으로 판단하고 인증 여부 기록
+                30분의 인증 여유 기간이 있으며 회원 가입 유효 기간으로 판단
+                인증 완료 후 30분이 지나면 재 인증 시도 진행
+            */
+            String  verifiedKey = String.format("%s:%s",redisJoinEmailVerifiedYN,userEmail);
             boolean isverifieded = redisAdapter.set(verifiedKey,
-                    "Y",
-                    Duration.ofMinutes(30));
+                                              "Y",
+                                                    Duration.ofMinutes(30));
             if(isverifieded)
                 return PublicStatus.SUCCESS;
             else
