@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -60,11 +61,14 @@ public class JoinMemberServiceImpl implements JoinMamberService {
     @Value("${spring.redis.refresh-key-prefix}")
     private String refreshKeyPrefix;
 
-    @Value("${spring.redis.join-email-code=dev:join:email_code}")
+    @Value("${spring.redis.join-email-code}")
     private String redisJoinEmailCode;
 
-    @Value("${spring.redis.email-verified=dev:email:verified}")
+    @Value("${spring.redis.email-verified}")
     private String redisJoinEmailVerifiedYN;
+
+    @Value("${spring.redis.oauth-temp-info}")
+    private String oauthTempInfo;
 
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus connectExistUser(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
@@ -488,10 +492,10 @@ public class JoinMemberServiceImpl implements JoinMamberService {
      * @param idToken
      * @param oauthChannel
      */
-    private void inputUserAuth(UserTbl userTbl, String idToken, String oauthChannel) {
+    private void inputUserAuth(UserTbl userTbl, String idToken, OauthChannelStatus oauthChannel) {
         /* oauth2 정보 저장 */
         UserAuthTbl userAuthTbl = new UserAuthTbl();
-        UserAuthTblId userAuthTblId = new UserAuthTblId(userTbl.getUserNo(), oauthChannel, idToken);
+        UserAuthTblId userAuthTblId = new UserAuthTblId(userTbl.getUserNo(), oauthChannel.toString(), idToken);
         userAuthTbl.setUser(userTbl);
         userAuthTbl.setId(userAuthTblId);
         userAuthTbl.setReg_dt(new Date());
@@ -524,15 +528,24 @@ public class JoinMemberServiceImpl implements JoinMamberService {
                 String idToken = jwtResult.getClaims().getSubject();
 
                 /* oauth2 채널 - 카카오,네이버,구글...등등 */
-                String oauthChannel = jwtResult.getClaims().get("oauthChannel", String.class);
-
-                /* oauth2 채널 필터가 필요할듯...?*/
+                OauthChannelStatus oauthChannel = OauthChannelStatus.valueOf(
+                        jwtResult.getClaims().get("oauthChannel", String.class));
 
                 /* user 정보부터 저장 */
                 UserTbl joinUser = createJoinUser(joinMemberDto);
 
                 /* oauth2 정보도 저장 */
                 inputUserAuth(joinUser, idToken, oauthChannel);
+
+                /* 유저 프로필 사진정보 저장 */
+                String redisKeyFormat = String.format("%s:%s", oauthTempInfo, idToken);
+                UserOAuthInfoDto userOAuthInfoDto = redisAdapter
+                        .getValue(
+                                redisKeyFormat,
+                                new TypeReference<UserOAuthInfoDto>() {});
+
+                userService.inputUserPictureTbl(joinUser, oauthChannel, userOAuthInfoDto.getUserPicture());
+                redisAdapter.deleteKey(redisKeyFormat);
 
                 CookieUtil.clearCookie(res, "yummy-oauth-token");
 
@@ -554,13 +567,13 @@ public class JoinMemberServiceImpl implements JoinMamberService {
      * @param loginChannel
      * @return
      */
-    private boolean isUserAuthChannelNotExists(Long userNo, String loginChannel) {
+    private boolean isUserAuthChannelNotExists(Long userNo, OauthChannelStatus loginChannel) {
 
         Integer result = queryFactory
                 .selectOne()
                 .from(userAuthTbl)
                 .where(
-                        userAuthTbl.id.loginChannel.eq(loginChannel),
+                        userAuthTbl.id.loginChannel.eq(loginChannel.toString()),
                         userAuthTbl.id.userNo.eq(userNo)
                 )
                 .fetchFirst();
@@ -792,11 +805,9 @@ public class JoinMemberServiceImpl implements JoinMamberService {
 
         /* Oauth id token & Login 채널 */
         String idToken = userService.getSubjectFromJwt(jwtRes);
-        String loginChannel = userService.getClaimFromJwt(jwtRes, "oauthChannel", String.class);
+        OauthChannelStatus loginChannel = OauthChannelStatus.valueOf(
+                userService.getClaimFromJwt(jwtRes, "oauthChannel", String.class));
 
-        if (!OauthChannelStatus.isValid(loginChannel)) {
-            return PublicStatus.AUTH_ERROR;
-        }
 
         /* Oauth 채널당 하나의 아이디만 연동이 가능함. -> 해당 부분을 확인해주는 로직 */
         boolean userOauthCheck = isUserAuthChannelNotExists(user.getUserNo(), loginChannel);
@@ -807,8 +818,20 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         /* idToken 유저와 매칭시켜서 디비에 저장해준다. */
         inputUserAuth(user, idToken, loginChannel);
 
+        /* 여기서 유저의 사진정보를 저장해줘야 할듯 -> idToken 을 가지고 데이터를 가져와주면 된다. */
+        String redisKeyFormat = String.format("%s:%s", oauthTempInfo, idToken);
+
+        UserOAuthInfoDto userOAuthInfoDto = redisAdapter
+                .getValue(
+                        redisKeyFormat,
+                        new TypeReference<UserOAuthInfoDto>() {});
+
+        userService.inputUserPictureTbl(user, loginChannel, userOAuthInfoDto.getUserPicture());
+
+        redisAdapter.deleteKey(redisKeyFormat);
+
         /* 그외 로그인 완료처리 진행... */
-        yummyLoginServiceImpl.processCommonLogin(res, loginInfo);
+        yummyLoginServiceImpl.processCommonLogin(res, loginInfo, loginChannel);
 
         /* Oauth 유저 연동을 위한 임시 jwt 쿠키 제거 */
         CookieUtil.clearCookie(res, "yummy-oauth-token");
@@ -838,7 +861,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         }
     }
 
-    public PublicStatus checkVerificationCode(String userEmail,int code) throws Exception{
+    public PublicStatus checkVerificationCode(String userEmail,int code) {
         if(userEmail.isEmpty() || code <=0){
             return PublicStatus.EMAIL_ERR;
         }
@@ -856,14 +879,14 @@ public class JoinMemberServiceImpl implements JoinMamberService {
                 인증 완료 후 30분이 지나면 재 인증 시도 진행
             */
             String  verifiedKey = String.format("%s:%s",redisJoinEmailVerifiedYN,userEmail);
-            boolean isverifieded = redisAdapter.set(verifiedKey,
+            boolean isVerifieded = redisAdapter.set(verifiedKey,
                                               "Y",
                                                     Duration.ofMinutes(30));
-            if(isverifieded)
+            if(isVerifieded)
                 return PublicStatus.SUCCESS;
             else
                 return PublicStatus.EMAIL_ERR;
-        }else{
+        } else{
             return PublicStatus.EMAIL_ERR;
         }
     }
