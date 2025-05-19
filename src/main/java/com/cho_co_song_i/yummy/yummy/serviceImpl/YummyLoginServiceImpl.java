@@ -6,6 +6,7 @@ import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
+import com.cho_co_song_i.yummy.yummy.repository.UserTokenIdRepository;
 import com.cho_co_song_i.yummy.yummy.service.JwtProviderService;
 import com.cho_co_song_i.yummy.yummy.service.UserService;
 import com.cho_co_song_i.yummy.yummy.service.YummyLoginService;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -43,7 +45,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     private final JwtProviderService jwtProviderService;
     private final EventProducerServiceImpl eventProducerServiceImpl;
     private final JPAQueryFactory queryFactory;
-    //private final UserTokenIdRepository userTokenIdRepository;
+    private final UserTokenIdRepository userTokenIdRepository;
 
     /**
      * 로그인 - 유저가 임시비밀번호 발급을 했는지 확인 (비밀번호 찾기)
@@ -93,17 +95,17 @@ public class YummyLoginServiceImpl implements YummyLoginService {
      * @param user
      * @param tokenId
      */
-//    private void inputUserTokenId(UserTbl user, String tokenId) {
-//        UserTokenIdTbl userTokenIdTbl = new UserTokenIdTbl();
-//        userTokenIdTbl.setUser(user);
-//
-//        UserTokenIdTblId userTokenIdTblId = new UserTokenIdTblId(tokenId, user.getUserNo());
-//        userTokenIdTbl.setId(userTokenIdTblId);
-//        userTokenIdTbl.setRegDt(new Date());
-//        userTokenIdTbl.setRegId("system");
-//
-//        userTokenIdRepository.save(userTokenIdTbl);
-//    }
+    private void inputUserTokenId(UserTbl user, String tokenId) {
+        UserTokenIdTbl userTokenIdTbl = new UserTokenIdTbl();
+        userTokenIdTbl.setUser(user);
+
+        UserTokenIdTblId userTokenIdTblId = new UserTokenIdTblId(tokenId, user.getUserNo());
+        userTokenIdTbl.setId(userTokenIdTblId);
+        userTokenIdTbl.setRegDt(new Date());
+        userTokenIdTbl.setRegId("system");
+
+        userTokenIdRepository.save(userTokenIdTbl);
+    }
 
     /**
      * 유저 정보 조회 - Redis 로부터 유저 정보를 조회해준다.
@@ -156,7 +158,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         String refreshToken = jwtProviderService.generateRefreshToken(userNoStr);
 
         /* 2. Refresh Token 을 Redis 에 넣어준다. && DB 에는 Tokenid 를 넣어준다. */
-        // inputUserTokenId(user, tokenId); -> 이거 왜 있는지 모르겠음...
+        inputUserTokenId(user, tokenId); // 이거 비밀번호 찾기 때문에 있었던거 같은데...
         String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNoStr, tokenId);
         redisAdapter.set(refreshKey, refreshToken, Duration.ofDays(7));
 
