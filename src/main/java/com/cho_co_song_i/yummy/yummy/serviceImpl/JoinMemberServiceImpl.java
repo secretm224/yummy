@@ -60,10 +60,10 @@ public class JoinMemberServiceImpl implements JoinMamberService {
     @Value("${spring.redis.refresh-key-prefix}")
     private String refreshKeyPrefix;
 
-    @Value("${spring.redis.join-email-code=dev:join:email_code}")
+    @Value("${spring.redis.join-email-code}")
     private String redisJoinEmailCode;
 
-    @Value("${spring.redis.email-verified=dev:email:verified}")
+    @Value("${spring.redis.email-verified}")
     private String redisJoinEmailVerifiedYN;
 
     @Transactional(rollbackFor = Exception.class)
@@ -735,6 +735,12 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         PublicStatus checkEmail = isValidUserEmail(joinMemberDto.getEmail());
         if (checkEmail != PublicStatus.SUCCESS) {
             return checkEmail;
+        }
+
+        String  verifiedKey = String.format("%s:%s",redisJoinEmailVerifiedYN,joinMemberDto.getEmail());
+        Object value = redisAdapter.get(verifiedKey);
+        if(value == null ||(value != null && !("Y".equals(value.toString())))){
+            return PublicStatus.EMAIL_NOT_VERIFIED;
         }
 
         /* 이름 검사 */
