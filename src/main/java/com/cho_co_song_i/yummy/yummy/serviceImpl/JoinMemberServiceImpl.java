@@ -65,7 +65,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
     private String redisJoinEmailCode;
 
     @Value("${spring.redis.email-verified}")
-    private String redisJoinEmailVerifiedYN;
+    private String redisJoinEmailVerifiedYn;
 
     @Value("${spring.redis.oauth-temp-info}")
     private String oauthTempInfo;
@@ -743,18 +743,19 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         if (!checkPwCheck) {
             return PublicStatus.PW_CHECK_ERR;
         }
-
+        
         /* Email 검사 */
         PublicStatus checkEmail = isValidUserEmail(joinMemberDto.getEmail());
         if (checkEmail != PublicStatus.SUCCESS) {
             return checkEmail;
         }
 
-        String  verifiedKey = String.format("%s:%s",redisJoinEmailVerifiedYN,joinMemberDto.getEmail());
-        Object value = redisAdapter.get(verifiedKey);
-        if(value == null ||(value != null && !("Y".equals(value.toString())))){
-            return PublicStatus.EMAIL_NOT_VERIFIED;
-        }
+        /* 이메일 통신 검증 일단 주석 */
+//        String  verifiedKey = String.format("%s:%s",redisJoinEmailVerifiedYn,joinMemberDto.getEmail());
+//        Object value = redisAdapter.get(verifiedKey);
+//        if(value == null ||(value != null && !("Y".equals(value.toString())))){
+//            return PublicStatus.EMAIL_NOT_VERIFIED;
+//        }
 
         /* 이름 검사 */
         boolean checkUserName = isValidUserName(joinMemberDto.getName());
@@ -884,7 +885,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
                 30분의 인증 여유 기간이 있으며 회원 가입 유효 기간으로 판단
                 인증 완료 후 30분이 지나면 재 인증 시도 진행
             */
-            String  verifiedKey = String.format("%s:%s",redisJoinEmailVerifiedYN,userEmail);
+            String  verifiedKey = String.format("%s:%s", redisJoinEmailVerifiedYn,userEmail);
             boolean isVerifieded = redisAdapter.set(verifiedKey,
                                               "Y",
                                                     Duration.ofMinutes(30));
