@@ -53,4 +53,7 @@ public interface SearchService {
      */
     List<AutoCompleteDto> findAutoSearchKeyword(String indexName, String searchText) throws Exception;
 
+
+    String convertQwertyToHangul(String input);
+
 }

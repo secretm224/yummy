@@ -11,26 +11,44 @@ import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.cho_co_song_i.yummy.yummy.dto.AutoCompleteDto;
 import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
+import com.cho_co_song_i.yummy.yummy.utils.HangulQwertyConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class SearchServiceImpl implements SearchService {
+
     private final ElasticsearchClient searchClient;
 
-
-    /* ERROR 테스트용 */
-    private void test() throws Exception {
-        int a = 1 / 0;
-    }
+//    private static final char[] CHOSEONG = {
+//            'ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'
+//    };
+//
+//    private static final char[] JUNGSEONG = {
+//            'ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'
+//    };
+//
+//    private static final char[] JONGSEONG = {
+//            '\0','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ',
+//            'ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'
+//    };
+//
+//    private static final Map<Character, Character> QWERTY_TO_JAMO = Map.ofEntries(
+//            Map.entry('r', 'ㄱ'), Map.entry('R', 'ㄲ'), Map.entry('s', 'ㄴ'), Map.entry('e', 'ㄷ'), Map.entry('E', 'ㄸ'),
+//            Map.entry('f', 'ㄹ'), Map.entry('a', 'ㅁ'), Map.entry('q', 'ㅂ'), Map.entry('Q', 'ㅃ'), Map.entry('t', 'ㅅ'),
+//            Map.entry('T', 'ㅆ'), Map.entry('d', 'ㅇ'), Map.entry('w', 'ㅈ'), Map.entry('W', 'ㅉ'), Map.entry('c', 'ㅊ'),
+//            Map.entry('z', 'ㅋ'), Map.entry('x', 'ㅌ'), Map.entry('v', 'ㅍ'), Map.entry('g', 'ㅎ'),
+//            Map.entry('k', 'ㅏ'), Map.entry('o', 'ㅐ'), Map.entry('i', 'ㅑ'), Map.entry('O', 'ㅒ'),
+//            Map.entry('j', 'ㅓ'), Map.entry('p', 'ㅔ'), Map.entry('u', 'ㅕ'), Map.entry('P', 'ㅖ'),
+//            Map.entry('h', 'ㅗ'), Map.entry('y', 'ㅛ'), Map.entry('n', 'ㅜ'), Map.entry('b', 'ㅠ'),
+//            Map.entry('m', 'ㅡ'), Map.entry('l', 'ㅣ')
+//    );
 
     /* ERROR 테스트용2 */
     private void test2() {
@@ -169,6 +187,17 @@ public class SearchServiceImpl implements SearchService {
                 .map(Hit::source)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
+    }
+
+    private static int indexOf(char[] array, char target) {
+        for (int i = 0; i < array.length; i++) {
+            if (array[i] == target) return i;
+        }
+        return -1;
+    }
+
+    public String convertQwertyToHangul(String input) {
+        return HangulQwertyConverter.convertQwertyToHangul(input);
     }
 
     public List<AutoCompleteDto> findAutoSearchKeyword(String indexName, String searchText) throws Exception {

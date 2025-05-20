@@ -44,4 +44,11 @@ public class SearchController {
     ) throws Exception {
         return ResponseEntity.ok(searchService.findAutoSearchKeyword(autoKeywordIndex, searchText));
     }
+
+    @GetMapping("qwertyToHangul")
+    public ResponseEntity<String> convertQwertyToHangul(
+            @RequestParam(value = "searchText", required = false) String searchText
+    ) {
+        return ResponseEntity.ok(searchService.convertQwertyToHangul(searchText));
+    }
 }
