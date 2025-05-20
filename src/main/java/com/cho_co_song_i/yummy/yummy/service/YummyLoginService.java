@@ -1,9 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
-import com.cho_co_song_i.yummy.yummy.dto.ServiceResponse;
-import com.cho_co_song_i.yummy.yummy.dto.StandardLoginBasicResDto;
-import com.cho_co_song_i.yummy.yummy.dto.StandardLoginDto;
-import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
+import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.entity.UserAuthTbl;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
@@ -17,8 +14,10 @@ public interface YummyLoginService {
      * Oauth2 / Standard Login 공통 처리 함수
      * @param res
      * @param loginInfo
+     * @param loginChannel
+     * @throws Exception
      */
-    void processCommonLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo);
+    void processCommonLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo, OauthChannelStatus loginChannel) throws Exception;
 
     /**
      * 유저의 로그아웃을 위해서 로그인관련 인증 토큰을 다 제거해주는 함수
@@ -36,11 +35,12 @@ public interface YummyLoginService {
 
     /**
      * Oauth2 를 통한 로그인 처리
-     * @param userNum
+     * @param userOAuthResponse
      * @param res
      * @return
+     * @throws Exception
      */
-    PublicStatus processOauthLogin(Long userNum, HttpServletResponse res);
+    PublicStatus processOauthLogin(UserOAuthResponse userOAuthResponse, HttpServletResponse res) throws Exception;
 
 
     /**

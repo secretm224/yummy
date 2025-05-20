@@ -4,25 +4,20 @@ import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
 import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.UserOAuthInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
+import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 public interface UserService {
 
     /**
-     * 유저의 기본 회원 정보. -> 뭔가 추가할게 있다면 여기랑 아래의 convertUserToBasicInfo 함수를 추가해주면 된다.
+     * Redis 에 저장할 유저의 기본 정보
      * @param user
+     * @param oauthChannelStatus
      * @return
+     * @throws Exception
      */
-    UserBasicInfoDto getUserBasicInfos(UserTbl user);
-
-    /**
-     * 유저의 기본정보(Oauth)를 가져와주는 함수
-     * @param UserNo
-     * @param userOAuthInfoDto
-     * @return
-     */
-    UserBasicInfoDto getUserInfos(Long UserNo, UserOAuthInfoDto userOAuthInfoDto);
+    UserBasicInfoDto getUserBasicInfos(UserTbl user, OauthChannelStatus oauthChannelStatus) throws Exception;
 
     /**
      * Jwt 의 토큰을 검증하고 그 내부의 내용을 반환해주는 함수.
@@ -50,4 +45,12 @@ public interface UserService {
      * @param <T>
      */
     <T> T getClaimFromJwt(JwtValidationResult jwtValidationResult, String claimName, Class<T> clazz);
+
+    /**
+     * UserPictureTbl 유저 프로필 정보를 저장해주는 함수
+     * @param userTbl
+     * @param oauthChannelStatus
+     * @param picUrl
+     */
+    void inputUserPictureTbl(UserTbl userTbl, OauthChannelStatus oauthChannelStatus, String picUrl);
 }

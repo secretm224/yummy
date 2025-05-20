@@ -43,4 +43,18 @@ public interface JoinMamberService {
      * @throws Exception
      */
     PublicStatus linkMemberByOauth(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception;
+    /**
+     * 회원가입이메일검증코드발송
+     * @param userEmail
+     * @return
+     * @throws Exception
+     */
+    PublicStatus generateVerificationCode(String userEmail) throws Exception;
+    /**
+     * 회원가입 인증코드 검증
+     * @param userEmail
+     * @param code
+     * @return
+     */
+    PublicStatus checkVerificationCode(String userEmail,int code);
 }

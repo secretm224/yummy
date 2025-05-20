@@ -91,7 +91,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     }
 
     /**
-     * 로그인에 성공한 유제의 토큰 아이디를 디비에 넣어준다.
+     * 로그인에 성공한 유제의 토큰 아이디를 디비에 넣어준다. -> 이게 왜 필요한지 모르겠음...?
      * @param user
      * @param tokenId
      */
@@ -143,7 +143,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         return true;
     }
 
-    public void processCommonLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo) {
+    public void processCommonLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo, OauthChannelStatus loginChannel) throws Exception {
 
         /* 유저 정보 */
         UserTbl user = loginInfo.getUserTbl();
@@ -158,7 +158,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         String refreshToken = jwtProviderService.generateRefreshToken(userNoStr);
 
         /* 2. Refresh Token 을 Redis 에 넣어준다. && DB 에는 Tokenid 를 넣어준다. */
-        inputUserTokenId(user, tokenId);
+        inputUserTokenId(user, tokenId); // 이거 비밀번호 찾기 때문에 있었던거 같은데...
         String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNoStr, tokenId);
         redisAdapter.set(refreshKey, refreshToken, Duration.ofDays(7));
 
@@ -167,7 +167,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
 
         /* 4. 기본적인 유저의 정보를 가져와준다. */
         /* 기본 회원 정보 - 브라우저 돌아다니면서 사용할 수 있는 정보 - private 한 정보같은건 넣으면 안된다. */
-        UserBasicInfoDto userBasicInfo = userService.getUserBasicInfos(user);
+        UserBasicInfoDto userBasicInfo = userService.getUserBasicInfos(user, loginChannel);
 
         /* 5. 기본 회원정보를 Redis 에 저장한다. */
         String basicUserInfo = String.format("%s:%s", userInfoKey, userNoStr);
@@ -194,6 +194,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     private void test() {
         throw new RuntimeException("일부러");
     }
+
 
     public StandardLoginBasicResDto verifyLoginUserInfo(StandardLoginDto standardLoginDto) throws Exception {
 
@@ -222,15 +223,10 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public PublicStatus processOauthLogin(Long userNum, HttpServletResponse res) {
+    public PublicStatus processOauthLogin(UserOAuthResponse userOAuthResponse, HttpServletResponse res) throws Exception {
 
         /* 1. 유저정보 조회 */
-        UserTbl user = findUserLoginInfoByNo(userNum);
-
-        if (user == null) {
-            log.info("[YummyLoginService->oauthLogin][Login] No User: {}", userNum);
-            return PublicStatus.AUTH_ERROR;
-        }
+        UserTbl user = userOAuthResponse.getUserTbl();
 
         log.info("[YummyLoginService->oauthLogin][Login] Login successful: {}", user.getUserId());
 
@@ -240,7 +236,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         StandardLoginBasicResDto loginRes = new StandardLoginBasicResDto(PublicStatus.SUCCESS, user, tempUserYn);
 
         /* 3. 로그인 처리 */
-        processCommonLogin(res, loginRes);
+        processCommonLogin(res, loginRes, userOAuthResponse.getLoginChannel());
 
         return PublicStatus.SUCCESS;
     }
@@ -258,7 +254,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
             return PublicStatus.AUTH_ERROR;
         }
 
-        processCommonLogin(res, loginRes);
+        processCommonLogin(res, loginRes, OauthChannelStatus.standard);
 
         return PublicStatus.SUCCESS;
     }

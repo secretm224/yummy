@@ -23,12 +23,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.core.type.TypeReference;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserEmailTbl.userEmailTbl;
@@ -54,8 +57,18 @@ public class JoinMemberServiceImpl implements JoinMamberService {
 
     @PersistenceContext
     private final EntityManager entityManager;
+
     @Value("${spring.redis.refresh-key-prefix}")
     private String refreshKeyPrefix;
+
+    @Value("${spring.redis.join-email-code}")
+    private String redisJoinEmailCode;
+
+    @Value("${spring.redis.email-verified}")
+    private String redisJoinEmailVerifiedYn;
+
+    @Value("${spring.redis.oauth-temp-info}")
+    private String oauthTempInfo;
 
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus connectExistUser(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
@@ -441,6 +454,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
      * @return
      */
     private Boolean isValidUserPhoneNumberFormat(String phoneNumber) {
+
         if (phoneNumber == null || phoneNumber.isEmpty()) {
             return false;
         }
@@ -479,10 +493,10 @@ public class JoinMemberServiceImpl implements JoinMamberService {
      * @param idToken
      * @param oauthChannel
      */
-    private void inputUserAuth(UserTbl userTbl, String idToken, String oauthChannel) {
+    private void inputUserAuth(UserTbl userTbl, String idToken, OauthChannelStatus oauthChannel) {
         /* oauth2 정보 저장 */
         UserAuthTbl userAuthTbl = new UserAuthTbl();
-        UserAuthTblId userAuthTblId = new UserAuthTblId(userTbl.getUserNo(), oauthChannel, idToken);
+        UserAuthTblId userAuthTblId = new UserAuthTblId(userTbl.getUserNo(), oauthChannel.toString(), idToken);
         userAuthTbl.setUser(userTbl);
         userAuthTbl.setId(userAuthTblId);
         userAuthTbl.setReg_dt(new Date());
@@ -505,25 +519,32 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         String oauthToken = CookieUtil.getCookieValue(req, "yummy-oauth-token");
 
         if (oauthToken != null) {
-
             JwtValidationResult jwtResult = userService.validateJwtAndCleanIfInvalid("yummy-oauth-token", res, req);
 
             if (jwtResult.getStatus() == JwtValidationStatus.SUCCESS) {
-                /* ==== JWT 검증 성공 ==== */
-
+                /* ============ JWT 검증 성공 ============ */
                 /* oauth2 토큰 아이디 */
                 String idToken = jwtResult.getClaims().getSubject();
 
                 /* oauth2 채널 - 카카오,네이버,구글...등등 */
-                String oauthChannel = jwtResult.getClaims().get("oauthChannel", String.class);
-
-                /* oauth2 채널 필터가 필요할듯...?*/
+                OauthChannelStatus oauthChannel = OauthChannelStatus.valueOf(
+                        jwtResult.getClaims().get("oauthChannel", String.class));
 
                 /* user 정보부터 저장 */
                 UserTbl joinUser = createJoinUser(joinMemberDto);
 
                 /* oauth2 정보도 저장 */
                 inputUserAuth(joinUser, idToken, oauthChannel);
+
+                /* 유저 프로필 사진정보 저장 */
+                String redisKeyFormat = String.format("%s:%s", oauthTempInfo, idToken);
+                UserOAuthInfoDto userOAuthInfoDto = redisAdapter
+                        .getValue(
+                                redisKeyFormat,
+                                new TypeReference<UserOAuthInfoDto>() {});
+
+                userService.inputUserPictureTbl(joinUser, oauthChannel, userOAuthInfoDto.getUserPicture());
+                redisAdapter.deleteKey(redisKeyFormat);
 
                 CookieUtil.clearCookie(res, "yummy-oauth-token");
 
@@ -545,13 +566,13 @@ public class JoinMemberServiceImpl implements JoinMamberService {
      * @param loginChannel
      * @return
      */
-    private boolean isUserAuthChannelNotExists(Long userNo, String loginChannel) {
+    private boolean isUserAuthChannelNotExists(Long userNo, OauthChannelStatus loginChannel) {
 
         Integer result = queryFactory
                 .selectOne()
                 .from(userAuthTbl)
                 .where(
-                        userAuthTbl.id.loginChannel.eq(loginChannel),
+                        userAuthTbl.id.loginChannel.eq(loginChannel.toString()),
                         userAuthTbl.id.userNo.eq(userNo)
                 )
                 .fetchFirst();
@@ -721,12 +742,19 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         if (!checkPwCheck) {
             return PublicStatus.PW_CHECK_ERR;
         }
-
+        
         /* Email 검사 */
         PublicStatus checkEmail = isValidUserEmail(joinMemberDto.getEmail());
         if (checkEmail != PublicStatus.SUCCESS) {
             return checkEmail;
         }
+
+        /* 이메일 통신 검증 일단 주석 */
+//        String  verifiedKey = String.format("%s:%s",redisJoinEmailVerifiedYn,joinMemberDto.getEmail());
+//        Object value = redisAdapter.get(verifiedKey);
+//        if(value == null ||(value != null && !("Y".equals(value.toString())))){
+//            return PublicStatus.EMAIL_NOT_VERIFIED;
+//        }
 
         /* 이름 검사 */
         boolean checkUserName = isValidUserName(joinMemberDto.getName());
@@ -755,10 +783,13 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         /* 휴대전화번호 검사 */
         PublicStatus checkUserPhoneNumber = isValidUserPhoneNumber(joinMemberDto.getPhoneNumber());
         if (checkUserPhoneNumber != PublicStatus.SUCCESS) {
-            return PublicStatus.PHONE_DUPLICATED;
+            return checkUserPhoneNumber;
         }
 
-        /* 신규회원 저장 */
+        /* 신규회원 저장
+        * 여기서 Oauth 연결인지 부터 확인하고 가야할듯
+        * 쿠키시간이 만료되면 그냥 없어져버림 (이렇게 되면 그냥 회원가입만 되서 고객입장에서 난감할 수 있음)
+        * */
         return validateOauthAndInputUser(res, req, joinMemberDto);
     }
 
@@ -778,16 +809,14 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         JwtValidationResult jwtRes = userService.validateJwtAndCleanIfInvalid("yummy-oauth-token", res, req);
 
         if (jwtRes.getStatus() != JwtValidationStatus.SUCCESS) {
-            return PublicStatus.AUTH_ERROR;
+            return PublicStatus.REJOIN_CHECK;
         }
 
         /* Oauth id token & Login 채널 */
         String idToken = userService.getSubjectFromJwt(jwtRes);
-        String loginChannel = userService.getClaimFromJwt(jwtRes, "oauthChannel", String.class);
+        OauthChannelStatus loginChannel = OauthChannelStatus.valueOf(
+                userService.getClaimFromJwt(jwtRes, "oauthChannel", String.class));
 
-        if (!OauthChannelStatus.isValid(loginChannel)) {
-            return PublicStatus.AUTH_ERROR;
-        }
 
         /* Oauth 채널당 하나의 아이디만 연동이 가능함. -> 해당 부분을 확인해주는 로직 */
         boolean userOauthCheck = isUserAuthChannelNotExists(user.getUserNo(), loginChannel);
@@ -798,12 +827,76 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         /* idToken 유저와 매칭시켜서 디비에 저장해준다. */
         inputUserAuth(user, idToken, loginChannel);
 
+        /* 여기서 유저의 사진정보를 저장해줘야 할듯 -> idToken 을 가지고 데이터를 가져와주면 된다. */
+        String redisKeyFormat = String.format("%s:%s", oauthTempInfo, idToken);
+
+        UserOAuthInfoDto userOAuthInfoDto = redisAdapter
+                .getValue(
+                        redisKeyFormat,
+                        new TypeReference<UserOAuthInfoDto>() {});
+
+        userService.inputUserPictureTbl(user, loginChannel, userOAuthInfoDto.getUserPicture());
+
+        redisAdapter.deleteKey(redisKeyFormat);
+
         /* 그외 로그인 완료처리 진행... */
-        yummyLoginServiceImpl.processCommonLogin(res, loginInfo);
+        yummyLoginServiceImpl.processCommonLogin(res, loginInfo, loginChannel);
 
         /* Oauth 유저 연동을 위한 임시 jwt 쿠키 제거 */
         CookieUtil.clearCookie(res, "yummy-oauth-token");
 
         return PublicStatus.SUCCESS;
+    }
+
+    public PublicStatus generateVerificationCode(String userEmail) throws Exception {
+        //6자리 숫자 이메일 검증 코드 발급 
+        String code = String.format("%06d", new Random().nextInt(999999)); 
+
+        if(!code.isEmpty()){
+            //발급된 코드 정보를 e-mail 정보와 함께 key 생성 후 이메일 발송
+            String key = String.format("%s:%s:%s",redisJoinEmailCode,userEmail,code);
+            eventProducerServiceImpl.produceJoinEmailCode(userEmail,code);
+            //이메일 발송 후 3분 유효 기간으로 코드 정보 저장
+            boolean isVerifcationCode = redisAdapter.set(key,
+                                                         code,
+                                                         Duration.ofMinutes(3));
+            if(isVerifcationCode)
+                return PublicStatus.SUCCESS;
+            else
+                return PublicStatus.EMAIL_ERR;
+
+        }else{
+            return PublicStatus.EMAIL_ERR;
+        }
+    }
+
+    public PublicStatus checkVerificationCode(String userEmail,int code) {
+        if(userEmail.isEmpty() || code <=0){
+            return PublicStatus.EMAIL_ERR;
+        }
+        /*
+           코드 유효성 검증 추가
+           이메일 , 코드 정보로 저장된 데이터가 있는지 확인
+        */
+        String key = String.format("%s:%s:%s",redisJoinEmailCode,userEmail,code);
+        Object value = redisAdapter.get(key);
+
+        if(value != null){
+            /*
+                저장 된 코드 값이 있으면 유효한 인증으로 판단하고 인증 여부 기록
+                30분의 인증 여유 기간이 있으며 회원 가입 유효 기간으로 판단
+                인증 완료 후 30분이 지나면 재 인증 시도 진행
+            */
+            String  verifiedKey = String.format("%s:%s", redisJoinEmailVerifiedYn,userEmail);
+            boolean isVerifieded = redisAdapter.set(verifiedKey,
+                                              "Y",
+                                                    Duration.ofMinutes(30));
+            if(isVerifieded)
+                return PublicStatus.SUCCESS;
+            else
+                return PublicStatus.EMAIL_ERR;
+        } else{
+            return PublicStatus.EMAIL_ERR;
+        }
     }
 }

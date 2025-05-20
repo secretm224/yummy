@@ -2,10 +2,13 @@ package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
 import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
-import com.cho_co_song_i.yummy.yummy.dto.UserOAuthInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.UserLocationDetailTbl;
+import com.cho_co_song_i.yummy.yummy.entity.UserPictureTbl;
+import com.cho_co_song_i.yummy.yummy.entity.UserPictureTblId;
 import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
+import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
+import com.cho_co_song_i.yummy.yummy.repository.UserPictureRepository;
 import com.cho_co_song_i.yummy.yummy.service.JwtProviderService;
 import com.cho_co_song_i.yummy.yummy.service.UserService;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
@@ -16,10 +19,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.util.Date;
 import java.util.Optional;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QUserLocationDetailTbl.userLocationDetailTbl;
-import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
+import static com.cho_co_song_i.yummy.yummy.entity.QUserPictureTbl.userPictureTbl;
 
 @Service
 @Slf4j
@@ -28,55 +33,88 @@ public class UserServiceImpl implements UserService {
 
     private final JPAQueryFactory queryFactory;
     private final JwtProviderService jwtProviderService;
+    private final UserPictureRepository userPictureRepository;
 
     /**
-     * Entity -> DTO 변환 (UserTbl)
-     * @param userTbl
-     * @param userLocationDetail
+     * 유저의 집/회사 장소관련 정보를 디비에서 반환해주는 함수
+     * @param userNum
      * @return
      */
-    private UserBasicInfoDto convertUserToBasicInfo(UserTbl userTbl, UserLocationDetailTbl userLocationDetail) {
-        return new UserBasicInfoDto(
-                userTbl.getUserId(),
-                userTbl.getUserNm(),
-                userTbl.getUserBirth(),
-                "",
-                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLng).orElse(null),
-                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLat).orElse(null)
-        );
-    }
-
-    public UserBasicInfoDto getUserBasicInfos(UserTbl user) {
-
-        UserLocationDetailTbl userLocationDetail = queryFactory
+    private UserLocationDetailTbl findUserLocationDetailInfo(Long userNum) {
+        return queryFactory
                 .selectFrom(userLocationDetailTbl)
-                .where(userLocationDetailTbl.id.userNo.eq(user.getUserNo()))
+                .where(userLocationDetailTbl.id.userNo.eq(userNum))
                 .fetchFirst();
-
-        return convertUserToBasicInfo(user, userLocationDetail);
     }
 
-    public UserBasicInfoDto getUserInfos(Long UserNo, UserOAuthInfoDto userOAuthInfoDto) {
+    /**
+     * 유저의 프로필사진 정보를 디비에서 반환해주는 함수
+     * @param userNum
+     * @param oauthChannelStatus
+     * @return
+     * @throws Exception
+     */
+    private UserPictureTbl findUserPictureInfo(Long userNum, OauthChannelStatus oauthChannelStatus) throws Exception {
+        UserPictureTblId userPictureTblId = new UserPictureTblId(userNum, oauthChannelStatus.toString());
+        return userPictureRepository.findById(userPictureTblId)
+                .orElseThrow(() -> new Exception(
+                        String.format(
+                                "[Error][UserService->getUserInfoAndModifyUserPic] This user does not exist. userNo: %d",
+                                userNum)
+                ));
+    }
 
-        UserTbl loginUser = queryFactory
-                .selectFrom(userTbl)
+    /**
+     * 유저가 가장 최신에 변경한 프로필 사진으로 가져와준다.
+     * @param userNum
+     * @return
+     */
+    private UserPictureTbl findUserPictureRecentInfo(Long userNum) {
+        return queryFactory
+                .selectFrom(userPictureTbl)
                 .where(
-                        userTbl.userNo.eq(UserNo)
+                        userPictureTbl.id.userNo.eq(userNum),
+                        userPictureTbl.activeYn.eq('Y')
+                )
+                .orderBy(
+                        userPictureTbl.chgDt.desc()
                 )
                 .fetchFirst();
+    }
 
-        UserLocationDetailTbl userLocationDetail = queryFactory
-                .selectFrom(userLocationDetailTbl)
-                .where(userLocationDetailTbl.id.userNo.eq(UserNo))
-                .fetchFirst();
+    /**
+     * 유저의 프로필 사진을 반환해주는 함수
+     * @param userNo
+     * @param oauthChannelStatus
+     * @return
+     * @throws Exception
+     */
+    private String resolveUserPictureUrl(Long userNo, OauthChannelStatus oauthChannelStatus) throws Exception {
+        UserPictureTbl userPic;
+
+        if (oauthChannelStatus == OauthChannelStatus.standard) {
+            userPic = findUserPictureRecentInfo(userNo);
+        } else {
+            userPic = findUserPictureInfo(userNo, oauthChannelStatus);
+        }
+
+        return userPic != null ? userPic.getPicUrl() : null;
+    }
+
+    public UserBasicInfoDto getUserBasicInfos(UserTbl user, OauthChannelStatus oauthChannelStatus) throws Exception {
+        String userPicUrl = resolveUserPictureUrl(user.getUserNo(), oauthChannelStatus);
+
+        UserLocationDetailTbl userLocationDetail = findUserLocationDetailInfo(user.getUserNo());
+        BigDecimal lng = Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLng).orElse(null);
+        BigDecimal lat = Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLat).orElse(null);
 
         return new UserBasicInfoDto(
-                loginUser.getUserId(),
-                loginUser.getUserNm(),
-                loginUser.getUserBirth(),
-                userOAuthInfoDto.getUserPicture(),
-                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLng).orElse(null),
-                Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLat).orElse(null)
+                user.getUserId(),
+                user.getUserNm(),
+                user.getUserBirth(),
+                userPicUrl,
+                lng,
+                lat
         );
     }
 
@@ -114,5 +152,18 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    public void inputUserPictureTbl(UserTbl userTbl, OauthChannelStatus oauthChannelStatus, String picUrl) {
+
+        UserPictureTblId userPictureTblId = new UserPictureTblId(userTbl.getUserNo(), oauthChannelStatus.toString());
+        UserPictureTbl userPicture = new UserPictureTbl();
+        userPicture.setUser(userTbl);
+        userPicture.setId(userPictureTblId);
+        userPicture.setPicUrl(picUrl);
+        userPicture.setActiveYn('Y');
+        userPicture.setRegDt(new Date());
+        userPicture.setRegId("system");
+
+        userPictureRepository.save(userPicture);
+    }
 
 }

@@ -5,6 +5,7 @@ import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.service.JoinMamberService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -13,13 +14,10 @@ import org.springframework.web.bind.annotation.*;
 @Controller
 @RequestMapping("/joinMember")
 @Slf4j
+@RequiredArgsConstructor
 public class JoinMemberController {
 
     private final JoinMamberService joinMamberService;
-
-    public JoinMemberController(JoinMamberService joinMamberService) {
-        this.joinMamberService = joinMamberService;
-    }
 
     /**
      * 회원가입 해주는 컨트롤러 함수
@@ -99,5 +97,29 @@ public class JoinMemberController {
         return ResponseEntity.ok(joinMamberService.linkMemberByOauth(standardLoginDto, res, req));
     }
 
+    /**
+     * 회원가입 인증코드 발송
+     * @param userEmail
+     * @return
+     * @throws Exception
+     */
+    @PostMapping("/verificationEmailCode")
+    @ResponseBody
+    public PublicStatus getVerificationCode(@RequestParam("userEmail") String userEmail) throws Exception {
+        return joinMamberService.generateVerificationCode(userEmail);
+    }
 
+    /**
+     * 회원가입인증코드검증
+     * @param userEmail
+     * @param code
+     * @return
+     * @throws Exception
+     */
+    @PostMapping("/checkVerificationCode")
+    @ResponseBody
+    public PublicStatus checkVerificationCode(@RequestParam("userEmail") String userEmail,
+                                              @RequestParam("code") int code) {
+        return joinMamberService.checkVerificationCode(userEmail,code);
+    }
 }

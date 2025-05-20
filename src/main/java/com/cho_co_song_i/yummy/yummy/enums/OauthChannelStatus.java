@@ -4,7 +4,8 @@ public enum OauthChannelStatus {
     kakao,
     google,
     naver,
-    telegram;
+    telegram,
+    standard;
 
     /**
      * 문자열이 실제로 OauthChannelStatus 에 포함되는지 확인해주는 함수.

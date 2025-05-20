@@ -1,6 +1,7 @@
 package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.adapter.kafka.KafkaAdapter;
+import com.cho_co_song_i.yummy.yummy.dto.JoinEmailCodeDto;
 import com.cho_co_song_i.yummy.yummy.dto.SendIdFormDto;
 import com.cho_co_song_i.yummy.yummy.dto.SendPwFormDto;
 import com.cho_co_song_i.yummy.yummy.dto.TryLoginHistDto;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+
 
 @Service
 @Slf4j
@@ -29,6 +31,9 @@ public class EventProducerServiceImpl implements EventProducerService {
     /* 회원의 비밀번호 찾기 관련 Kafka Topic */
     @Value("${spring.topic.kafka.find-user-pw-info}")
     private String findPwTopic;
+
+    @Value("${spring.topic.kafka.login-join-emailcode}")
+    private String topicJoinEmailCode;
 
     private final KafkaAdapter kafkaAdapter;
 
@@ -57,6 +62,15 @@ public class EventProducerServiceImpl implements EventProducerService {
                 new SendIdFormDto(LocalDateTime.now(), userId, userEmail));
     }
 
-
+    //dev-yummy-join-hist
+    //yummy-join-hist
+    public void produceJoinEmailCode(String userEmail , String emailCode) throws Exception{
+        kafkaAdapter.sendMessageJson(topicJoinEmailCode,
+                                     new JoinEmailCodeDto(
+                                             LocalDateTime.now(),
+                                             userEmail,
+                                             emailCode
+                                     ));
+    }
 
 }
