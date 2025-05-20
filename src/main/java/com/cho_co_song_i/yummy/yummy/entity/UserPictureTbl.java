@@ -19,7 +19,7 @@ public class UserPictureTbl implements Persistable<UserPictureTblId>  {
     @EmbeddedId
     private UserPictureTblId id;
 
-    @Column(name = "pic_url", length = 255, nullable = false)
+    @Column(name = "pic_url", length = 255, nullable = true)
     private String picUrl;
 
     @Column(name = "active_yn", length = 1, nullable = false, columnDefinition = "char(1) default 'N'")
