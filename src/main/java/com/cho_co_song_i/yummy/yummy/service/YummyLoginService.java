@@ -69,4 +69,7 @@ public interface YummyLoginService {
      * @throws Exception
      */
     ServiceResponse<Optional<UserBasicInfoDto>> verifyLoginUser(HttpServletResponse res, HttpServletRequest req) throws Exception;
+
+    // 테스트 메소드
+    void testing();
 }

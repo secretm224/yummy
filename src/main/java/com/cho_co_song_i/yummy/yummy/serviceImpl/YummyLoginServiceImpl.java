@@ -6,6 +6,8 @@ import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
+import com.cho_co_song_i.yummy.yummy.repository.UserRepository;
+import com.cho_co_song_i.yummy.yummy.repository.UserTempPwHistoryRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserTokenIdRepository;
 import com.cho_co_song_i.yummy.yummy.service.JwtProviderService;
 import com.cho_co_song_i.yummy.yummy.service.UserService;
@@ -29,7 +31,6 @@ import java.util.UUID;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QUserAuthTbl.userAuthTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
-import static com.cho_co_song_i.yummy.yummy.entity.QUserTempPwTbl.userTempPwTbl;
 
 @Service
 @Slf4j
@@ -40,12 +41,16 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     private String userInfoKey;
     @Value("${spring.redis.refresh-key-prefix}")
     private String refreshKeyPrefix;
+
     private final RedisAdapter redisAdapter;
     private final UserService userService;
     private final JwtProviderService jwtProviderService;
     private final EventProducerServiceImpl eventProducerServiceImpl;
     private final JPAQueryFactory queryFactory;
+
     private final UserTokenIdRepository userTokenIdRepository;
+    private final UserTempPwHistoryRepository userTempPwHistoryRepository;
+    private final UserRepository userRepository;
 
     /**
      * 로그인 - 유저가 임시비밀번호 발급을 했는지 확인 (비밀번호 찾기)
@@ -53,45 +58,11 @@ public class YummyLoginServiceImpl implements YummyLoginService {
      * @return
      */
     private Boolean isTempLoginUser(UserTbl userTbl) {
-
-        UserTempPwTbl userTempPw = queryFactory
-                .selectFrom(userTempPwTbl)
-                .where(
-                        userTempPwTbl.userId.eq(userTbl.getUserId()),
-                        userTempPwTbl.userNo.eq(userTbl.getUserNo())
-                )
-                .fetchFirst();
-
-        return userTempPw != null;
-    }
-
-
-    /**
-     * 로그인한 사용자의 정보를 조회해주는 함수 - 필터: 아이디
-     * @param userId
-     * @return
-     */
-    private UserTbl findUserLoginInfoById(String userId) {
-        return queryFactory
-                .selectFrom(userTbl)
-                .where(userTbl.userId.eq(userId))
-                .fetchFirst();
+        return userTempPwHistoryRepository.existsByUserNo(userTbl.getUserNo()) != 0;
     }
 
     /**
-     * 로그인한 사용자의 정보를 조회해주는 함수 - 필터: 회원 고유번호
-     * @param userNum
-     * @return
-     */
-    private UserTbl findUserLoginInfoByNo(Long userNum) {
-        return queryFactory
-                .selectFrom(userTbl)
-                .where(userTbl.userNo.eq(userNum))
-                .fetchFirst();
-    }
-
-    /**
-     * 로그인에 성공한 유제의 토큰 아이디를 디비에 넣어준다. -> 이게 왜 필요한지 모르겠음...?
+     * 로그인에 성공한 유제의 엑세스 토큰 아이디를 디비에 넣어준다.
      * @param user
      * @param tokenId
      */
@@ -158,7 +129,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         String refreshToken = jwtProviderService.generateRefreshToken(userNoStr);
 
         /* 2. Refresh Token 을 Redis 에 넣어준다. && DB 에는 Tokenid 를 넣어준다. */
-        inputUserTokenId(user, tokenId); // 이거 비밀번호 찾기 때문에 있었던거 같은데...
+        inputUserTokenId(user, tokenId);
         String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNoStr, tokenId);
         redisAdapter.set(refreshKey, refreshToken, Duration.ofDays(7));
 
@@ -199,7 +170,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     public StandardLoginBasicResDto verifyLoginUserInfo(StandardLoginDto standardLoginDto) throws Exception {
 
         /* 1. 사용자 조회 */
-        UserTbl user = findUserLoginInfoById(standardLoginDto.getUserId());
+        UserTbl user = userRepository.findUserByLoginId(standardLoginDto.getUserId());
 
         if (user == null) {
             log.info("[YummyLoginService->standardLoginUser][Login] No User: {}", standardLoginDto.getUserId());
@@ -294,5 +265,14 @@ public class YummyLoginServiceImpl implements YummyLoginService {
 
         /* 4. 그외 모든 오류들은 아래와 같이 처리 */
         return ServiceResponse.empty(PublicStatus.AUTH_ERROR);
+    }
+
+    public void testing() {
+
+        System.out.println("????????????????????????????????????????");
+        UserTbl user = userRepository.findUserByLoginId("ssh9308");
+        System.out.println("=========================================================");
+        System.out.println(user.getUserNo());
+
     }
 }

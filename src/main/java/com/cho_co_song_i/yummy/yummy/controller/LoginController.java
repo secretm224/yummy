@@ -111,8 +111,11 @@ public class LoginController {
 
     @GetMapping("/test")
     @ResponseBody
-    public String Test() {
-        return "Call Method Test";
+    public ResponseEntity<String> Test() throws Exception {
+        //KakaoUserInfo user = kakoLoginService.getKakaoUserInfo("3yzz0-9rEwhG82yjPwGJsfM-V42gtKcyAAAAAQoNIFoAAAGW8aJeB0PPWzORmYVE");
+        //String a = "test";
+
+        return ResponseEntity.ok("test");
     }
 
     @GetMapping("/deploytest")
