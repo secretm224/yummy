@@ -19,25 +19,25 @@ public class HangulQwertyConverter {
             'ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'
     };
 
-    // QWERTY 키 → 자모 매핑
+    /* QWERTY 키 → 자모 매핑 */
     private static final Map<Character, Character> QWERTY_TO_JAMO = new HashMap<>();
     static {
         String eng  = "rRseEfaqQtTdwWczxvgkoiOjpuPhynbml";
-        String jamo = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ"
-                + "ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅛㅜㅠㅡㅣ";
+        String jamo = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎㅏㅐㅑㅒㅓㅔㅕㅖㅗㅛㅜㅠㅡㅣ";
+
         for (int i = 0; i < eng.length(); i++) {
             QWERTY_TO_JAMO.put(eng.charAt(i), jamo.charAt(i));
         }
     }
 
-    // 복합 모음 조합 맵
+    /* 복합 모음 조합 맵 */
     private static final Map<String, Character> JUNGSEONG_COMBOS = Map.of(
             "ㅗㅏ", 'ㅘ', "ㅗㅐ", 'ㅙ', "ㅗㅣ", 'ㅚ',
             "ㅜㅓ", 'ㅝ', "ㅜㅔ", 'ㅞ', "ㅜㅣ", 'ㅟ',
             "ㅡㅣ", 'ㅢ'
     );
 
-    // 복합 종성 조합 맵
+    /* 복합 종성 조합 맵 */
     private static final Map<String, Character> JONGSEONG_COMBOS = Map.ofEntries(
             Map.entry("ㄱㅅ", 'ㄳ'),
             Map.entry("ㄴㅈ", 'ㄵ'),
@@ -53,8 +53,10 @@ public class HangulQwertyConverter {
     );
 
     public static String convertQwertyToHangul(String input) {
-        // 1) QWERTY → 자모 리스트
+
+        /* 1) QWERTY → 자모 리스트 */
         List<Character> jamos = new ArrayList<>(input.length());
+
         for (char c : input.toCharArray()) {
             Character jm = QWERTY_TO_JAMO.get(c);
             if (jm != null) jamos.add(jm);
@@ -63,7 +65,7 @@ public class HangulQwertyConverter {
         StringBuilder sb = new StringBuilder();
         int i = 0, n = jamos.size();
         while (i < n) {
-            // --- 1. 초성 ---
+            /* --- 1. 초성 --- */
             int cho = indexOf(CHOSEONG, jamos.get(i));
             if (cho < 0) {
                 sb.append(jamos.get(i++));
@@ -71,7 +73,7 @@ public class HangulQwertyConverter {
             }
             i++;
 
-            // --- 2. 중성 (복합 포함) ---
+            /* --- 2. 중성 (복합 포함) --- */
             int jung = -1;
             if (i < n) {
                 char first = jamos.get(i);
@@ -90,7 +92,7 @@ public class HangulQwertyConverter {
                 }
                 jung = indexOf(JUNGSEONG, combined);
                 if (jung < 0) {
-                    // 중성 매핑 실패 시 초성만 출력
+                    /* 중성 매핑 실패 시 초성만 출력 */
                     sb.append(CHOSEONG[cho]).append(combined);
                     continue;
                 }
@@ -99,25 +101,37 @@ public class HangulQwertyConverter {
                 break;
             }
 
-            // --- 3. 종성 (복합 종성 먼저 시도) ---
+            /* --- 3. 종성 (복합 종성 먼저 시도) --- */
             int jong = 0;
             if (i < n) {
-                // 3-1) 복합 종성
+                /* 3-1) 복합 종성 조합 시도 */
                 if (i + 1 < n) {
-                    String key = "" + jamos.get(i) + jamos.get(i + 1);
-                    Character combo = JONGSEONG_COMBOS.get(key);
-                    if (combo != null) {
-                        jong = indexOf(JONGSEONG, combo);
-                        if (jong > 0) {
+                    char first = jamos.get(i);
+                    char second = jamos.get(i + 1);
+                    String comboKey = "" + first + second;
+                    Character comboChar = JONGSEONG_COMBOS.get(comboKey);
+
+                    /* **수정된 부분**: 복합으로 잡기 전에
+                    * combo 후에 중성이 오지 않을 때만 허용
+                    * */
+                    boolean nextIsJungAfterCombo =
+                            (i + 2 < n) && indexOf(JUNGSEONG, jamos.get(i + 2)) >= 0;
+
+                    if (comboChar != null && !nextIsJungAfterCombo) {
+                        int idx = indexOf(JONGSEONG, comboChar);
+                        if (idx > 0) {
+                            jong = idx;
                             i += 2;
                         }
                     }
                 }
-                // 3-2) 단일 종성
+
+                /* 3-2) 단일 종성 */
                 if (jong == 0) {
                     char cand = jamos.get(i);
                     int idx = indexOf(JONGSEONG, cand);
-                    boolean nextIsJung = (i + 1 < n && indexOf(JUNGSEONG, jamos.get(i + 1)) >= 0);
+                    boolean nextIsJung =
+                            (i + 1 < n && indexOf(JUNGSEONG, jamos.get(i + 1)) >= 0);
                     if (idx > 0 && !nextIsJung) {
                         jong = idx;
                         i++;
@@ -125,7 +139,7 @@ public class HangulQwertyConverter {
                 }
             }
 
-            // --- 4. 완성형 한글 조합 및 append ---
+            /* --- 4. 완성형 한글 조합 및 append --- */
             char syllable = (char)(0xAC00 + (cho * 21 * 28) + (jung * 28) + jong);
             sb.append(syllable);
         }
@@ -133,6 +147,12 @@ public class HangulQwertyConverter {
         return sb.toString();
     }
 
+    /**
+     * 문자열 몇번째에 찾고자하는 문자열이 있는지 반환해주는 함수
+     * @param arr
+     * @param target
+     * @return
+     */
     private static int indexOf(char[] arr, char target) {
         for (int i = 0; i < arr.length; i++) {
             if (arr[i] == target) return i;
