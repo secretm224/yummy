@@ -1,7 +1,8 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
 import com.cho_co_song_i.yummy.yummy.dto.*;
-import com.cho_co_song_i.yummy.yummy.entity.UserAuthTbl;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.UserOAuthResponse;
+import com.cho_co_song_i.yummy.yummy.dto.userCache.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,13 +26,13 @@ public interface YummyLoginService {
      */
     void standardLogoutUser(HttpServletResponse res);
 
-    /**
-     * userAuthTbl 테이블의 정보를 쿼리하는 함수 -> 각 Oauth 서비스에서 사용함.
-     * @param userToken
-     * @param oauthChannelStatus
-     * @return
-     */
-    UserAuthTbl getUserAuthTbl(String userToken, OauthChannelStatus oauthChannelStatus);
+//    /**
+//     * userAuthTbl 테이블의 정보를 쿼리하는 함수 -> 각 Oauth 서비스에서 사용함.
+//     * @param userToken
+//     * @param oauthChannelStatus
+//     * @return
+//     */
+//    UserAuthTbl getUserAuthTbl(String userToken, OauthChannelStatus oauthChannelStatus);
 
     /**
      * Oauth2 를 통한 로그인 처리

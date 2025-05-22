@@ -1,4 +1,4 @@
-package com.cho_co_song_i.yummy.yummy.dto;
+package com.cho_co_song_i.yummy.yummy.dto.oauth.kakao;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -6,7 +6,7 @@ import lombok.Data;
 import java.util.Map;
 
 @Data
-public class KakaoUserInfo {
+public class KakaoUserInfoRaw {
 
     @JsonProperty("id")
     private Long id;

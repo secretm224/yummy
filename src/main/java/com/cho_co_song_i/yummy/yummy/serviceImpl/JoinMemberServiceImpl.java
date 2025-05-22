@@ -2,6 +2,7 @@ package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.*;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthUserSimpleInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JoinMemberIdStatus;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
@@ -538,12 +539,12 @@ public class JoinMemberServiceImpl implements JoinMamberService {
 
                 /* 유저 프로필 사진정보 저장 */
                 String redisKeyFormat = String.format("%s:%s", oauthTempInfo, idToken);
-                UserOAuthInfoDto userOAuthInfoDto = redisAdapter
+                OauthUserSimpleInfoDto oauthUserSimpleInfoDto = redisAdapter
                         .getValue(
                                 redisKeyFormat,
-                                new TypeReference<UserOAuthInfoDto>() {});
+                                new TypeReference<OauthUserSimpleInfoDto>() {});
 
-                userService.inputUserPictureTbl(joinUser, oauthChannel, userOAuthInfoDto.getUserPicture());
+                userService.inputUserPictureTbl(joinUser, oauthChannel, oauthUserSimpleInfoDto.getUserPicture());
                 redisAdapter.deleteKey(redisKeyFormat);
 
                 CookieUtil.clearCookie(res, "yummy-oauth-token");
@@ -830,12 +831,12 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         /* 여기서 유저의 사진정보를 저장해줘야 할듯 -> idToken 을 가지고 데이터를 가져와주면 된다. */
         String redisKeyFormat = String.format("%s:%s", oauthTempInfo, idToken);
 
-        UserOAuthInfoDto userOAuthInfoDto = redisAdapter
+        OauthUserSimpleInfoDto oauthUserSimpleInfoDto = redisAdapter
                 .getValue(
                         redisKeyFormat,
-                        new TypeReference<UserOAuthInfoDto>() {});
+                        new TypeReference<OauthUserSimpleInfoDto>() {});
 
-        userService.inputUserPictureTbl(user, loginChannel, userOAuthInfoDto.getUserPicture());
+        userService.inputUserPictureTbl(user, loginChannel, oauthUserSimpleInfoDto.getUserPicture());
 
         redisAdapter.deleteKey(redisKeyFormat);
 

@@ -1,7 +1,7 @@
 package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
-import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
+import com.cho_co_song_i.yummy.yummy.dto.userCache.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.UserLocationDetailTbl;
 import com.cho_co_song_i.yummy.yummy.entity.UserPictureTbl;
 import com.cho_co_song_i.yummy.yummy.entity.UserPictureTblId;

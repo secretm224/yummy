@@ -2,6 +2,7 @@ package com.cho_co_song_i.yummy.yummy.service;
 
 import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
+import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
@@ -56,10 +57,11 @@ public class JwtProviderService {
      * @param tokenId
      * @return
      */
-    public String generateAccessToken(String userNo, boolean isTempPw, String tokenId) {
+    public String generateAccessToken(String userNo, boolean isTempPw, String tokenId, OauthChannelStatus oauthChannel) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("isTempPw", isTempPw);
-        claims.put("tokenId", tokenId);
+        claims.put("isTempPw", isTempPw); /* 임시비밀번호 발급 여부 */
+        claims.put("tokenId", tokenId); /* Yummy JWT 토큰 아이디 정보 */
+        claims.put("oauthChannel", oauthChannel.toString()); /* Oauth 채널 종류 */
 
         return Jwts.builder()
                 .claims(claims)

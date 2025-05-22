@@ -1,8 +1,7 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
 import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
-import com.cho_co_song_i.yummy.yummy.dto.UserBasicInfoDto;
-import com.cho_co_song_i.yummy.yummy.dto.UserOAuthInfoDto;
+import com.cho_co_song_i.yummy.yummy.dto.userCache.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import jakarta.servlet.http.HttpServletRequest;

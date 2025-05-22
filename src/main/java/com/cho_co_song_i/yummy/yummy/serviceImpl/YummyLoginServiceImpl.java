@@ -2,6 +2,9 @@ package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.*;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthUserSimpleInfoDto;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.UserOAuthResponse;
+import com.cho_co_song_i.yummy.yummy.dto.userCache.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
@@ -10,6 +13,7 @@ import com.cho_co_song_i.yummy.yummy.repository.UserRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserTempPwHistoryRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserTokenIdRepository;
 import com.cho_co_song_i.yummy.yummy.service.JwtProviderService;
+import com.cho_co_song_i.yummy.yummy.service.LoginService;
 import com.cho_co_song_i.yummy.yummy.service.UserService;
 import com.cho_co_song_i.yummy.yummy.service.YummyLoginService;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
@@ -20,6 +24,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,8 +34,6 @@ import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
 
-import static com.cho_co_song_i.yummy.yummy.entity.QUserAuthTbl.userAuthTbl;
-import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 
 @Service
 @Slf4j
@@ -46,11 +49,16 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     private final UserService userService;
     private final JwtProviderService jwtProviderService;
     private final EventProducerServiceImpl eventProducerServiceImpl;
-    private final JPAQueryFactory queryFactory;
+    //private final JPAQueryFactory queryFactory;
 
     private final UserTokenIdRepository userTokenIdRepository;
     private final UserTempPwHistoryRepository userTempPwHistoryRepository;
     private final UserRepository userRepository;
+
+    // Error 테스트용
+    private void test() {
+        throw new RuntimeException("일부러");
+    }
 
     /**
      * 로그인 - 유저가 임시비밀번호 발급을 했는지 확인 (비밀번호 찾기)
@@ -62,7 +70,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     }
 
     /**
-     * 로그인에 성공한 유제의 엑세스 토큰 아이디를 디비에 넣어준다.
+     * 로그인에 성공한 유제의 access token 아이디를 디비에 넣어준다.
      * @param user
      * @param tokenId
      */
@@ -84,12 +92,38 @@ public class YummyLoginServiceImpl implements YummyLoginService {
      * @return
      * @throws Exception
      */
-    private Optional<UserBasicInfoDto> findUserProfileFromRedis(String userNo) throws Exception {
+    private Optional<UserBasicInfoDto> findUserProfileFromRedis(Long userNo) throws Exception {
         String keyPrefix = String.format("%s:%s", userInfoKey, userNo);
         UserBasicInfoDto userDto = redisAdapter.getValue(keyPrefix, new TypeReference<UserBasicInfoDto>() {});
 
         return Optional.ofNullable(userDto);
     }
+
+
+    private UserBasicInfoDto findAndModifyUserProfile(Long userNo, OauthChannelStatus loginChannel) throws Exception {
+
+        /**
+         * Oauth 에서 데이터를 가져오고 해당 데이터를 Redis 에 넣어준다.
+         *
+         */
+        OauthUserSimpleInfoDto oauthUserSimpleInfoDto = new OauthUserSimpleInfoDto();
+
+        if (loginChannel == OauthChannelStatus.kakao) {
+
+        } else if (loginChannel == OauthChannelStatus.naver) {
+
+        } else if (loginChannel == OauthChannelStatus.telegram) {
+
+        } else if (loginChannel == OauthChannelStatus.google) {
+
+        } else {
+
+        }
+
+        /* Redis 에서 가져오는 유저 정보 */
+        //Optional<UserBasicInfoDto> userBasicInfoDto = findUserProfileFromRedis(userNo);
+    }
+
 
     /**
      * 리프레시 토큰으로 액세스 토큰 재발급
@@ -99,7 +133,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
      * @return
      * @throws Exception
      */
-    private boolean refreshAccessTokenIfPresent(HttpServletResponse res, String userNo, String tokenId) throws Exception {
+    private boolean refreshAccessTokenIfPresent(HttpServletResponse res, String userNo, String tokenId, OauthChannelStatus loginChannel) throws Exception {
         String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNo, tokenId);
         String refreshToken = redisAdapter.getValue(refreshKey, new TypeReference<String>() {});
 
@@ -109,7 +143,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         }
 
         /* 새 access 토큰 발급 후 쿠키 저장 */
-        String newAccessToken = jwtProviderService.generateAccessToken(userNo, false, tokenId);
+        String newAccessToken = jwtProviderService.generateAccessToken(userNo, false, tokenId, loginChannel);
         CookieUtil.addCookie(res, "yummy-access-token", newAccessToken, 7200);
         return true;
     }
@@ -124,8 +158,8 @@ public class YummyLoginServiceImpl implements YummyLoginService {
          * 1. 로그인 성공시 JWT 토큰을 발급.
          * 임시비밀번호를 발급 받았는지의 여부에 따라 JWT 토큰내부의 내용이 달라진다.
          */
-        String tokenId = UUID.randomUUID().toString();
-        String accessToken = jwtProviderService.generateAccessToken(userNoStr, loginInfo.isTempUserYn(), tokenId);
+        String tokenId = UUID.randomUUID().toString(); /* yummy service 전용 토큰 아이디 */
+        String accessToken = jwtProviderService.generateAccessToken(userNoStr, loginInfo.isTempUserYn(), tokenId, loginChannel);
         String refreshToken = jwtProviderService.generateRefreshToken(userNoStr);
 
         /* 2. Refresh Token 을 Redis 에 넣어준다. && DB 에는 Tokenid 를 넣어준다. */
@@ -148,24 +182,6 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     public void standardLogoutUser(HttpServletResponse res) {
         CookieUtil.clearCookie(res, "yummy-access-token");
     }
-
-
-    public UserAuthTbl getUserAuthTbl(String userToken, OauthChannelStatus oauthChannelStatus) {
-        return queryFactory
-                .selectFrom(userAuthTbl)
-                .join(userTbl).on(userTbl.eq(userAuthTbl.user))
-                .where(
-                        userAuthTbl.id.loginChannel.eq(String.valueOf(oauthChannelStatus)),
-                        userAuthTbl.id.tokenId.eq(userToken)
-                )
-                .fetchFirst();
-    }
-
-
-    private void test() {
-        throw new RuntimeException("일부러");
-    }
-
 
     public StandardLoginBasicResDto verifyLoginUserInfo(StandardLoginDto standardLoginDto) throws Exception {
 
@@ -198,7 +214,6 @@ public class YummyLoginServiceImpl implements YummyLoginService {
 
         /* 1. 유저정보 조회 */
         UserTbl user = userOAuthResponse.getUserTbl();
-
         log.info("[YummyLoginService->oauthLogin][Login] Login successful: {}", user.getUserId());
 
         /* 2. 사용자가 임시비밀번호를 발급받은 사용자인지 체크 */
@@ -206,7 +221,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
 
         StandardLoginBasicResDto loginRes = new StandardLoginBasicResDto(PublicStatus.SUCCESS, user, tempUserYn);
 
-        /* 3. 로그인 처리 */
+        /* 3. 로그인 처리(Oauth2)  */
         processCommonLogin(res, loginRes, userOAuthResponse.getLoginChannel());
 
         return PublicStatus.SUCCESS;
@@ -235,6 +250,8 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         /* 1. 액세스 토큰 확인 */
         JwtValidationResult jwtResult = userService.validateJwtAndCleanIfInvalid("yummy-access-token", res, req);
         String userNo = userService.getSubjectFromJwt(jwtResult);
+        OauthChannelStatus channel = OauthChannelStatus
+                .valueOf(userService.getClaimFromJwt(jwtResult, "oauthChannel", String.class));
 
         /* 2. 액세스 토큰 이상 없는 경우 */
         if (jwtResult.getStatus() == JwtValidationStatus.SUCCESS) {
@@ -255,7 +272,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
             String tokenId = userService.getClaimFromJwt(jwtResult, "tokenId", String.class);
 
             /* 리프레시 토큰을 통해서 액세스 토큰 재 발행 */
-            if (refreshAccessTokenIfPresent(res, userNo, tokenId)) {
+            if (refreshAccessTokenIfPresent(res, userNo, tokenId, channel)) {
                 return ServiceResponse.of(PublicStatus.SUCCESS, findUserProfileFromRedis(userNo));
             } else {
                 log.warn("[Warn][YummyLoginService->checkLoginUser] refreshToken expired or does not exist: userNo={}", userNo);

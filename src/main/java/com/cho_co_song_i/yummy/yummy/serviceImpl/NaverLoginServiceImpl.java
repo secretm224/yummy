@@ -1,6 +1,7 @@
 package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.dto.OauthLoginDto;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthUserSimpleInfoDto;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.service.JwtProviderService;
 import com.cho_co_song_i.yummy.yummy.service.LoginService;
@@ -31,5 +32,9 @@ public class NaverLoginServiceImpl implements LoginService {
     public void generateTempOauthJwtCookie(String idToken, HttpServletResponse res) {
         String jwtToken = jwtProviderService.generateOauthTempToken(idToken, "naver");
         CookieUtil.addCookie(res, "yummy-oauth-temp-token", jwtToken, 300);
+    }
+
+    public OauthUserSimpleInfoDto getUserInfosByOauth(Long userNo) {
+        return null;
     }
 }

@@ -1,6 +1,8 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
 import com.cho_co_song_i.yummy.yummy.dto.*;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.kakao.KakaoUserInfoRaw;
+import com.cho_co_song_i.yummy.yummy.dto.userCache.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.service.*;
 
@@ -112,8 +114,9 @@ public class LoginController {
     @GetMapping("/test")
     @ResponseBody
     public ResponseEntity<String> Test() throws Exception {
-        //KakaoUserInfo user = kakoLoginService.getKakaoUserInfo("3yzz0-9rEwhG82yjPwGJsfM-V42gtKcyAAAAAQoNIFoAAAGW8aJeB0PPWzORmYVE");
-        //String a = "test";
+        KakaoUserInfoRaw user = kakoLoginService.getKakaoUserInfo("qHekgq2WWkqnG2N1HnDuv_g_9CsOgt9ZAAAAAQoXEpYAAAGW9eoOE0PPWzORmYVE");
+
+        String a = "test";
 
         return ResponseEntity.ok("test");
     }
