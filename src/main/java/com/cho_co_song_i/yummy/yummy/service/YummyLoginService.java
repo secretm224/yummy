@@ -41,7 +41,7 @@ public interface YummyLoginService {
      * @return
      * @throws Exception
      */
-    PublicStatus processOAuthLogin(OauthLoginDto loginDto, HttpServletResponse res, HttpServletRequest req) throws Exception;
+    PublicStatus processOauthLogin(OauthLoginDto loginDto, HttpServletResponse res, HttpServletRequest req) throws Exception;
     /**
      * 기본적인 유저 로그인 검증 후 유저로그인 관련 정보 반환하는 함수
      * @param standardLoginDto

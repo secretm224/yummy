@@ -3,6 +3,7 @@ package com.cho_co_song_i.yummy.yummy.serviceImpl;
 import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthLoginDto;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.UserOAuthResponse;
 import com.cho_co_song_i.yummy.yummy.dto.userCache.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
@@ -43,10 +44,11 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     private final UserService userService;
     private final JwtProviderService jwtProviderService;
     private final EventProducerService eventProducerService;
-    //private final JPAQueryFactory queryFactory;
-    //private final Map<String, LoginService> loginServiceMap;
-    private final KakaoLoginServiceImpl kakaoLoginService;
 
+    /* Oauth2 */
+    private final KakaoLoginServiceImpl kakaoLoginService;
+    private final NaverLoginServiceImpl naverLoginService;
+    private final GoogleLoginServiceImpl googleLoginService;
 
     private final UserTokenIdRepository userTokenIdRepository;
     private final UserTempPwHistoryRepository userTempPwHistoryRepository;
@@ -215,13 +217,23 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         eventProducerService.produceLoginAttemptEvent(req);
 
         /* 유저의 Oauth에 대한 정보 -> 각 Oauth 별로 진행 */
+        UserOAuthResponse userOAuthResponse = new UserOAuthResponse();
+
         // UserOAuthResponse userOAuthResponse = getOauthLoginInfo(loginDto.getCode());
         if (loginDto.getOauthType().equals(OauthChannelStatus.kakao.toString())) {
-            kakaoLoginService.
+            userOAuthResponse = kakaoLoginService.getOauthLoginInfo(loginDto.getCode());
         }
 
+//        else if (loginDto.getOauthType().equals(OauthChannelStatus.kakao.toString()) {
+//
+//        } else if (loginDto.getOauthType().equals(OauthChannelStatus.kakao.toString()) {
+//
+//        } else {
+//
+//        }
 
 
+        return PublicStatus.SUCCESS;
     }
 
 //    @Transactional(rollbackFor = Exception.class)

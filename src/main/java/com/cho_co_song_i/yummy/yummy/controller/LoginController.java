@@ -28,37 +28,12 @@ import java.util.Optional;
 @Slf4j
 @RequiredArgsConstructor
 public class LoginController {
-    private final KakaoLoginServiceImpl kakoLoginService;
-    private final NaverLoginServiceImpl naverLoginService;
-    private final GoogleLoginServiceImpl googleLoginService;
     private final YummyLoginService yummyLoginService;
 
     @GetMapping
     public String Login(Model model) {
         model.addAttribute("title", "로그인페이지");
         return "login";
-    }
-
-    /**
-     * [Test Code]
-     * @param text
-     * @return
-     */
-    @GetMapping("/hashtest")
-    public ResponseEntity<?> HashTest(
-            @RequestParam(value = "text", required = false) String text
-    ) {
-
-        try {
-
-            String saltValue = HashUtil.generateSalt();
-            String hashVal = HashUtil.hashWithSalt(text, saltValue);
-
-            return ResponseEntity.ok(hashVal);
-
-        } catch(Exception e) {
-            return ResponseEntity.ok(false);
-        }
     }
 
     /**
@@ -109,22 +84,63 @@ public class LoginController {
     @PostMapping("/oauth2/kakao")
     @ResponseBody
     public PublicStatus kakaoLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) throws Exception{
-        //return kakoLoginService.handleOAuthLogin(loginDto, res, req);
+        return yummyLoginService.processOauthLogin(loginDto, res, req);
     }
 
-    @GetMapping("/test")
-    @ResponseBody
-    public ResponseEntity<String> Test() throws Exception {
-        KakaoUserInfoRaw user = kakoLoginService.getKakaoUserInfo("");
-        
-        String a = "test";
+//    @PostMapping("/oauth2/naver")
+//    @ResponseBody
+//    public PublicStatus naverLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) throws Exception{
+//        //return kakoLoginService.handleOAuthLogin(loginDto, res, req);
+//    }
+//
+//    @PostMapping("/oauth2/google")
+//    @ResponseBody
+//    public PublicStatus googleLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) throws Exception{
+//        //return kakoLoginService.handleOAuthLogin(loginDto, res, req);
+//    }
+//
+//    @PostMapping("/oauth2/telegram")
+//    @ResponseBody
+//    public PublicStatus telegramLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) throws Exception{
+//        //return kakoLoginService.handleOAuthLogin(loginDto, res, req);
+//    }
 
-        return ResponseEntity.ok("test");
-    }
+//    @GetMapping("/test")
+//    @ResponseBody
+//    public ResponseEntity<String> Test() throws Exception {
+//        KakaoUserInfoRaw user = kakoLoginService.getKakaoUserInfo("");
+//
+//        String a = "test";
+//
+//        return ResponseEntity.ok("test");
+//    }
 
     @GetMapping("/deploytest")
     @ResponseBody
     public String deployTest(){
         return "배포 테스트";
     }
+
+    /**
+     * [Test Code]
+     * @param text
+     * @return
+     */
+    @GetMapping("/hashtest")
+    public ResponseEntity<?> HashTest(
+            @RequestParam(value = "text", required = false) String text
+    ) {
+
+        try {
+
+            String saltValue = HashUtil.generateSalt();
+            String hashVal = HashUtil.hashWithSalt(text, saltValue);
+
+            return ResponseEntity.ok(hashVal);
+
+        } catch(Exception e) {
+            return ResponseEntity.ok(false);
+        }
+    }
+
 }
