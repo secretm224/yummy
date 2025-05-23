@@ -1,6 +1,7 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
 import com.cho_co_song_i.yummy.yummy.dto.*;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthLoginDto;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.kakao.KakaoUserInfoRaw;
 import com.cho_co_song_i.yummy.yummy.dto.userCache.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
@@ -108,14 +109,14 @@ public class LoginController {
     @PostMapping("/oauth2/kakao")
     @ResponseBody
     public PublicStatus kakaoLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) throws Exception{
-        return kakoLoginService.handleOAuthLogin(loginDto, res, req);
+        //return kakoLoginService.handleOAuthLogin(loginDto, res, req);
     }
 
     @GetMapping("/test")
     @ResponseBody
     public ResponseEntity<String> Test() throws Exception {
-        KakaoUserInfoRaw user = kakoLoginService.getKakaoUserInfo("qHekgq2WWkqnG2N1HnDuv_g_9CsOgt9ZAAAAAQoXEpYAAAGW9eoOE0PPWzORmYVE");
-
+        KakaoUserInfoRaw user = kakoLoginService.getKakaoUserInfo("");
+        
         String a = "test";
 
         return ResponseEntity.ok("test");

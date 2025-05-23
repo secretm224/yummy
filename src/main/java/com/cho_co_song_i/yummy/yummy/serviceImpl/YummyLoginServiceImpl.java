@@ -2,8 +2,7 @@ package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.*;
-import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthUserSimpleInfoDto;
-import com.cho_co_song_i.yummy.yummy.dto.oauth.UserOAuthResponse;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthLoginDto;
 import com.cho_co_song_i.yummy.yummy.dto.userCache.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
@@ -12,19 +11,14 @@ import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.repository.UserRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserTempPwHistoryRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserTokenIdRepository;
-import com.cho_co_song_i.yummy.yummy.service.JwtProviderService;
-import com.cho_co_song_i.yummy.yummy.service.LoginService;
-import com.cho_co_song_i.yummy.yummy.service.UserService;
-import com.cho_co_song_i.yummy.yummy.service.YummyLoginService;
+import com.cho_co_song_i.yummy.yummy.service.*;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,8 +42,11 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     private final RedisAdapter redisAdapter;
     private final UserService userService;
     private final JwtProviderService jwtProviderService;
-    private final EventProducerServiceImpl eventProducerServiceImpl;
+    private final EventProducerService eventProducerService;
     //private final JPAQueryFactory queryFactory;
+    //private final Map<String, LoginService> loginServiceMap;
+    private final KakaoLoginServiceImpl kakaoLoginService;
+
 
     private final UserTokenIdRepository userTokenIdRepository;
     private final UserTempPwHistoryRepository userTempPwHistoryRepository;
@@ -100,29 +97,31 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     }
 
 
-    private UserBasicInfoDto findAndModifyUserProfile(Long userNo, OauthChannelStatus loginChannel) throws Exception {
-
-        /**
-         * Oauth 에서 데이터를 가져오고 해당 데이터를 Redis 에 넣어준다.
-         *
-         */
-        OauthUserSimpleInfoDto oauthUserSimpleInfoDto = new OauthUserSimpleInfoDto();
-
-        if (loginChannel == OauthChannelStatus.kakao) {
-
-        } else if (loginChannel == OauthChannelStatus.naver) {
-
-        } else if (loginChannel == OauthChannelStatus.telegram) {
-
-        } else if (loginChannel == OauthChannelStatus.google) {
-
-        } else {
-
-        }
-
-        /* Redis 에서 가져오는 유저 정보 */
-        //Optional<UserBasicInfoDto> userBasicInfoDto = findUserProfileFromRedis(userNo);
-    }
+//    private UserBasicInfoDto findAndModifyUserProfile(Long userNo, OauthChannelStatus loginChannel) throws Exception {
+//
+//        /**
+//         * Oauth 에서 데이터를 가져오고 해당 데이터를 Redis 에 넣어준다.
+//         *
+//         */
+//        OauthUserSimpleInfoDto oauthUserSimpleInfoDto = new OauthUserSimpleInfoDto();
+//
+//        if (loginChannel == OauthChannelStatus.kakao) {
+//            LoginService kakaoLogin = loginServiceMap.get("KakaoLoginServiceImpl");
+//
+//
+//        } else if (loginChannel == OauthChannelStatus.naver) {
+//
+//        } else if (loginChannel == OauthChannelStatus.telegram) {
+//
+//        } else if (loginChannel == OauthChannelStatus.google) {
+//
+//        } else {
+//
+//        }
+//
+//        /* Redis 에서 가져오는 유저 정보 */
+//        //Optional<UserBasicInfoDto> userBasicInfoDto = findUserProfileFromRedis(userNo);
+//    }
 
 
     /**
@@ -133,7 +132,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
      * @return
      * @throws Exception
      */
-    private boolean refreshAccessTokenIfPresent(HttpServletResponse res, String userNo, String tokenId, OauthChannelStatus loginChannel) throws Exception {
+    private boolean refreshAccessTokenIfPresent(HttpServletResponse res, Long userNo, String tokenId, OauthChannelStatus loginChannel) throws Exception {
         String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNo, tokenId);
         String refreshToken = redisAdapter.getValue(refreshKey, new TypeReference<String>() {});
 
@@ -152,19 +151,20 @@ public class YummyLoginServiceImpl implements YummyLoginService {
 
         /* 유저 정보 */
         UserTbl user = loginInfo.getUserTbl();
-        String userNoStr = user.getUserNo().toString();
+        Long userNo = user.getUserNo();
+        //String userNoStr = user.getUserNo().toString();
 
         /**
          * 1. 로그인 성공시 JWT 토큰을 발급.
          * 임시비밀번호를 발급 받았는지의 여부에 따라 JWT 토큰내부의 내용이 달라진다.
          */
         String tokenId = UUID.randomUUID().toString(); /* yummy service 전용 토큰 아이디 */
-        String accessToken = jwtProviderService.generateAccessToken(userNoStr, loginInfo.isTempUserYn(), tokenId, loginChannel);
-        String refreshToken = jwtProviderService.generateRefreshToken(userNoStr);
+        String accessToken = jwtProviderService.generateAccessToken(userNo, loginInfo.isTempUserYn(), tokenId, loginChannel);
+        String refreshToken = jwtProviderService.generateRefreshToken(userNo);
 
         /* 2. Refresh Token 을 Redis 에 넣어준다. && DB 에는 Tokenid 를 넣어준다. */
         inputUserTokenId(user, tokenId);
-        String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNoStr, tokenId);
+        String refreshKey = String.format("%s:%s:%s", refreshKeyPrefix, userNo, tokenId);
         redisAdapter.set(refreshKey, refreshToken, Duration.ofDays(7));
 
         /* 3. accessToken을 쿠키에 저장해준다. */
@@ -175,7 +175,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         UserBasicInfoDto userBasicInfo = userService.getUserBasicInfos(user, loginChannel);
 
         /* 5. 기본 회원정보를 Redis 에 저장한다. */
-        String basicUserInfo = String.format("%s:%s", userInfoKey, userNoStr);
+        String basicUserInfo = String.format("%s:%s", userInfoKey, userNo);
         redisAdapter.set(basicUserInfo, userBasicInfo);
     }
 
@@ -210,28 +210,43 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public PublicStatus processOauthLogin(UserOAuthResponse userOAuthResponse, HttpServletResponse res) throws Exception {
+    public PublicStatus processOauthLogin(OauthLoginDto loginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
+        /* 로그인 시도 기록 */
+        eventProducerService.produceLoginAttemptEvent(req);
 
-        /* 1. 유저정보 조회 */
-        UserTbl user = userOAuthResponse.getUserTbl();
-        log.info("[YummyLoginService->oauthLogin][Login] Login successful: {}", user.getUserId());
+        /* 유저의 Oauth에 대한 정보 -> 각 Oauth 별로 진행 */
+        // UserOAuthResponse userOAuthResponse = getOauthLoginInfo(loginDto.getCode());
+        if (loginDto.getOauthType().equals(OauthChannelStatus.kakao.toString())) {
+            kakaoLoginService.
+        }
 
-        /* 2. 사용자가 임시비밀번호를 발급받은 사용자인지 체크 */
-        boolean tempUserYn = isTempLoginUser(user);
 
-        StandardLoginBasicResDto loginRes = new StandardLoginBasicResDto(PublicStatus.SUCCESS, user, tempUserYn);
 
-        /* 3. 로그인 처리(Oauth2)  */
-        processCommonLogin(res, loginRes, userOAuthResponse.getLoginChannel());
-
-        return PublicStatus.SUCCESS;
     }
+
+//    @Transactional(rollbackFor = Exception.class)
+//    public PublicStatus processOauthLogin(UserOAuthResponse userOAuthResponse, HttpServletResponse res) throws Exception {
+//
+//        /* 1. 유저정보 조회 */
+//        UserTbl user = userOAuthResponse.getUserTbl();
+//        log.info("[YummyLoginService->oauthLogin][Login] Login successful: {}", user.getUserId());
+//
+//        /* 2. 사용자가 임시비밀번호를 발급받은 사용자인지 체크 */
+//        boolean tempUserYn = isTempLoginUser(user);
+//
+//        StandardLoginBasicResDto loginRes = new StandardLoginBasicResDto(PublicStatus.SUCCESS, user, tempUserYn);
+//
+//        /* 3. 로그인 처리(Oauth2)  */
+//        processCommonLogin(res, loginRes, userOAuthResponse.getLoginChannel());
+//
+//        return PublicStatus.SUCCESS;
+//    }
 
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus standardLoginUser(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
 
         /* 로그인 시도 기록 */
-        eventProducerServiceImpl.produceLoginAttemptEvent(req);
+        eventProducerService.produceLoginAttemptEvent(req);
 
         StandardLoginBasicResDto loginRes = verifyLoginUserInfo(standardLoginDto);
 
@@ -249,7 +264,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
 
         /* 1. 액세스 토큰 확인 */
         JwtValidationResult jwtResult = userService.validateJwtAndCleanIfInvalid("yummy-access-token", res, req);
-        String userNo = userService.getSubjectFromJwt(jwtResult);
+        Long userNo = Long.parseLong(userService.getSubjectFromJwt(jwtResult));
         OauthChannelStatus channel = OauthChannelStatus
                 .valueOf(userService.getClaimFromJwt(jwtResult, "oauthChannel", String.class));
 
@@ -284,12 +299,15 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         return ServiceResponse.empty(PublicStatus.AUTH_ERROR);
     }
 
+
     public void testing() {
 
         System.out.println("????????????????????????????????????????");
-        UserTbl user = userRepository.findUserByLoginId("ssh9308");
-        System.out.println("=========================================================");
-        System.out.println(user.getUserNo());
+        //LoginService kakaoLogin = loginServiceMap.get("KakaoLoginServiceImpl");
+        //kakaoLogin.getUserInfosByOauth(1L);
+//        UserTbl user = userRepository.findUserByLoginId("ssh9308");
+//        System.out.println("=========================================================");
+//        System.out.println(user.getUserNo());
 
     }
 }

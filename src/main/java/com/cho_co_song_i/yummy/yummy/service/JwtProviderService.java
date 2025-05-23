@@ -57,7 +57,7 @@ public class JwtProviderService {
      * @param tokenId
      * @return
      */
-    public String generateAccessToken(String userNo, boolean isTempPw, String tokenId, OauthChannelStatus oauthChannel) {
+    public String generateAccessToken(Long userNo, boolean isTempPw, String tokenId, OauthChannelStatus oauthChannel) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("isTempPw", isTempPw); /* 임시비밀번호 발급 여부 */
         claims.put("tokenId", tokenId); /* Yummy JWT 토큰 아이디 정보 */
@@ -65,7 +65,7 @@ public class JwtProviderService {
 
         return Jwts.builder()
                 .claims(claims)
-                .subject(userNo)
+                .subject(userNo.toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION))
                 .signWith(key) /* 알고리즘은 키에서 자동 추론됨 */
@@ -78,9 +78,9 @@ public class JwtProviderService {
      * @param userNo
      * @return
      */
-    public String generateRefreshToken(String userNo) {
+    public String generateRefreshToken(Long userNo) {
         return Jwts.builder()
-                .subject(userNo)
+                .subject(userNo.toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))
                 .signWith(key) /* 알고리즘은 키에서 자동 추론됨 */

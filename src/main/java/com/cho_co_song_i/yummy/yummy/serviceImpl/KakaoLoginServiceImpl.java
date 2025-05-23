@@ -1,7 +1,7 @@
 package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
-import com.cho_co_song_i.yummy.yummy.dto.*;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthLoginDto;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthUserSimpleInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.kakao.KakaoOauthInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.kakao.KakaoUserInfoRaw;
@@ -62,7 +62,6 @@ public class KakaoLoginServiceImpl implements LoginService {
     private final UserService userService;
     private final JwtProviderService jwtProviderService;
     private final EventProducerService eventProducerService;
-    private final YummyLoginService yummyLoginService;
 
     private final UserPictureRepository userPictureRepository;
     private final UserRepository userRepository;
@@ -208,7 +207,6 @@ public class KakaoLoginServiceImpl implements LoginService {
     }
 
     public OauthUserSimpleInfoDto getUserInfosByOauth(Long userNo) {
-
         /* Redis 에서 유저의 Kakao accessToken, refreshToken 을 가져와준다. */
         String accessToken = (String)redisAdapter.get(String.format("%s:%s",  kakaoAccessToken, String.valueOf(userNo)));
         String refreshToken = (String)redisAdapter.get(String.format("%s:%s",  kakaoRefreshToken, String.valueOf(userNo)));
@@ -225,7 +223,7 @@ public class KakaoLoginServiceImpl implements LoginService {
      * @return
      * @throws Exception
      */
-    private UserOAuthResponse getOauthLoginInfo(String code) throws Exception {
+    public UserOAuthResponse getOauthLoginInfo(String code) throws Exception {
         KakaoToken kakaoToken = exchangeCodeForKakaoToken(code);
         KakaoOauthInfoDto kakaoOauthInfoDto = getKakaoUserTotalInfos(kakaoToken); /* 전반적인 Kakao User 정보 */
 
@@ -336,7 +334,6 @@ public class KakaoLoginServiceImpl implements LoginService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    @Override
     public PublicStatus handleOAuthLogin(OauthLoginDto loginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
 
         /* 로그인 시도 기록 */

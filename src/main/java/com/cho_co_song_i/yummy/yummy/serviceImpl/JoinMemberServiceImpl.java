@@ -544,7 +544,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
                                 redisKeyFormat,
                                 new TypeReference<OauthUserSimpleInfoDto>() {});
 
-                userService.inputUserPictureTbl(joinUser, oauthChannel, oauthUserSimpleInfoDto.getUserPicture());
+                //userService.inputUserPictureTbl(joinUser, oauthChannel, oauthUserSimpleInfoDto.getUserPicture());
                 redisAdapter.deleteKey(redisKeyFormat);
 
                 CookieUtil.clearCookie(res, "yummy-oauth-token");
@@ -836,7 +836,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
                         redisKeyFormat,
                         new TypeReference<OauthUserSimpleInfoDto>() {});
 
-        userService.inputUserPictureTbl(user, loginChannel, oauthUserSimpleInfoDto.getUserPicture());
+        //userService.inputUserPictureTbl(user, loginChannel, oauthUserSimpleInfoDto.getUserPicture());
 
         redisAdapter.deleteKey(redisKeyFormat);
 

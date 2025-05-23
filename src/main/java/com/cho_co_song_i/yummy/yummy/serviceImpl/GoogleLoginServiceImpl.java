@@ -1,6 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
-import com.cho_co_song_i.yummy.yummy.dto.OauthLoginDto;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthLoginDto;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthUserSimpleInfoDto;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.service.JwtProviderService;
