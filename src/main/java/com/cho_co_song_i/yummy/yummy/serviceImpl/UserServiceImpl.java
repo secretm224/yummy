@@ -1,6 +1,8 @@
 package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
+import com.cho_co_song_i.yummy.yummy.component.JwtProvider;
 import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.UserOAuthResponse;
 import com.cho_co_song_i.yummy.yummy.dto.userCache.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.UserLocationDetailTbl;
 import com.cho_co_song_i.yummy.yummy.entity.UserPictureTbl;
@@ -9,7 +11,6 @@ import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.repository.UserPictureRepository;
-import com.cho_co_song_i.yummy.yummy.service.JwtProviderService;
 import com.cho_co_song_i.yummy.yummy.service.UserService;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -32,7 +33,7 @@ import static com.cho_co_song_i.yummy.yummy.entity.QUserPictureTbl.userPictureTb
 public class UserServiceImpl implements UserService {
 
     private final JPAQueryFactory queryFactory;
-    private final JwtProviderService jwtProviderService;
+    private final JwtProvider jwtProvider;
     private final UserPictureRepository userPictureRepository;
 
     /**
@@ -47,63 +48,26 @@ public class UserServiceImpl implements UserService {
                 .fetchFirst();
     }
 
-    /**
-     * 유저의 프로필사진 정보를 디비에서 반환해주는 함수
-     * @param userNum
-     * @param oauthChannelStatus
-     * @return
-     * @throws Exception
-     */
-    private UserPictureTbl findUserPictureInfo(Long userNum, OauthChannelStatus oauthChannelStatus) throws Exception {
-        UserPictureTblId userPictureTblId = new UserPictureTblId(userNum, oauthChannelStatus.toString());
-        return userPictureRepository.findById(userPictureTblId)
-                .orElseThrow(() -> new Exception(
-                        String.format(
-                                "[Error][UserService->getUserInfoAndModifyUserPic] This user does not exist. userNo: %d",
-                                userNum)
-                ));
-    }
+//    /**
+//     * 유저의 프로필 사진을 반환해주는 함수
+//     * @param userNo
+//     * @param oauthChannelStatus
+//     * @return
+//     * @throws Exception
+//     */
+//    private String resolveUserPictureUrl(Long userNo, OauthChannelStatus oauthChannelStatus) throws Exception {
+//        UserPictureTbl userPic;
+//
+//        if (oauthChannelStatus == OauthChannelStatus.standard) {
+//            userPic = findUserPictureRecentInfo(userNo);
+//        } else {
+//            userPic = findUserPictureInfo(userNo, oauthChannelStatus);
+//        }
+//
+//        return userPic != null ? userPic.getPicUrl() : null;
+//    }
 
-    /**
-     * 유저가 가장 최신에 변경한 프로필 사진으로 가져와준다.
-     * @param userNum
-     * @return
-     */
-    private UserPictureTbl findUserPictureRecentInfo(Long userNum) {
-        return queryFactory
-                .selectFrom(userPictureTbl)
-                .where(
-                        userPictureTbl.id.userNo.eq(userNum),
-                        userPictureTbl.activeYn.eq('Y')
-                )
-                .orderBy(
-                        userPictureTbl.chgDt.desc()
-                )
-                .fetchFirst();
-    }
-
-    /**
-     * 유저의 프로필 사진을 반환해주는 함수
-     * @param userNo
-     * @param oauthChannelStatus
-     * @return
-     * @throws Exception
-     */
-    private String resolveUserPictureUrl(Long userNo, OauthChannelStatus oauthChannelStatus) throws Exception {
-        UserPictureTbl userPic;
-
-        if (oauthChannelStatus == OauthChannelStatus.standard) {
-            userPic = findUserPictureRecentInfo(userNo);
-        } else {
-            userPic = findUserPictureInfo(userNo, oauthChannelStatus);
-        }
-
-        return userPic != null ? userPic.getPicUrl() : null;
-    }
-
-    public UserBasicInfoDto getUserBasicInfos(UserTbl user, OauthChannelStatus oauthChannelStatus) throws Exception {
-        String userPicUrl = resolveUserPictureUrl(user.getUserNo(), oauthChannelStatus);
-
+    public UserBasicInfoDto getUserBasicInfos(UserTbl user) {
         UserLocationDetailTbl userLocationDetail = findUserLocationDetailInfo(user.getUserNo());
         BigDecimal lng = Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLng).orElse(null);
         BigDecimal lat = Optional.ofNullable(userLocationDetail).map(UserLocationDetailTbl::getLat).orElse(null);
@@ -112,14 +76,14 @@ public class UserServiceImpl implements UserService {
                 user.getUserId(),
                 user.getUserNm(),
                 user.getUserBirth(),
-                userPicUrl,
+                null,
                 lng,
                 lat
         );
     }
 
     public JwtValidationResult validateJwtAndCleanIfInvalid(String jwtName, HttpServletResponse res, HttpServletRequest req) {
-        JwtValidationResult jwtValidationResult = jwtProviderService.validateAndParseJwt(jwtName, req);
+        JwtValidationResult jwtValidationResult = jwtProvider.validateAndParseJwt(jwtName, req);
         JwtValidationStatus jwtStatus = jwtValidationResult.getStatus();
 
         if (jwtStatus != JwtValidationStatus.SUCCESS) {

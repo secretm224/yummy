@@ -798,7 +798,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
     public PublicStatus linkMemberByOauth(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
 
         /* 로그인 정보 검증 */
-        StandardLoginBasicResDto loginInfo = yummyLoginServiceImpl.verifyLoginUserInfo(standardLoginDto);
+        StandardLoginBasicResDto loginInfo = yummyLoginServiceImpl.verifyAndGetLoginUserInfo(standardLoginDto);
 
         if (loginInfo.getPublicStatus() != PublicStatus.SUCCESS) {
             return PublicStatus.AUTH_ERROR;
@@ -835,8 +835,6 @@ public class JoinMemberServiceImpl implements JoinMamberService {
                 .getValue(
                         redisKeyFormat,
                         new TypeReference<OauthUserSimpleInfoDto>() {});
-
-        //userService.inputUserPictureTbl(user, loginChannel, oauthUserSimpleInfoDto.getUserPicture());
 
         redisAdapter.deleteKey(redisKeyFormat);
 

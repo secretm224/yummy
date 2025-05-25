@@ -2,6 +2,7 @@ package com.cho_co_song_i.yummy.yummy.service;
 
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthLoginDto;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.UserOAuthResponse;
 import com.cho_co_song_i.yummy.yummy.dto.userCache.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
@@ -16,9 +17,8 @@ public interface YummyLoginService {
      * @param res
      * @param loginInfo
      * @param loginChannel
-     * @throws Exception
      */
-    void processCommonLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo, OauthChannelStatus loginChannel) throws Exception;
+    void processCommonLogin(HttpServletResponse res, StandardLoginBasicResDto loginInfo, OauthChannelStatus loginChannel);
     /**
      * 정석적인 방법으로 로그인하는 경우 -> 아이디/비밀번호 입력해서 로그인 시도
      * @param standardLoginDto
@@ -34,7 +34,7 @@ public interface YummyLoginService {
      */
     void standardLogoutUser(HttpServletResponse res);
     /**
-     *
+     * Oauth2 로그인 처리 - 각 채널별로 처리해줌.
      * @param loginDto
      * @param res
      * @param req
@@ -47,7 +47,7 @@ public interface YummyLoginService {
      * @param standardLoginDto
      * @return
      */
-    StandardLoginBasicResDto verifyLoginUserInfo(StandardLoginDto standardLoginDto) throws Exception;
+    StandardLoginBasicResDto verifyAndGetLoginUserInfo(StandardLoginDto standardLoginDto) throws Exception;
     /**
      * 해당 브라우저가 로그인을 했는지 체크해준다. -> Optional.empty() 라면 다시 로그인 해줘야 한다는 의미.
      * @param res

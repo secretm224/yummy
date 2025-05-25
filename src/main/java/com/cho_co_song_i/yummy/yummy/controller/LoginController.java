@@ -87,6 +87,7 @@ public class LoginController {
         return yummyLoginService.processOauthLogin(loginDto, res, req);
     }
 
+    /* 아래의 메소드는 향후에 계속 추가해줄 것 ...Oauth2...*/
 //    @PostMapping("/oauth2/naver")
 //    @ResponseBody
 //    public PublicStatus naverLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) throws Exception{

@@ -1,6 +1,7 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
 import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.UserOAuthResponse;
 import com.cho_co_song_i.yummy.yummy.dto.userCache.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
@@ -8,15 +9,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 public interface UserService {
-
     /**
      * Redis 에 저장할 유저의 기본 정보
      * @param user
-     * @param oauthChannelStatus
      * @return
-     * @throws Exception
      */
-    UserBasicInfoDto getUserBasicInfos(UserTbl user, OauthChannelStatus oauthChannelStatus) throws Exception;
+    UserBasicInfoDto getUserBasicInfos(UserTbl user);
 
     /**
      * Jwt 의 토큰을 검증하고 그 내부의 내용을 반환해주는 함수.

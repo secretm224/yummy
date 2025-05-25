@@ -1,9 +1,11 @@
 package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
+import com.cho_co_song_i.yummy.yummy.component.JwtProvider;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthLoginDto;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthUserSimpleInfoDto;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.UserOAuthResponse;
+import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
-import com.cho_co_song_i.yummy.yummy.service.JwtProviderService;
 import com.cho_co_song_i.yummy.yummy.service.LoginService;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,22 +19,14 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class GoogleLoginServiceImpl implements LoginService {
 
-    private final JwtProviderService jwtProviderService;
+    public OauthChannelStatus getOauthChannel() {
+        return OauthChannelStatus.google;
+    }
 
-    public PublicStatus handleOAuthLogin(OauthLoginDto loginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
+    public UserOAuthResponse getOauthLoginInfo(String code) throws Exception {
         return null;
     }
-
-    /**
-     * 회원이 oauth2 를 통해 기존아이디 통합 또는 회원가입을 위해 임시 jwt 쿠키를 발급해준다.
-     * @param idToken
-     * @param res
-     */
-    public void generateTempOauthJwtCookie(String idToken, HttpServletResponse res) {
-        String jwtToken = jwtProviderService.generateOauthTempToken(idToken, "google");
-        CookieUtil.addCookie(res, "yummy-oauth-temp-token", jwtToken, 300);
-    }
-
+    public void saveOauthTokenToRedis(Long userNo, UserOAuthResponse response) {}
 
     public OauthUserSimpleInfoDto getUserInfosByOauth(Long userNo) {
         return null;

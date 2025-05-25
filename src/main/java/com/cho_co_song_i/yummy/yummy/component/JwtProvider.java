@@ -1,4 +1,4 @@
-package com.cho_co_song_i.yummy.yummy.service;
+package com.cho_co_song_i.yummy.yummy.component;
 
 import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
@@ -7,6 +7,7 @@ import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,11 +20,11 @@ import java.util.Map;
 
 @Service
 @Slf4j
-public class JwtProviderService {
+public class JwtProvider {
 
     private final SecretKey key;
 
-    public JwtProviderService(@Value("${spring.redis.jwt.secret_key}") String secretKey) {
+    public JwtProvider(@Value("${spring.redis.jwt.secret_key}") String secretKey) {
         this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
     private final long TEMP_TOKEN_EXPIRATION = 1000 * 60 * 10; /* 10분 */
@@ -36,7 +37,7 @@ public class JwtProviderService {
      * @param idToken
      * @return
      */
-    public String generateOauthTempToken(String idToken, String oauthChannel) {
+    private String generateOauthTempToken(String idToken, String oauthChannel) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("oauthChannel", oauthChannel);
 
@@ -49,6 +50,16 @@ public class JwtProviderService {
                 .compact();
     }
 
+    /**
+     * Oauth 회원가입을 위한 임시 jwt를 발급해주고 Cookie 에 저장해주는 메소드.
+     * @param res
+     * @param idToken
+     * @param oauthChannelStatus
+     */
+    public void generateTempOauthJwtCookie(HttpServletResponse res, String idToken, OauthChannelStatus oauthChannelStatus) {
+        String jwtToken = generateOauthTempToken(idToken, String.valueOf(oauthChannelStatus));
+        CookieUtil.addCookie(res, "yummy-oauth-token", jwtToken, 3600);
+    }
 
     /**
      * Access Token 을 발급해주는 함수

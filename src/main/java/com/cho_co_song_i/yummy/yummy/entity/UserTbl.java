@@ -37,6 +37,9 @@ public class UserTbl implements Persistable<Long> {
     @Column(name = "user_gender", nullable = true, columnDefinition = "CHAR(1)")
     private String userGender;
 
+    @Column(name = "main_oauth_channel", nullable = true, length = 25)
+    private String mainOauthChannel;
+
     @Column(name = "reg_dt", nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
     private Date regDt;
