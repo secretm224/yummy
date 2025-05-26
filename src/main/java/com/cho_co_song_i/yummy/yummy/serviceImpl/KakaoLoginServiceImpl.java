@@ -1,7 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
-import com.cho_co_song_i.yummy.yummy.component.JwtProvider;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthUserSimpleInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.kakao.KakaoOauthInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.kakao.KakaoUserInfoRaw;
@@ -11,10 +10,8 @@ import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
 import com.cho_co_song_i.yummy.yummy.repository.UserOauthKakaoRepository;
-import com.cho_co_song_i.yummy.yummy.repository.UserPictureRepository;
 import com.cho_co_song_i.yummy.yummy.repository.UserRepository;
 import com.cho_co_song_i.yummy.yummy.service.*;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,10 +23,12 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 
 import static com.cho_co_song_i.yummy.yummy.utils.JwtUtil.decodeJwtPayload;
+
 
 @Service
 @Slf4j
@@ -56,11 +55,7 @@ public class KakaoLoginServiceImpl implements LoginService {
 
     private final RestTemplate restTemplate;
     private final RedisAdapter redisAdapter;
-    private final UserService userService;
-    private final JwtProvider jwtProvider;
-    private final EventProducerService eventProducerService;
 
-    private final UserPictureRepository userPictureRepository;
     private final UserRepository userRepository;
     private final UserOauthKakaoRepository userOauthKakaoRepository;
 
@@ -202,17 +197,6 @@ public class KakaoLoginServiceImpl implements LoginService {
                 .profileImg(profileImg)
                 .build();
     }
-
-    public OauthUserSimpleInfoDto getUserInfosByOauth(Long userNo) {
-        /* Redis 에서 유저의 Kakao accessToken, refreshToken 을 가져와준다. */
-        String accessToken = (String)redisAdapter.get(String.format("%s:%s",  kakaoAccessToken, String.valueOf(userNo)));
-        String refreshToken = (String)redisAdapter.get(String.format("%s:%s",  kakaoRefreshToken, String.valueOf(userNo)));
-
-        KakaoUserInfoRaw kakaoUserInfoRaw = getKakaoUserInfoWithRetry(accessToken, refreshToken);
-
-        return extractFromUserInfoRaw(kakaoUserInfoRaw);
-    }
-
     /**
      * OAuth 에서 발생된 kakaoToken 을 파싱하여 유저의 정보를 반환해주는 함수.
      * @param kakaoToken
@@ -240,16 +224,28 @@ public class KakaoLoginServiceImpl implements LoginService {
                 .kakaoToken(kakaoToken)
                 .build();
     }
+
     public OauthChannelStatus getOauthChannel() {
         return OauthChannelStatus.kakao;
     }
+
+    public OauthUserSimpleInfoDto getUserInfosByOauth(Long userNo) {
+        /* Redis 에서 유저의 Kakao accessToken, refreshToken 을 가져와준다. */
+        String accessToken = (String)redisAdapter.get(String.format("%s:%s",  kakaoAccessToken, String.valueOf(userNo)));
+        String refreshToken = (String)redisAdapter.get(String.format("%s:%s",  kakaoRefreshToken, String.valueOf(userNo)));
+
+        KakaoUserInfoRaw kakaoUserInfoRaw = getKakaoUserInfoWithRetry(accessToken, refreshToken);
+
+        return extractFromUserInfoRaw(kakaoUserInfoRaw);
+    }
+
     public UserOAuthResponse getOauthLoginInfo(String code) throws Exception {
         KakaoToken kakaoToken = exchangeCodeForKakaoToken(code); /* Kakao Oauth Access Token, Refresh Token 정보 등등...*/
         KakaoOauthInfoDto kakaoOauthInfoDto = getKakaoUserTotalInfos(kakaoToken); /* 전반적인 Kakao User 정보 */
 
         Optional<UserOauthKakaoTbl> userKakaoInfo = userOauthKakaoRepository
                 .findByTokenIdAndNotBanned(
-                        kakaoOauthInfoDto.getKakaoToken().getIdToken());
+                        kakaoOauthInfoDto.getOauthUserSimpleInfoDto().getUserTokenId());
 
         if (userKakaoInfo.isPresent()) {
             /* 연동 이력이 존재하는 경우 */
@@ -279,11 +275,30 @@ public class KakaoLoginServiceImpl implements LoginService {
                     .build();
         }
     }
+
     public void saveOauthTokenToRedis(Long userNo, UserOAuthResponse response) {
         String accessKey = String.format("%s:%s", kakaoAccessToken, userNo);
         String refreshKey = String.format("%s:%s", kakaoRefreshToken, userNo);
 
         redisAdapter.set(accessKey, response.getKakaoOauthInfoDto().getKakaoToken().getAccessToken());
         redisAdapter.set(refreshKey, response.getKakaoOauthInfoDto().getKakaoToken().getRefreshToken());
+    }
+
+    public void inputUserOauth(UserTbl userTbl, String idToken) {
+        UserOauthKakaoTbl oauthTbl = UserOauthKakaoTbl.builder()
+                .user(userTbl)
+                .userNo(userTbl.getUserNo())
+                .tokenId(idToken)
+                .oauthBannedYn('N')
+                .reg_dt(new Date())
+                .reg_id("system")
+                .build();
+
+        userOauthKakaoRepository.save(oauthTbl);
+    }
+
+    public boolean isUserAuthChannelNotExists(Long userNo) {
+        Optional<UserOauthKakaoTbl> oauthTbl = userOauthKakaoRepository.findById(userNo);
+        return oauthTbl.isEmpty();
     }
 }

@@ -10,6 +10,7 @@ import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.repository.*;
 import com.cho_co_song_i.yummy.yummy.service.JoinMamberService;
+import com.cho_co_song_i.yummy.yummy.service.LoginService;
 import com.cho_co_song_i.yummy.yummy.service.UserService;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
@@ -46,10 +47,10 @@ import static com.cho_co_song_i.yummy.yummy.entity.QUserAuthTbl.userAuthTbl;
 public class JoinMemberServiceImpl implements JoinMamberService {
     private final JPAQueryFactory queryFactory;
     private final UserRepository userRepository;
-    private final UserAuthRepository userAuthRepository;
     private final UserPhoneNumberRepository userPhoneNumberRepository;
     private final UserEmailRepository userEmailRepository;
     private final UserTempPwHistoryRepository userTempPwHistoryRepository;
+    private final LoginServiceFactory loginServiceFactory;
 
     private final YummyLoginServiceImpl yummyLoginServiceImpl;
     private final RedisAdapter redisAdapter;
@@ -489,24 +490,6 @@ public class JoinMemberServiceImpl implements JoinMamberService {
     }
 
     /**
-     * UserAuthTbl 정보를 DB에 저장해주는 함수
-     * @param userTbl
-     * @param idToken
-     * @param oauthChannel
-     */
-    private void inputUserAuth(UserTbl userTbl, String idToken, OauthChannelStatus oauthChannel) {
-        /* oauth2 정보 저장 */
-        UserAuthTbl userAuthTbl = new UserAuthTbl();
-        UserAuthTblId userAuthTblId = new UserAuthTblId(userTbl.getUserNo(), oauthChannel.toString(), idToken);
-        userAuthTbl.setUser(userTbl);
-        userAuthTbl.setId(userAuthTblId);
-        userAuthTbl.setReg_dt(new Date());
-        userAuthTbl.setReg_id("system");
-
-        userAuthRepository.save(userAuthTbl);
-    }
-
-    /**
      * Oauth2 연동 회원가입 유저인지 체크하고 유저의 정보를 디비에 저장해주는 함수
      * @param res
      * @param req
@@ -534,18 +517,11 @@ public class JoinMemberServiceImpl implements JoinMamberService {
                 /* user 정보부터 저장 */
                 UserTbl joinUser = createJoinUser(joinMemberDto);
 
+                /* Oauth 채널별 로그인 서비스 */
+                LoginService loginService = loginServiceFactory.getService(oauthChannel);
+
                 /* oauth2 정보도 저장 */
-                inputUserAuth(joinUser, idToken, oauthChannel);
-
-                /* 유저 프로필 사진정보 저장 */
-                String redisKeyFormat = String.format("%s:%s", oauthTempInfo, idToken);
-                OauthUserSimpleInfoDto oauthUserSimpleInfoDto = redisAdapter
-                        .getValue(
-                                redisKeyFormat,
-                                new TypeReference<OauthUserSimpleInfoDto>() {});
-
-                //userService.inputUserPictureTbl(joinUser, oauthChannel, oauthUserSimpleInfoDto.getUserPicture());
-                redisAdapter.deleteKey(redisKeyFormat);
+                loginService.inputUserOauth(joinUser, idToken);
 
                 CookieUtil.clearCookie(res, "yummy-oauth-token");
 
@@ -559,26 +535,6 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         }
 
         return PublicStatus.SUCCESS;
-    }
-
-    /**
-     * 해당 유저가 기존 Oauth 채널에 유저연동을 한적이 있는지 체크해주는 함수
-     * @param userNo
-     * @param loginChannel
-     * @return
-     */
-    private boolean isUserAuthChannelNotExists(Long userNo, OauthChannelStatus loginChannel) {
-
-        Integer result = queryFactory
-                .selectOne()
-                .from(userAuthTbl)
-                .where(
-                        userAuthTbl.id.loginChannel.eq(loginChannel.toString()),
-                        userAuthTbl.id.userNo.eq(userNo)
-                )
-                .fetchFirst();
-
-        return result == null;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -719,7 +675,6 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         return PublicStatus.SUCCESS;
     }
 
-
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus joinMember(HttpServletResponse res, HttpServletRequest req, JoinMemberDto joinMemberDto) throws Exception {
 
@@ -787,10 +742,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
             return checkUserPhoneNumber;
         }
 
-        /* 신규회원 저장
-        * 여기서 Oauth 연결인지 부터 확인하고 가야할듯
-        * 쿠키시간이 만료되면 그냥 없어져버림 (이렇게 되면 그냥 회원가입만 되서 고객입장에서 난감할 수 있음)
-        * */
+        /* 신규회원 저장 */
         return validateOauthAndInputUser(res, req, joinMemberDto);
     }
 
@@ -818,23 +770,25 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         OauthChannelStatus loginChannel = OauthChannelStatus.valueOf(
                 userService.getClaimFromJwt(jwtRes, "oauthChannel", String.class));
 
+        /* Oauth 채널별 로그인 서비스 */
+        LoginService loginService = loginServiceFactory.getService(loginChannel);
 
         /* Oauth 채널당 하나의 아이디만 연동이 가능함. -> 해당 부분을 확인해주는 로직 */
-        boolean userOauthCheck = isUserAuthChannelNotExists(user.getUserNo(), loginChannel);
+        boolean userOauthCheck = loginService.isUserAuthChannelNotExists(user.getUserNo());
         if (!userOauthCheck) {
             return PublicStatus.OAUTH_DUPLICATED;
         }
 
         /* idToken 유저와 매칭시켜서 디비에 저장해준다. */
-        inputUserAuth(user, idToken, loginChannel);
+        loginService.inputUserOauth(user, idToken);
 
         /* 여기서 유저의 사진정보를 저장해줘야 할듯 -> idToken 을 가지고 데이터를 가져와주면 된다. */
         String redisKeyFormat = String.format("%s:%s", oauthTempInfo, idToken);
 
-        OauthUserSimpleInfoDto oauthUserSimpleInfoDto = redisAdapter
-                .getValue(
-                        redisKeyFormat,
-                        new TypeReference<OauthUserSimpleInfoDto>() {});
+//        OauthUserSimpleInfoDto oauthUserSimpleInfoDto = redisAdapter
+//                .getValue(
+//                        redisKeyFormat,
+//                        new TypeReference<OauthUserSimpleInfoDto>() {});
 
         redisAdapter.deleteKey(redisKeyFormat);
 

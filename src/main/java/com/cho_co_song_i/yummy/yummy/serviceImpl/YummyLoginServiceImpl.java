@@ -106,6 +106,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         return findUserProfileFromRedis(userNo)
                 .map(userInfo -> {
                     if (loginChannel == OauthChannelStatus.standard) {
+                        /* 기본 로그인 */
 
                     } else {
                         LoginService loginService = loginServiceFactory.getService(loginChannel);
@@ -222,6 +223,8 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         /* 1. 로그인 시도 기록 */
         eventProducerService.produceLoginAttemptEvent(req);
 
+        String type = loginDto.getOauthType();
+
         /* 2. Oauth 채널에 맞는 로그인 서비스 가져오기 */
         LoginService loginService = loginServiceFactory.getService(loginDto.getOauthType());
 
@@ -229,6 +232,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         UserOAuthResponse userOAuthResponse = loginService.getOauthLoginInfo(loginDto.getCode());
 
         if (userOAuthResponse.getPublicStatus() == PublicStatus.SUCCESS) {
+            /* 이미 연동되어있는 유저인 경우 */
             /* 3-1. 사용자 정보 조회 */
             UserTbl user = userOAuthResponse.getUserTbl();
             log.info("[YummyLoginService->processOauthLogin] Login successful: {}", user.getUserId());
@@ -244,11 +248,13 @@ public class YummyLoginServiceImpl implements YummyLoginService {
             processCommonLogin(res, loginRes, userOAuthResponse.getLoginChannel());
 
         } else if (userOAuthResponse.getPublicStatus() == PublicStatus.JOIN_TARGET_MEMBER) {
+            /* 연동되어 있지 않은 유저인 경우 */
             generateTempOauthCookieByChannel(res, userOAuthResponse);
         }
 
         return userOAuthResponse.getPublicStatus();
     }
+
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus standardLoginUser(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
 
@@ -271,6 +277,9 @@ public class YummyLoginServiceImpl implements YummyLoginService {
 
         /* 1. 액세스 토큰 확인 */
         JwtValidationResult jwtResult = userService.validateJwtAndCleanIfInvalid("yummy-access-token", res, req);
+
+        if (jwtResult.getStatus() == JwtValidationStatus.EMPTY) return ServiceResponse.empty(PublicStatus.SUCCESS);
+
         Long userNo = Long.parseLong(userService.getSubjectFromJwt(jwtResult));
         OauthChannelStatus channel = OauthChannelStatus
                 .valueOf(userService.getClaimFromJwt(jwtResult, "oauthChannel", String.class));

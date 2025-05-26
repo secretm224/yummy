@@ -4,6 +4,7 @@ import com.cho_co_song_i.yummy.yummy.component.JwtProvider;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthLoginDto;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthUserSimpleInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.UserOAuthResponse;
+import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.service.LoginService;
@@ -30,5 +31,11 @@ public class GoogleLoginServiceImpl implements LoginService {
 
     public OauthUserSimpleInfoDto getUserInfosByOauth(Long userNo) {
         return null;
+    }
+
+    public void inputUserOauth(UserTbl userTbl, String idToken) {}
+
+    public boolean isUserAuthChannelNotExists(Long userNo) {
+        return true;
     }
 }

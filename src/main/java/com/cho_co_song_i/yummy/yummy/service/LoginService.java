@@ -3,6 +3,7 @@ package com.cho_co_song_i.yummy.yummy.service;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthLoginDto;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthUserSimpleInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.UserOAuthResponse;
+import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,4 +37,18 @@ public interface LoginService {
      * @return
      */
     OauthUserSimpleInfoDto getUserInfosByOauth(Long userNo);
+
+    /**
+     * 각자의 channel 에 존재하는 Oauth 테이블에 토큰 데이터를 넣어준다.
+     * @param userTbl
+     * @param idToken
+     */
+    void inputUserOauth(UserTbl userTbl, String idToken);
+
+    /**
+     * 해당 Oauth2 채널에 이미 회원이 가입을 했는지 확인해준다.
+     * @param userNo
+     * @return
+     */
+    boolean isUserAuthChannelNotExists(Long userNo);
 }
