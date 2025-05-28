@@ -23,7 +23,7 @@ public class NaverLoginServiceImpl implements LoginService {
         return OauthChannelStatus.naver;
     }
 
-    public UserOAuthResponse getOauthLoginInfo(String code) throws Exception {
+    public UserOAuthResponse getOauthLoginInfo(String code) {
         return null;
     }
 

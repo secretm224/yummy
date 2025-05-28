@@ -782,16 +782,6 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         /* idToken 유저와 매칭시켜서 디비에 저장해준다. */
         loginService.inputUserOauth(user, idToken);
 
-        /* 여기서 유저의 사진정보를 저장해줘야 할듯 -> idToken 을 가지고 데이터를 가져와주면 된다. */
-        String redisKeyFormat = String.format("%s:%s", oauthTempInfo, idToken);
-
-//        OauthUserSimpleInfoDto oauthUserSimpleInfoDto = redisAdapter
-//                .getValue(
-//                        redisKeyFormat,
-//                        new TypeReference<OauthUserSimpleInfoDto>() {});
-
-        redisAdapter.deleteKey(redisKeyFormat);
-
         /* 그외 로그인 완료처리 진행... */
         yummyLoginServiceImpl.processCommonLogin(res, loginInfo, loginChannel);
 

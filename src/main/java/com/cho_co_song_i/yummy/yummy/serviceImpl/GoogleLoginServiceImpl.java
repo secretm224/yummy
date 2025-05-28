@@ -24,7 +24,7 @@ public class GoogleLoginServiceImpl implements LoginService {
         return OauthChannelStatus.google;
     }
 
-    public UserOAuthResponse getOauthLoginInfo(String code) throws Exception {
+    public UserOAuthResponse getOauthLoginInfo(String code) {
         return null;
     }
     public void saveOauthTokenToRedis(Long userNo, UserOAuthResponse response) {}

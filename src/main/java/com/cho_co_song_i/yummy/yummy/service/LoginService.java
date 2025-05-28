@@ -20,9 +20,8 @@ public interface LoginService {
      * Login Code 가 주어졌을 때, 유저의 Oauth에 대한 정보를 반환해주는 함수
      * @param code
      * @return
-     * @throws Exception
      */
-    UserOAuthResponse getOauthLoginInfo(String code) throws Exception;
+    UserOAuthResponse getOauthLoginInfo(String code);
 
     /**
      * 채널별 Oauth2 토큰 정보를 레디스에 저장해주는 함수.

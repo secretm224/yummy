@@ -116,6 +116,18 @@ public class LoginController {
 //        return ResponseEntity.ok("test");
 //    }
 
+    /**
+     * 회원가입 / 기존 회원 연동을 위해서 발급된 oauth 토큰이 유효한지 확인해주는 함수
+     * @param res
+     * @param req
+     * @return
+     */
+    @PostMapping("/oauth2/tokenValid")
+    @ResponseBody
+    public PublicStatus checkOauthTokenValid(HttpServletResponse res , HttpServletRequest req) {
+        return yummyLoginService.verifyOauthTokenValid(res, req);
+    }
+
     @GetMapping("/deploytest")
     @ResponseBody
     public String deployTest(){

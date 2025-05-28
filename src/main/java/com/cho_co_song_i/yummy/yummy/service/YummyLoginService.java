@@ -57,6 +57,9 @@ public interface YummyLoginService {
      */
     ServiceResponse<Optional<UserBasicInfoDto>> verifyLoginUser(HttpServletResponse res, HttpServletRequest req) throws Exception;
 
+
+    PublicStatus verifyOauthTokenValid(HttpServletResponse res, HttpServletRequest req);
+
     // 테스트 메소드
     void testing();
 }

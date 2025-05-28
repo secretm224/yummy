@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface UserOauthKakaoRepository extends JpaRepository<UserOauthKakaoTbl, Long> {
-    @Query("SELECT u FROM UserOauthKakaoTbl u WHERE u.tokenId = :tokenId AND u.oauthBannedYn = 'N'")
-    Optional<UserOauthKakaoTbl> findByTokenIdAndNotBanned(@Param("tokenId") String tokenId);
+//    @Query("SELECT u FROM UserOauthKakaoTbl u WHERE u.tokenId = :tokenId AND u.oauthBannedYn = 'N'")
+//    Optional<UserOauthKakaoTbl> findByTokenIdAndNotBanned(@Param("tokenId") String tokenId);
+    Optional<UserOauthKakaoTbl> findFirstByTokenIdAndOauthBannedYnOrderByIdAsc(String tokenId, char oauthBannedYn);
 }

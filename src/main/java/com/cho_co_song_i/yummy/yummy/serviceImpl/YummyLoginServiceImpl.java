@@ -150,7 +150,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         String idToken = "";
 
         if (userOAuthResponse.getLoginChannel() == OauthChannelStatus.kakao) {
-            idToken = userOAuthResponse.getKakaoOauthInfoDto().getKakaoToken().getIdToken();
+            idToken = userOAuthResponse.getKakaoOauthInfoDto().getOauthUserSimpleInfoDto().getUserTokenId();
         }
         /* 여기에 이어서 다른 채널 로직도 짜주면 된다...*/
 
@@ -278,6 +278,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         /* 1. 액세스 토큰 확인 */
         JwtValidationResult jwtResult = userService.validateJwtAndCleanIfInvalid("yummy-access-token", res, req);
 
+        // ??? 이쪽부분 뭔가가 이상한데??...
         if (jwtResult.getStatus() == JwtValidationStatus.EMPTY) return ServiceResponse.empty(PublicStatus.SUCCESS);
 
         Long userNo = Long.parseLong(userService.getSubjectFromJwt(jwtResult));
@@ -315,6 +316,11 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         return ServiceResponse.empty(PublicStatus.AUTH_ERROR);
     }
 
+    public PublicStatus verifyOauthTokenValid(HttpServletResponse res, HttpServletRequest req) {
+        /* 유효한 Oauth 토큰인지 확인 */
+        JwtValidationResult jwtResult = userService.validateJwtAndCleanIfInvalid("yummy-oauth-token", res, req);
+        return jwtResult.getStatus() == JwtValidationStatus.SUCCESS ? PublicStatus.SUCCESS : PublicStatus.AUTH_ERROR;
+    }
 
     /**
      * 테스트 용 메소드

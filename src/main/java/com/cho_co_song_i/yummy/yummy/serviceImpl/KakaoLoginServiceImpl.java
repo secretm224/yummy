@@ -64,7 +64,7 @@ public class KakaoLoginServiceImpl implements LoginService {
      * @param code
      * @return
      */
-    private KakaoToken exchangeCodeForKakaoToken(String code) throws Exception {
+    private KakaoToken exchangeCodeForKakaoToken(String code) {
 
         /* URL-encoded 포맷으로 만들어주기 위한 데이터 구조 를 위해서 MultiValueMap 를 사용한다.
          * MultiValueMap<String,Object> params = new LinkedMultiValueMap<>();
@@ -239,41 +239,29 @@ public class KakaoLoginServiceImpl implements LoginService {
         return extractFromUserInfoRaw(kakaoUserInfoRaw);
     }
 
-    public UserOAuthResponse getOauthLoginInfo(String code) throws Exception {
-        KakaoToken kakaoToken = exchangeCodeForKakaoToken(code); /* Kakao Oauth Access Token, Refresh Token 정보 등등...*/
-        KakaoOauthInfoDto kakaoOauthInfoDto = getKakaoUserTotalInfos(kakaoToken); /* 전반적인 Kakao User 정보 */
+    public UserOAuthResponse getOauthLoginInfo(String code) {
+        KakaoToken kakaoToken = exchangeCodeForKakaoToken(code);
+        KakaoOauthInfoDto kakaoOauthInfoDto = getKakaoUserTotalInfos(kakaoToken);
+        String tokenId = kakaoOauthInfoDto.getOauthUserSimpleInfoDto().getUserTokenId();
 
-        Optional<UserOauthKakaoTbl> userKakaoInfo = userOauthKakaoRepository
-                .findByTokenIdAndNotBanned(
-                        kakaoOauthInfoDto.getOauthUserSimpleInfoDto().getUserTokenId());
+        return userOauthKakaoRepository.findFirstByTokenIdAndOauthBannedYnOrderByIdAsc(tokenId, 'N')
+                .map(kakaoInfo -> {
+                    Optional<UserTbl> userTblOpt = userRepository.findById(kakaoInfo.getUserNo());
 
-        if (userKakaoInfo.isPresent()) {
-            /* 연동 이력이 존재하는 경우 */
-            Long userNo = userKakaoInfo.get().getUserNo();
-
-            UserTbl userTbl = userRepository.findById(userNo)
-                    .orElseThrow(()-> new Exception(
-                            String.format(
-                                    "[Error][UserService->getUserInfoAndModifyUserPic] This user does not exist. userNo: %d",
-                                    userNo)
-                    ));
-
-            return UserOAuthResponse.builder()
-                    .loginChannel(OauthChannelStatus.kakao)
-                    .publicStatus(PublicStatus.SUCCESS)
-                    .kakaoOauthInfoDto(kakaoOauthInfoDto)
-                    .userTbl(userTbl)
-                    .build();
-
-        } else {
-            /* 연동한적이 없거나, 가입하지 않은 경우 -> 가입유도 or 기존 아이디에 Oauth2 추가 */
-            return UserOAuthResponse.builder()
-                    .loginChannel(OauthChannelStatus.kakao)
-                    .publicStatus(PublicStatus.JOIN_TARGET_MEMBER)
-                    .kakaoOauthInfoDto(kakaoOauthInfoDto)
-                    .userTbl(null)
-                    .build();
-        }
+                    return UserOAuthResponse.builder()
+                            .loginChannel(OauthChannelStatus.kakao)
+                            .kakaoOauthInfoDto(kakaoOauthInfoDto)
+                            .userTbl(userTblOpt.orElse(null))
+                            .publicStatus(userTblOpt.isPresent() ? PublicStatus.SUCCESS : PublicStatus.JOIN_TARGET_MEMBER)
+                            .build();
+                })
+                .orElseGet(() -> UserOAuthResponse.builder()
+                        .loginChannel(OauthChannelStatus.kakao)
+                        .kakaoOauthInfoDto(kakaoOauthInfoDto)
+                        .userTbl(null)
+                        .publicStatus(PublicStatus.JOIN_TARGET_MEMBER)
+                        .build()
+                );
     }
 
     public void saveOauthTokenToRedis(Long userNo, UserOAuthResponse response) {
