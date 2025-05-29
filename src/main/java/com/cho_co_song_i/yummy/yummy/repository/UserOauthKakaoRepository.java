@@ -10,5 +10,5 @@ import java.util.Optional;
 public interface UserOauthKakaoRepository extends JpaRepository<UserOauthKakaoTbl, Long> {
 //    @Query("SELECT u FROM UserOauthKakaoTbl u WHERE u.tokenId = :tokenId AND u.oauthBannedYn = 'N'")
 //    Optional<UserOauthKakaoTbl> findByTokenIdAndNotBanned(@Param("tokenId") String tokenId);
-    Optional<UserOauthKakaoTbl> findFirstByTokenIdAndOauthBannedYnOrderByIdAsc(String tokenId, char oauthBannedYn);
+    Optional<UserOauthKakaoTbl> findFirstByTokenIdAndOauthBannedYn(String tokenId, char oauthBannedYn);
 }

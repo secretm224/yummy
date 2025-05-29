@@ -244,7 +244,7 @@ public class KakaoLoginServiceImpl implements LoginService {
         KakaoOauthInfoDto kakaoOauthInfoDto = getKakaoUserTotalInfos(kakaoToken);
         String tokenId = kakaoOauthInfoDto.getOauthUserSimpleInfoDto().getUserTokenId();
 
-        return userOauthKakaoRepository.findFirstByTokenIdAndOauthBannedYnOrderByIdAsc(tokenId, 'N')
+        return userOauthKakaoRepository.findFirstByTokenIdAndOauthBannedYn(tokenId, 'N')
                 .map(kakaoInfo -> {
                     Optional<UserTbl> userTblOpt = userRepository.findById(kakaoInfo.getUserNo());
 

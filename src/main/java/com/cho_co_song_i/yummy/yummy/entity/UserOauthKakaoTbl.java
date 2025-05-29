@@ -21,7 +21,7 @@ public class UserOauthKakaoTbl implements Persistable<Long> {
     @Column(name = "user_no", nullable = false)
     private Long userNo;
 
-    @Column(name = "token_id", length = 255,  nullable = false)
+    @Column(name = "token_id", length = 255,  nullable = false, unique = true)
     private String tokenId;
 
     @Column(name = "oauth_banned_yn", length = 1, nullable = false, columnDefinition = "char(1) default 'N'")
