@@ -106,7 +106,14 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         return findUserProfileFromRedis(userNo)
                 .map(userInfo -> {
                     if (loginChannel == OauthChannelStatus.standard) {
-                        /* 기본 로그인 */
+                        /* 기본 로그인 -> 여기서 메인으로 쓰고 있는 OAuth 채널이 뭔지 파악한 후 해당 채널에서 데이터를 가져와준다. */
+                        Optional<String> oauthChannel = userRepository.findMainOauthChannelByUserNo(userNo);
+
+                        if (oauthChannel.isPresent()) {
+                            LoginService loginService = loginServiceFactory.getService(oauthChannel.get());
+                            OauthUserSimpleInfoDto oauthInfo = loginService.getUserInfosByOauth(userNo);
+                            userInfo.setUserPic(oauthInfo.getProfileImg());
+                        }
 
                     } else {
                         LoginService loginService = loginServiceFactory.getService(loginChannel);
@@ -222,8 +229,6 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     public PublicStatus processOauthLogin(OauthLoginDto loginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
         /* 1. 로그인 시도 기록 */
         eventProducerService.produceLoginAttemptEvent(req);
-
-        String type = loginDto.getOauthType();
 
         /* 2. Oauth 채널에 맞는 로그인 서비스 가져오기 */
         LoginService loginService = loginServiceFactory.getService(loginDto.getOauthType());

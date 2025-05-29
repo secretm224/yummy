@@ -11,6 +11,7 @@ import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.repository.UserPictureRepository;
+import com.cho_co_song_i.yummy.yummy.repository.UserRepository;
 import com.cho_co_song_i.yummy.yummy.service.UserService;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -34,7 +35,7 @@ public class UserServiceImpl implements UserService {
 
     private final JPAQueryFactory queryFactory;
     private final JwtProvider jwtProvider;
-    private final UserPictureRepository userPictureRepository;
+    private final UserRepository userRepository;
 
     /**
      * 유저의 집/회사 장소관련 정보를 디비에서 반환해주는 함수
@@ -47,25 +48,6 @@ public class UserServiceImpl implements UserService {
                 .where(userLocationDetailTbl.id.userNo.eq(userNum))
                 .fetchFirst();
     }
-
-//    /**
-//     * 유저의 프로필 사진을 반환해주는 함수
-//     * @param userNo
-//     * @param oauthChannelStatus
-//     * @return
-//     * @throws Exception
-//     */
-//    private String resolveUserPictureUrl(Long userNo, OauthChannelStatus oauthChannelStatus) throws Exception {
-//        UserPictureTbl userPic;
-//
-//        if (oauthChannelStatus == OauthChannelStatus.standard) {
-//            userPic = findUserPictureRecentInfo(userNo);
-//        } else {
-//            userPic = findUserPictureInfo(userNo, oauthChannelStatus);
-//        }
-//
-//        return userPic != null ? userPic.getPicUrl() : null;
-//    }
 
     public UserBasicInfoDto getUserBasicInfos(UserTbl user) {
         UserLocationDetailTbl userLocationDetail = findUserLocationDetailInfo(user.getUserNo());
@@ -116,18 +98,9 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-    public void inputUserPictureTbl(UserTbl userTbl, OauthChannelStatus oauthChannelStatus, String picUrl) {
-
-        UserPictureTblId userPictureTblId = new UserPictureTblId(userTbl.getUserNo(), oauthChannelStatus.toString());
-        UserPictureTbl userPicture = new UserPictureTbl();
-        userPicture.setUser(userTbl);
-        userPicture.setId(userPictureTblId);
-        userPicture.setPicUrl(picUrl);
-        userPicture.setActiveYn('Y');
-        userPicture.setRegDt(new Date());
-        userPicture.setRegId("system");
-
-        userPictureRepository.save(userPicture);
+    public void modifyUserTblMainOauthChannel(OauthChannelStatus loginChannel, UserTbl user) {
+        user.setMainOauthChannel(loginChannel.toString());
+        userRepository.save(user);
     }
 
 }

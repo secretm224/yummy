@@ -44,10 +44,9 @@ public interface UserService {
     <T> T getClaimFromJwt(JwtValidationResult jwtValidationResult, String claimName, Class<T> clazz);
 
     /**
-     * UserPictureTbl 유저 프로필 정보를 저장해주는 함수
-     * @param userTbl
-     * @param oauthChannelStatus
-     * @param picUrl
+     * UserTbl에 OAuth 메인 채널을 지정해주는 메소드
+     * @param loginChannel
+     * @param user
      */
-    void inputUserPictureTbl(UserTbl userTbl, OauthChannelStatus oauthChannelStatus, String picUrl);
+    void modifyUserTblMainOauthChannel(OauthChannelStatus loginChannel, UserTbl user);
 }

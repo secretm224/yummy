@@ -2,7 +2,6 @@ package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.*;
-import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthUserSimpleInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JoinMemberIdStatus;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
@@ -25,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.fasterxml.jackson.core.type.TypeReference;
+
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -39,7 +38,6 @@ import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserEmailTbl.userEmailTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserPhoneNumberTbl.userPhoneNumberTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTokenIdTbl.userTokenIdTbl;
-import static com.cho_co_song_i.yummy.yummy.entity.QUserAuthTbl.userAuthTbl;
 
 @Service
 @Slf4j
@@ -525,6 +523,9 @@ public class JoinMemberServiceImpl implements JoinMamberService {
 
                 CookieUtil.clearCookie(res, "yummy-oauth-token");
 
+                /* user_tbl에 main_oauth_channel 로 입력 -> 향후에 수정해야 할 듯. */
+                userService.modifyUserTblMainOauthChannel(oauthChannel, joinUser);
+
             } else {
                 /* JWT 검증 실패 */
                 return PublicStatus.REJOIN_CHECK;
@@ -784,6 +785,9 @@ public class JoinMemberServiceImpl implements JoinMamberService {
 
         /* 그외 로그인 완료처리 진행... */
         yummyLoginServiceImpl.processCommonLogin(res, loginInfo, loginChannel);
+
+        /* user_tbl에 main_oauth_channel 로 입력 -> 향후에 수정해야 할 듯. */
+        userService.modifyUserTblMainOauthChannel(loginChannel, user);
 
         /* Oauth 유저 연동을 위한 임시 jwt 쿠키 제거 */
         CookieUtil.clearCookie(res, "yummy-oauth-token");
