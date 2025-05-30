@@ -2,15 +2,10 @@ package com.cho_co_song_i.yummy.yummy.controller;
 
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.OauthLoginDto;
-import com.cho_co_song_i.yummy.yummy.dto.oauth.kakao.KakaoUserInfoRaw;
 import com.cho_co_song_i.yummy.yummy.dto.userCache.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.service.*;
 
-
-import com.cho_co_song_i.yummy.yummy.serviceImpl.GoogleLoginServiceImpl;
-import com.cho_co_song_i.yummy.yummy.serviceImpl.KakaoLoginServiceImpl;
-import com.cho_co_song_i.yummy.yummy.serviceImpl.NaverLoginServiceImpl;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

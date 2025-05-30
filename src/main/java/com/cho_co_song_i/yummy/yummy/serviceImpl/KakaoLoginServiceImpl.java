@@ -9,8 +9,6 @@ import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
-import com.cho_co_song_i.yummy.yummy.repository.UserOauthKakaoRepository;
-import com.cho_co_song_i.yummy.yummy.repository.UserRepository;
 import com.cho_co_song_i.yummy.yummy.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,8 +54,7 @@ public class KakaoLoginServiceImpl implements LoginService {
     private final RestTemplate restTemplate;
     private final RedisAdapter redisAdapter;
 
-    private final UserRepository userRepository;
-    private final UserOauthKakaoRepository userOauthKakaoRepository;
+    private final UserService userService;
 
     /**
      * 카카오 OAuth 인증과정에서 받은 code를 이용해서 access_token을 요청하고, 그 결과를 KakaoToken 으로 반환하는 메서드.
@@ -244,9 +241,9 @@ public class KakaoLoginServiceImpl implements LoginService {
         KakaoOauthInfoDto kakaoOauthInfoDto = getKakaoUserTotalInfos(kakaoToken);
         String tokenId = kakaoOauthInfoDto.getOauthUserSimpleInfoDto().getUserTokenId();
 
-        return userOauthKakaoRepository.findFirstByTokenIdAndOauthBannedYn(tokenId, 'N')
+        return userService.findUserOauthKakaoTblByTokenId(tokenId)
                 .map(kakaoInfo -> {
-                    Optional<UserTbl> userTblOpt = userRepository.findById(kakaoInfo.getUserNo());
+                    Optional<UserTbl> userTblOpt = userService.findUserByUserNo(kakaoInfo.getUserNo());
 
                     return UserOAuthResponse.builder()
                             .loginChannel(OauthChannelStatus.kakao)
@@ -282,11 +279,11 @@ public class KakaoLoginServiceImpl implements LoginService {
                 .reg_id("system")
                 .build();
 
-        userOauthKakaoRepository.save(oauthTbl);
+        userService.inputUserOauthKakaoTbl(oauthTbl);
     }
 
     public boolean isUserAuthChannelNotExists(Long userNo) {
-        Optional<UserOauthKakaoTbl> oauthTbl = userOauthKakaoRepository.findById(userNo);
+        Optional<UserOauthKakaoTbl> oauthTbl = userService.findUserOauthKakaoTblByUserNo(userNo);
         return oauthTbl.isEmpty();
     }
 }
