@@ -1,7 +1,8 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
-import com.cho_co_song_i.yummy.yummy.dto.AutoCompleteDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteDto;
 import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteResDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,16 +40,9 @@ public class SearchController {
     }
 
     @GetMapping("autoKeyword")
-    public ResponseEntity<List<AutoCompleteDto>> findAutoKeyword(
+    public ResponseEntity<List<AutoCompleteResDto>> findAutoKeyword(
             @RequestParam(value = "searchText", required = false) String searchText
     ) throws Exception {
         return ResponseEntity.ok(searchService.findAutoSearchKeyword(autoKeywordIndex, searchText));
-    }
-
-    @GetMapping("qwertyToHangul")
-    public ResponseEntity<String> convertQwertyToHangul(
-            @RequestParam(value = "searchText", required = false) String searchText
-    ) {
-        return ResponseEntity.ok(searchService.convertQwertyToHangul(searchText));
     }
 }

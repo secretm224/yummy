@@ -1,11 +1,11 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
-import com.cho_co_song_i.yummy.yummy.dto.AutoCompleteDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteDto;
 import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteResDto;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 public interface SearchService {
     /**
@@ -51,9 +51,6 @@ public interface SearchService {
      * @return
      * @throws Exception
      */
-    List<AutoCompleteDto> findAutoSearchKeyword(String indexName, String searchText) throws Exception;
-
-
-    String convertQwertyToHangul(String input);
+    List<AutoCompleteResDto> findAutoSearchKeyword(String indexName, String searchText) throws Exception;
 
 }

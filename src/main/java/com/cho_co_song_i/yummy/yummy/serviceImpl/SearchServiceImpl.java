@@ -8,9 +8,11 @@ import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
-import com.cho_co_song_i.yummy.yummy.dto.AutoCompleteDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteDto;
 import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteResDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
+import com.cho_co_song_i.yummy.yummy.utils.AnalyzerUtil;
 import com.cho_co_song_i.yummy.yummy.utils.HangulQwertyConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
 
 @Service
 @Slf4j
@@ -42,6 +45,11 @@ public class SearchServiceImpl implements SearchService {
         }
     }
 
+    /**
+     *
+     * @param value
+     * @return
+     */
     private FieldValue convertSingleValue(Object value) {
         if (value instanceof String) {
             return FieldValue.of((String) value);
@@ -56,6 +64,32 @@ public class SearchServiceImpl implements SearchService {
         } else {
             throw new IllegalArgumentException("Unsupported type: " + value.getClass().getName());
         }
+    }
+
+    /**
+     *
+     * @param selectMajor
+     * @param selectSub
+     * @param zeroPossible
+     * @return
+     */
+    private BoolQuery.Builder getBuilder(int selectMajor, int selectSub, boolean zeroPossible) {
+        BoolQuery.Builder boolQuery = new BoolQuery.Builder();
+
+        if (zeroPossible) {
+            boolQuery.filter(f -> f.term(t -> t.field("zero_possible").value(true)));
+        }
+
+        if (selectMajor != 0) {
+            List<Integer> selectMajorList = List.of(selectMajor);
+            boolQuery.must(m -> m.terms(t -> t.field("major_type").terms(t1 -> t1.value(convertToFieldValues(selectMajorList)))));
+        }
+
+        if (selectSub != 0) {
+            List<Integer> selectSubList = List.of(selectMajor);
+            boolQuery.must(m -> m.terms(t -> t.field("sub_type").terms(t1 -> t1.value(convertToFieldValues(selectSubList)))));
+        }
+        return boolQuery;
     }
 
     public List<SearchStoreDto> findSearchAllStores(String indexName) throws Exception {
@@ -129,21 +163,7 @@ public class SearchServiceImpl implements SearchService {
 
     public List<SearchStoreDto> findTotalSearchDatas(String indexName, String searchText, int selectMajor, int selectSub, boolean zeroPossible) throws Exception {
 
-        BoolQuery.Builder boolQuery = new BoolQuery.Builder();
-
-        if (zeroPossible) {
-            boolQuery.filter(f -> f.term(t -> t.field("zero_possible").value(true)));
-        }
-
-        if (selectMajor != 0) {
-            List<Integer> selectMajorList = List.of(selectMajor);
-            boolQuery.must(m -> m.terms(t -> t.field("major_type").terms(t1 -> t1.value(convertToFieldValues(selectMajorList)))));
-        }
-
-        if (selectSub != 0) {
-            List<Integer> selectSubList = List.of(selectMajor);
-            boolQuery.must(m -> m.terms(t -> t.field("major_type").terms(t1 -> t1.value(convertToFieldValues(selectSubList)))));
-        }
+        BoolQuery.Builder boolQuery = getBuilder(selectMajor, selectSub, zeroPossible);
 
         if (!searchText.isEmpty()) {
             boolQuery.should(m -> m.match(mq -> mq.field("name").query(searchText).boost(2.0f)));
@@ -165,6 +185,12 @@ public class SearchServiceImpl implements SearchService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     *
+     * @param array
+     * @param target
+     * @return
+     */
     private static int indexOf(char[] array, char target) {
         for (int i = 0; i < array.length; i++) {
             if (array[i] == target) return i;
@@ -172,12 +198,15 @@ public class SearchServiceImpl implements SearchService {
         return -1;
     }
 
-    public String convertQwertyToHangul(String input) {
-        return HangulQwertyConverter.convertQwertyToHangul(input);
-    }
-
-    public List<AutoCompleteDto> findAutoSearchKeyword(String indexName, String searchText) throws Exception {
-
+    /**
+     * score 순으로 특정 문자열을 검색해주는 함수
+     * @param indexName
+     * @param searchText
+     * @param topCnt
+     * @return
+     * @throws Exception
+     */
+    private List<AutoCompleteDto> findTopAutoSearchKeyword(String indexName, String searchText, int topCnt) throws Exception {
         SearchRequest searchRequest = SearchRequest.of(s -> s
                 .index(indexName)
                 .query(q -> q
@@ -187,7 +216,7 @@ public class SearchServiceImpl implements SearchService {
                                 .type(TextQueryType.BestFields)
                         )
                 )
-                .size(10)
+                .size(topCnt)
         );
 
         SearchResponse<AutoCompleteDto> response = searchClient.search(searchRequest, AutoCompleteDto.class);
@@ -195,6 +224,62 @@ public class SearchServiceImpl implements SearchService {
         return response.hits().hits().stream()
                 .map(Hit::source)
                 .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+                .toList();
+    }
+
+    /**
+     * 입력 문자열과 후보 리스트를 비교해서, 유사도가 높은 항목만 필터링하고 점수까지 포함한 새 객체 리스트를 만들어주는 함수
+     * @param searchText
+     * @param searchResp
+     * @return
+     */
+    private List<AutoCompleteResDto> getSimilarAutoCompleteResults(String searchText, List<AutoCompleteDto> searchResp) {
+
+        List<AutoCompleteResDto> resultResp = new ArrayList<>();
+
+        for (AutoCompleteDto dto: searchResp) {
+
+            String dtoName = dto.getName();
+            String dtoChosung = dto.getNameChosung();
+            int keywordWeight = dto.getKeywordWeight();
+
+            double similarityWord = AnalyzerUtil.similarityByLevenstein(searchText, dtoName);
+            double similarityChosung = AnalyzerUtil.similarityByLevenstein(searchText, dtoChosung);
+
+            //System.out.println(dto.getName());
+            //System.out.println("similarityWord: " + similarityWord);
+            //System.out.println("similarityChosung: " + similarityChosung);
+
+            if (similarityWord > 0.6 || similarityChosung == 1.0) {
+                double bigScore = Math.max(similarityWord, similarityChosung);
+                float rounded = Math.round((float) bigScore * 100) / 100f;
+
+                AutoCompleteResDto newDto = AutoCompleteResDto.builder()
+                        .name(dtoName)
+                        .score(rounded)
+                        .keywordWeight(keywordWeight)
+                        .build();
+
+                resultResp.add(newDto);
+            }
+        }
+
+        return resultResp;
+    }
+
+    public List<AutoCompleteResDto> findAutoSearchKeyword(String indexName, String searchText) throws Exception {
+
+
+
+        List<AutoCompleteDto> searchResp = findTopAutoSearchKeyword(indexName, searchText, 15);
+        List<AutoCompleteResDto> resultResp = getSimilarAutoCompleteResults(searchText, searchResp);
+
+        if (resultResp.isEmpty() && AnalyzerUtil.isAllEnglish(searchText)) {
+            String convertKeyword = HangulQwertyConverter.convertQwertyToHangul(searchText);
+            searchResp = findTopAutoSearchKeyword(indexName, convertKeyword, 15);
+            resultResp = getSimilarAutoCompleteResults(convertKeyword, searchResp);
+        }
+
+        return resultResp;
     }
 }
