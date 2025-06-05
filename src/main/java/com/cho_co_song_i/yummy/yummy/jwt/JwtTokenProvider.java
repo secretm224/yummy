@@ -27,7 +27,7 @@ public class JwtTokenProvider {
 
     @Value("${spring.redis.jwt.secret_key}")
     private String secretKey;
-//
+
     public boolean validateToken(String token) {
         try {
                   Jwts.parser()

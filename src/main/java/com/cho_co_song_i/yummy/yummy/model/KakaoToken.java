@@ -1,12 +1,19 @@
 package com.cho_co_song_i.yummy.yummy.model;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
 public class KakaoToken {
-    private String access_token;
-    private String token_type;
-    private String refresh_token;
-    private Long expires_in;
+    @JsonProperty("access_token")
+    private String accessToken;
+    @JsonProperty("token_type")
+    private String tokenType;
+    @JsonProperty("refresh_token")
+    private String refreshToken;
+    @JsonProperty("expires_in")
+    private Long expiresIn;
+    @JsonProperty("scope")
     private String scope;
-    private  String id_token;
+    @JsonProperty("id_token")
+    private String idToken;
 }

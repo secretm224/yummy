@@ -1,15 +1,14 @@
 package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
+import com.cho_co_song_i.yummy.yummy.component.JwtProvider;
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.JoinMemberIdStatus;
 import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
-import com.cho_co_song_i.yummy.yummy.repository.*;
-import com.cho_co_song_i.yummy.yummy.service.JoinMamberService;
-import com.cho_co_song_i.yummy.yummy.service.UserService;
+import com.cho_co_song_i.yummy.yummy.service.*;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
 import com.cho_co_song_i.yummy.yummy.utils.PasswdUtil;
@@ -23,7 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.fasterxml.jackson.core.type.TypeReference;
+
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -37,23 +36,20 @@ import static com.cho_co_song_i.yummy.yummy.entity.QUserTbl.userTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserEmailTbl.userEmailTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserPhoneNumberTbl.userPhoneNumberTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QUserTokenIdTbl.userTokenIdTbl;
-import static com.cho_co_song_i.yummy.yummy.entity.QUserAuthTbl.userAuthTbl;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class JoinMemberServiceImpl implements JoinMamberService {
     private final JPAQueryFactory queryFactory;
-    private final UserRepository userRepository;
-    private final UserAuthRepository userAuthRepository;
-    private final UserPhoneNumberRepository userPhoneNumberRepository;
-    private final UserEmailRepository userEmailRepository;
-    private final UserTempPwHistoryRepository userTempPwHistoryRepository;
+    private final LoginServiceFactory loginServiceFactory;
 
-    private final YummyLoginServiceImpl yummyLoginServiceImpl;
-    private final RedisAdapter redisAdapter;
     private final UserService userService;
-    private final EventProducerServiceImpl eventProducerServiceImpl;
+    private final EventProducerService eventProducerService;
+    private final YummyLoginService yummyLoginService;
+
+    private final RedisAdapter redisAdapter;
+    private final JwtProvider jwtProvider;
 
     @PersistenceContext
     private final EntityManager entityManager;
@@ -125,15 +121,18 @@ public class JoinMemberServiceImpl implements JoinMamberService {
      * @param dto
      * @return
      */
-    private UserTbl findUserInfo(FindPwDto dto) {
+    private UserTbl findUserInfoJoinUserEmailAndPhoneNumberTbl(FindPwDto dto) {
 
         return queryFactory
                 .selectFrom(userTbl)
                 .join(userEmailTbl).on(userEmailTbl.user.eq(userTbl))
+                .join(userPhoneNumberTbl).on(userPhoneNumberTbl.user.eq(userTbl))
                 .where(
                         userTbl.userNm.eq(dto.getUserNm()),
                         userTbl.userId.eq(dto.getUserId()),
-                        userEmailTbl.userEmailAddress.eq(dto.getEmail())
+                        userEmailTbl.userEmailAddress.eq(dto.getEmail()),
+                        userPhoneNumberTbl.telecomName.eq(dto.getTelecom()),
+                        userPhoneNumberTbl.id.phoneNumber.eq(dto.getPhoneNumber())
                 )
                 .fetchFirst();
     }
@@ -181,7 +180,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         userTempPwTbl.setRegDt(new Date());
         userTempPwTbl.setRegId("system");
 
-        userTempPwHistoryRepository.save(userTempPwTbl);
+        userService.inputUserTempPwTbl(userTempPwTbl);
 
         userTbl.setUserPwSalt(pwSalt);
         userTbl.setUserPw(hashedPw);
@@ -196,78 +195,19 @@ public class JoinMemberServiceImpl implements JoinMamberService {
      */
     private UserTbl createJoinUser(JoinMemberDto joinMemberDto) throws Exception {
 
-        UserTbl user = createUser(joinMemberDto);
+        UserTbl user = userService.createUser(joinMemberDto);
 
         Long userNo = user.getUserNo();
         if (userNo == null) {
             throw new Exception("Unable to obtain userNo after saving User.");
         }
 
-        inputUserEmail(user, joinMemberDto.getEmail());
-        inputUserPhoneNumber(user, joinMemberDto.getPhoneNumber(), joinMemberDto.getTelecom());
+        userService.inputUserEmail(user, joinMemberDto.getEmail());
+        userService.inputUserPhoneNumber(user, joinMemberDto.getPhoneNumber(), joinMemberDto.getTelecom());
 
         return user;
     }
-    /**
-     * UserTbl 생성 함수
-     * @param joinMemberDto
-     * @return
-     * @throws Exception
-     */
-    private UserTbl createUser(JoinMemberDto joinMemberDto) throws Exception {
-        String saltValue = HashUtil.generateSalt();
-        String userPwHash = HashUtil.hashWithSalt(joinMemberDto.getPassword(), saltValue);
 
-        UserTbl user = new UserTbl();
-        user.setUserId(joinMemberDto.getUserId());
-        user.setUserPw(userPwHash);
-        user.setUserPwSalt(saltValue);
-        user.setUserNm(joinMemberDto.getName());
-        user.setUserBirth(joinMemberDto.getBirthDate());
-        user.setUserGender(joinMemberDto.getGender());
-        user.setRegDt(new Date());
-        user.setRegId("system");
-
-        return userRepository.save(user);
-    }
-
-    /**
-     * UserEmailTbl 생성 함수
-     * @param user
-     * @param email
-     */
-    private void inputUserEmail(UserTbl user, String email) {
-        UserEmailTbl userEmailTbl = new UserEmailTbl();
-        userEmailTbl.setUser(user);
-        userEmailTbl.setUserNo(user.getUserNo());
-        userEmailTbl.setUserEmailAddress(email);
-        userEmailTbl.setRegDt(new Date());
-        userEmailTbl.setRegId("system");
-        userEmailTbl.setChgDt(null);
-        userEmailTbl.setChgId(null);
-
-        userEmailRepository.save(userEmailTbl);
-    }
-
-    /**
-     * userPhoneNumberTbl 생성 함수
-     * @param user
-     * @param phoneNumber
-     * @param telecom
-     */
-    private void inputUserPhoneNumber(UserTbl user, String phoneNumber, String telecom) {
-        UserPhoneNumberTblId userPhoneNumberTblId = new UserPhoneNumberTblId(user.getUserNo(), phoneNumber);
-        UserPhoneNumberTbl userPhoneNumberTbl = new UserPhoneNumberTbl();
-        userPhoneNumberTbl.setUser(user);
-        userPhoneNumberTbl.setId(userPhoneNumberTblId);
-        userPhoneNumberTbl.setTelecomName(telecom);
-        userPhoneNumberTbl.setRegDt(new Date());
-        userPhoneNumberTbl.setRegId("system");
-        userPhoneNumberTbl.setChgDt(null);
-        userPhoneNumberTbl.setChgId(null);
-
-        userPhoneNumberRepository.save(userPhoneNumberTbl);
-    }
 
 
     /* 에러 테스트용 */
@@ -333,21 +273,12 @@ public class JoinMemberServiceImpl implements JoinMamberService {
             return PublicStatus.EMAIL_FORMAT_ERR;
         }
 
-        boolean isDupEmail = isDuplicatedUserEmail(email);
+        boolean isDupEmail = userService.isDuplicatedUserEmail(email);
         if (!isDupEmail) {
             return PublicStatus.EMIL_DUPLICATED;
         }
 
         return PublicStatus.SUCCESS;
-    }
-
-    /**
-     * 회원이 입력한 이메일 주소가 기존에 사용중인 이메일 주소인지 확인해주는 함수
-     * @param email
-     * @return
-     */
-    private boolean isDuplicatedUserEmail(String email) {
-        return userEmailRepository.existsByEmail(email) == 0;
     }
 
     /**
@@ -488,24 +419,6 @@ public class JoinMemberServiceImpl implements JoinMamberService {
     }
 
     /**
-     * UserAuthTbl 정보를 DB에 저장해주는 함수
-     * @param userTbl
-     * @param idToken
-     * @param oauthChannel
-     */
-    private void inputUserAuth(UserTbl userTbl, String idToken, OauthChannelStatus oauthChannel) {
-        /* oauth2 정보 저장 */
-        UserAuthTbl userAuthTbl = new UserAuthTbl();
-        UserAuthTblId userAuthTblId = new UserAuthTblId(userTbl.getUserNo(), oauthChannel.toString(), idToken);
-        userAuthTbl.setUser(userTbl);
-        userAuthTbl.setId(userAuthTblId);
-        userAuthTbl.setReg_dt(new Date());
-        userAuthTbl.setReg_id("system");
-
-        userAuthRepository.save(userAuthTbl);
-    }
-
-    /**
      * Oauth2 연동 회원가입 유저인지 체크하고 유저의 정보를 디비에 저장해주는 함수
      * @param res
      * @param req
@@ -519,7 +432,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         String oauthToken = CookieUtil.getCookieValue(req, "yummy-oauth-token");
 
         if (oauthToken != null) {
-            JwtValidationResult jwtResult = userService.validateJwtAndCleanIfInvalid("yummy-oauth-token", res, req);
+            JwtValidationResult jwtResult = jwtProvider.validateJwtAndCleanIfInvalid("yummy-oauth-token", res, req);
 
             if (jwtResult.getStatus() == JwtValidationStatus.SUCCESS) {
                 /* ============ JWT 검증 성공 ============ */
@@ -533,20 +446,16 @@ public class JoinMemberServiceImpl implements JoinMamberService {
                 /* user 정보부터 저장 */
                 UserTbl joinUser = createJoinUser(joinMemberDto);
 
+                /* Oauth 채널별 로그인 서비스 */
+                LoginService loginService = loginServiceFactory.getService(oauthChannel);
+
                 /* oauth2 정보도 저장 */
-                inputUserAuth(joinUser, idToken, oauthChannel);
-
-                /* 유저 프로필 사진정보 저장 */
-                String redisKeyFormat = String.format("%s:%s", oauthTempInfo, idToken);
-                UserOAuthInfoDto userOAuthInfoDto = redisAdapter
-                        .getValue(
-                                redisKeyFormat,
-                                new TypeReference<UserOAuthInfoDto>() {});
-
-                userService.inputUserPictureTbl(joinUser, oauthChannel, userOAuthInfoDto.getUserPicture());
-                redisAdapter.deleteKey(redisKeyFormat);
+                loginService.inputUserOauth(joinUser, idToken);
 
                 CookieUtil.clearCookie(res, "yummy-oauth-token");
+
+                /* user_tbl에 main_oauth_channel 로 입력 -> 향후에 수정해야 할 듯. */
+                userService.modifyUserTblMainOauthChannel(oauthChannel, joinUser);
 
             } else {
                 /* JWT 검증 실패 */
@@ -558,26 +467,6 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         }
 
         return PublicStatus.SUCCESS;
-    }
-
-    /**
-     * 해당 유저가 기존 Oauth 채널에 유저연동을 한적이 있는지 체크해주는 함수
-     * @param userNo
-     * @param loginChannel
-     * @return
-     */
-    private boolean isUserAuthChannelNotExists(Long userNo, OauthChannelStatus loginChannel) {
-
-        Integer result = queryFactory
-                .selectOne()
-                .from(userAuthTbl)
-                .where(
-                        userAuthTbl.id.loginChannel.eq(loginChannel.toString()),
-                        userAuthTbl.id.userNo.eq(userNo)
-                )
-                .fetchFirst();
-
-        return result == null;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -597,7 +486,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         }
 
         /* 액세스 토큰 확인 */
-        JwtValidationResult jwtResult = userService.validateJwtAndCleanIfInvalid("yummy-access-token", res, req);
+        JwtValidationResult jwtResult = jwtProvider.validateJwtAndCleanIfInvalid("yummy-access-token", res, req);
 
         if (jwtResult.getStatus() == JwtValidationStatus.SUCCESS) {
             String userNo = jwtResult.getClaims().getSubject();
@@ -605,7 +494,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
             String saltValue = HashUtil.generateSalt();
             String userPwHash = HashUtil.hashWithSalt(changePwDto.getUserChangePw(), saltValue);
 
-            Optional<UserTbl> userOptional = userRepository.findById(Long.parseLong(userNo));
+            Optional<UserTbl> userOptional = userService.findUserByUserNo(Long.parseLong(userNo));
 
             if (userOptional.isPresent()) {
                 UserTbl user = userOptional.get();
@@ -613,11 +502,12 @@ public class JoinMemberServiceImpl implements JoinMamberService {
                 user.setUserPwSalt(saltValue);
             }
 
-            Optional<UserTempPwTbl> userTempPwOptional = userTempPwHistoryRepository.findById(Long.parseLong(userNo));
+            Optional<UserTempPwTbl> userTempPwOptional =
+                    userService.findUserTempPwTblByUserNo(Long.parseLong(userNo));
 
             if (userTempPwOptional.isPresent()) {
                 UserTempPwTbl userTempPw = userTempPwOptional.get();
-                userTempPwHistoryRepository.delete(userTempPw);
+                userService.deleteUserTempPwTbl(userTempPw);
             }
 
             /* 기존 jwt를 제거해준다. -> 재 로그인 유도하기 위함. */
@@ -638,16 +528,28 @@ public class JoinMemberServiceImpl implements JoinMamberService {
     public PublicStatus recoverUserPw(FindPwDto findPwDto) throws Exception {
 
         /* 1. 유효성 검사 */
+        /* 아이디 검사 */
+        boolean checkId = isValidUserIdFormat(findPwDto.getUserId());
+        if (!checkId) {
+            return PublicStatus.ID_ERR;
+        }
+
         /* 이름 검사 */
         boolean checkUserName = isValidUserName(findPwDto.getUserNm());
         if (!checkUserName) {
             return PublicStatus.NAME_ERR;
         }
 
-        /* 아이디 검사 */
-        boolean checkId = isValidUserIdFormat(findPwDto.getUserId());
-        if (!checkId) {
-            return PublicStatus.ID_ERR;
+        /* 통신사 검사 */
+        boolean checkUserTelecom = isValidUserMobileCarrier(findPwDto.getTelecom());
+        if (!checkUserTelecom) {
+            return PublicStatus.TELECOM_ERR;
+        }
+
+        /* 휴대폰 번호 양식 검사*/
+        boolean phoneNumCheck = isValidUserPhoneNumberFormat(findPwDto.getPhoneNumber());
+        if (!phoneNumCheck) {
+            return PublicStatus.PHONE_ERR;
         }
 
         /* 이메일 검사 */
@@ -657,7 +559,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         }
 
         /* 2.사용자 조회 */
-        UserTbl userTbl = findUserInfo(findPwDto);
+        UserTbl userTbl = findUserInfoJoinUserEmailAndPhoneNumberTbl(findPwDto);
 
         if (userTbl == null) {
             return PublicStatus.PW_FIND_ERR;
@@ -670,7 +572,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         deleteUserTokenIds(userTbl.getUserNo());
 
         /* 5. Kafka를 통해 전송 */
-        eventProducerServiceImpl.produceUserTempPw(findPwDto.getUserId(), findPwDto.getEmail(), tempPw);
+        eventProducerService.produceUserTempPw(findPwDto.getUserId(), findPwDto.getEmail(), tempPw);
 
         return PublicStatus.SUCCESS;
     }
@@ -713,11 +615,10 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         }
 
         /* 회원정보가 존재하는 경우 -> Kafka Producing */
-        eventProducerServiceImpl.produceUserIdInfo(findUserId, findIdDto.getEmail());
+        eventProducerService.produceUserIdInfo(findUserId, findIdDto.getEmail());
 
         return PublicStatus.SUCCESS;
     }
-
 
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus joinMember(HttpServletResponse res, HttpServletRequest req, JoinMemberDto joinMemberDto) throws Exception {
@@ -786,10 +687,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
             return checkUserPhoneNumber;
         }
 
-        /* 신규회원 저장
-        * 여기서 Oauth 연결인지 부터 확인하고 가야할듯
-        * 쿠키시간이 만료되면 그냥 없어져버림 (이렇게 되면 그냥 회원가입만 되서 고객입장에서 난감할 수 있음)
-        * */
+        /* 신규회원 저장 */
         return validateOauthAndInputUser(res, req, joinMemberDto);
     }
 
@@ -797,7 +695,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
     public PublicStatus linkMemberByOauth(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
 
         /* 로그인 정보 검증 */
-        StandardLoginBasicResDto loginInfo = yummyLoginServiceImpl.verifyLoginUserInfo(standardLoginDto);
+        StandardLoginBasicResDto loginInfo = yummyLoginService.verifyAndGetLoginUserInfo(standardLoginDto);
 
         if (loginInfo.getPublicStatus() != PublicStatus.SUCCESS) {
             return PublicStatus.AUTH_ERROR;
@@ -806,41 +704,34 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         UserTbl user = loginInfo.getUserTbl();
 
         /* 해당 유저 Oauth2 정보 검증 */
-        JwtValidationResult jwtRes = userService.validateJwtAndCleanIfInvalid("yummy-oauth-token", res, req);
+        JwtValidationResult jwtRes = jwtProvider.validateJwtAndCleanIfInvalid("yummy-oauth-token", res, req);
 
         if (jwtRes.getStatus() != JwtValidationStatus.SUCCESS) {
             return PublicStatus.REJOIN_CHECK;
         }
 
         /* Oauth id token & Login 채널 */
-        String idToken = userService.getSubjectFromJwt(jwtRes);
+        String idToken = jwtProvider.getSubjectFromJwt(jwtRes);
         OauthChannelStatus loginChannel = OauthChannelStatus.valueOf(
-                userService.getClaimFromJwt(jwtRes, "oauthChannel", String.class));
+                jwtProvider.getClaimFromJwt(jwtRes, "oauthChannel", String.class));
 
+        /* Oauth 채널별 로그인 서비스 */
+        LoginService loginService = loginServiceFactory.getService(loginChannel);
 
         /* Oauth 채널당 하나의 아이디만 연동이 가능함. -> 해당 부분을 확인해주는 로직 */
-        boolean userOauthCheck = isUserAuthChannelNotExists(user.getUserNo(), loginChannel);
+        boolean userOauthCheck = loginService.isUserAuthChannelNotExists(user.getUserNo());
         if (!userOauthCheck) {
             return PublicStatus.OAUTH_DUPLICATED;
         }
 
         /* idToken 유저와 매칭시켜서 디비에 저장해준다. */
-        inputUserAuth(user, idToken, loginChannel);
-
-        /* 여기서 유저의 사진정보를 저장해줘야 할듯 -> idToken 을 가지고 데이터를 가져와주면 된다. */
-        String redisKeyFormat = String.format("%s:%s", oauthTempInfo, idToken);
-
-        UserOAuthInfoDto userOAuthInfoDto = redisAdapter
-                .getValue(
-                        redisKeyFormat,
-                        new TypeReference<UserOAuthInfoDto>() {});
-
-        userService.inputUserPictureTbl(user, loginChannel, userOAuthInfoDto.getUserPicture());
-
-        redisAdapter.deleteKey(redisKeyFormat);
+        loginService.inputUserOauth(user, idToken);
 
         /* 그외 로그인 완료처리 진행... */
-        yummyLoginServiceImpl.processCommonLogin(res, loginInfo, loginChannel);
+        yummyLoginService.processCommonLogin(res, loginInfo, loginChannel);
+
+        /* user_tbl에 main_oauth_channel 로 입력 -> 향후에 수정해야 할 듯. */
+        userService.modifyUserTblMainOauthChannel(loginChannel, user);
 
         /* Oauth 유저 연동을 위한 임시 jwt 쿠키 제거 */
         CookieUtil.clearCookie(res, "yummy-oauth-token");
@@ -849,18 +740,17 @@ public class JoinMemberServiceImpl implements JoinMamberService {
     }
 
     public PublicStatus generateVerificationCode(String userEmail) throws Exception {
-        //6자리 숫자 이메일 검증 코드 발급 
+        /* 6자리 숫자 이메일 검증 코드 발급 */
         String code = String.format("%06d", new Random().nextInt(999999)); 
 
         if(!code.isEmpty()){
-            //발급된 코드 정보를 e-mail 정보와 함께 key 생성 후 이메일 발송
+            /* 발급된 코드 정보를 e-mail 정보와 함께 key 생성 후 이메일 발송 */
             String key = String.format("%s:%s:%s",redisJoinEmailCode,userEmail,code);
-            eventProducerServiceImpl.produceJoinEmailCode(userEmail,code);
-            //이메일 발송 후 3분 유효 기간으로 코드 정보 저장
-            boolean isVerifcationCode = redisAdapter.set(key,
-                                                         code,
-                                                         Duration.ofMinutes(3));
-            if(isVerifcationCode)
+            eventProducerService.produceJoinEmailCode(userEmail,code);
+            /* 이메일 발송 후 3분 유효 기간으로 코드 정보 저장 */
+            boolean isVerificationCode = redisAdapter.set(key, code, Duration.ofMinutes(3));
+
+            if(isVerificationCode)
                 return PublicStatus.SUCCESS;
             else
                 return PublicStatus.EMAIL_ERR;
