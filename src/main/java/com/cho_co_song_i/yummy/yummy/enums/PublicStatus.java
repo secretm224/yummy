@@ -26,5 +26,6 @@ public enum PublicStatus {
     TEMP_PW_CHECK,
     LOGIN_AGAIN,
     OAUTH_DUPLICATED,
-    EMAIL_NOT_VERIFIED
+    EMAIL_NOT_VERIFIED,
+    NULL_CHECK_ERR
 }

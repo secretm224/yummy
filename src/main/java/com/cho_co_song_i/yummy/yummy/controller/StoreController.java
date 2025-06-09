@@ -5,6 +5,7 @@ import com.cho_co_song_i.yummy.yummy.dto.AddStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreTypeMajorDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreTypeSubDto;
+import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.service.StoreService;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
@@ -109,4 +110,15 @@ public class StoreController {
         Optional<JsonNode> result = storeService.modifyEmptyStoreDetail();
         return ResponseEntity.ok(result);
     }
+
+    /* 상점 등록 ... */
+    @GetMapping("/inputNewStore")
+    public ResponseEntity<PublicStatus> inputNewStore(
+            @RequestParam(value = "storeName", required = true) String storeName,
+            @RequestParam(value = "zeroYn", required = false) Boolean zeroYn
+            ) {
+
+        return ResponseEntity.ok(storeService.inputNewStore(storeName, zeroYn));
+    }
+
 }

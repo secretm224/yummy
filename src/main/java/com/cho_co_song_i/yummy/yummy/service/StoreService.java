@@ -5,6 +5,7 @@ import com.cho_co_song_i.yummy.yummy.dto.StoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreTypeMajorDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreTypeSubDto;
 import com.cho_co_song_i.yummy.yummy.entity.StoreLocationInfoTbl;
+import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.math.BigDecimal;
@@ -101,4 +102,12 @@ public interface StoreService {
      * @return
      */
     StoreDto modifySingleStoreDetail(long id, String tel, String url);
+
+    /**
+     * 새로운 상점을 등록해주는 기능.
+     * @param storeName
+     * @param zeroYn
+     * @return
+     */
+    PublicStatus inputNewStore(String storeName, Boolean zeroYn);
 }

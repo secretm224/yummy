@@ -2,12 +2,15 @@ package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.*;
+import com.cho_co_song_i.yummy.yummy.dto.store.KakaoStoreDto;
 import com.cho_co_song_i.yummy.yummy.entity.Store;
 import com.cho_co_song_i.yummy.yummy.entity.StoreLocationInfoTbl;
 import com.cho_co_song_i.yummy.yummy.entity.StoreTypeMajor;
 import com.cho_co_song_i.yummy.yummy.entity.StoreTypeSub;
+import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.repository.StoreLocationInfoRepository;
 import com.cho_co_song_i.yummy.yummy.repository.StoreRepository;
+import com.cho_co_song_i.yummy.yummy.repository.ZeroPossibleMarketRepository;
 import com.cho_co_song_i.yummy.yummy.service.LocationService;
 import com.cho_co_song_i.yummy.yummy.service.StoreService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -22,9 +25,6 @@ import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.jpa.repository.EntityGraph;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -39,7 +39,6 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QStore.store;
@@ -55,12 +54,14 @@ public class StoreServiceImpl implements StoreService {
     @PersistenceContext
     private EntityManager entityManager;
 
+    private final StoreRepository storeRepository;
+    private final StoreLocationInfoRepository storeLocationInfoRepository;
+    private final ZeroPossibleMarketRepository zeroPossibleMarketRepository;
+
     private final JPAQueryFactory queryFactory;
     private final LocationService locationService;
-    private final StoreRepository storeRepository;
     private final RedisAdapter redisAdapter;
     private final RestTemplate resttemplate;
-    private final StoreLocationInfoRepository storeLocationInfoRepository;
 
 
     /* Redis Cache 관련 필드 */
@@ -478,6 +479,104 @@ public class StoreServiceImpl implements StoreService {
         storeDto.setChgId("Store>UpdateStoreDetail");
 
         return modifyStore(id,storeDto);
+    }
+
+    /**
+     *
+     * @param storeName
+     * @return
+     */
+    private Optional<KakaoStoreDto> getKakaoStoreDtoFromKakaoApi(String storeName) {
+
+        if (storeName == null || storeName.isEmpty()) {
+            return Optional.empty();
+        }
+
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromUriString(KAKAO_SEARCH_API_URL)
+                .queryParam("page", 1)
+                .queryParam("size", 1)
+                .queryParam("category_group_code", "FD6")
+                .queryParam("query", storeName);
+
+        URI apiuri = builder
+                .encode(StandardCharsets.UTF_8)
+                .build()
+                .toUri();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization",KAKAO_SEARCH_HEADER);
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+
+        ResponseEntity<JsonNode> resp = resttemplate.exchange(
+                apiuri, HttpMethod.GET, request, JsonNode.class);
+
+        JsonNode root = resp.getBody();
+
+        if (resp.getStatusCode().is2xxSuccessful() && resp.hasBody() && root != null) {
+            JsonNode documents = root.path("documents");
+
+            if (documents.isArray() && !documents.isEmpty()) {
+                JsonNode firstDoc = documents.get(0);
+
+                KakaoStoreDto dto = KakaoStoreDto.builder()
+                        .addressName(firstDoc.path("address_name").asText(null))
+                        .categoryName(firstDoc.path("category_name").asText(null))
+                        .phone(firstDoc.path("phone").asText(null))
+                        .placeUrl(firstDoc.path("place_url").asText(null))
+                        .placeName(firstDoc.path("place_name").asText(null))
+                        .roadAddressName(firstDoc.path("road_address_name").asText(null))
+                        .build();
+
+                JsonNode yNode = firstDoc.path("y");
+                JsonNode xNode = firstDoc.path("x");
+
+                if (yNode.isNumber()) {
+                    dto.setLat(yNode.decimalValue());
+                }
+                if (xNode.isNumber()) {
+                    dto.setLng(xNode.decimalValue());
+                }
+
+                return Optional.of(dto);
+            }
+        }
+        return Optional.empty();
+    }
+
+
+    @Transactional(rollbackFor = Exception.class)
+    public PublicStatus inputNewStore(String storeName, Boolean zeroYn) {
+
+        Optional<KakaoStoreDto> kakaoStoreDtoOptional = getKakaoStoreDtoFromKakaoApi(storeName);
+
+        if (kakaoStoreDtoOptional.isPresent()) {
+            KakaoStoreDto kakaoStoreDto = kakaoStoreDtoOptional.get();
+
+            Store store = Store.builder()
+                    .name(kakaoStoreDto.getPlaceName())
+                    .type("store")
+                    .useYn('Y')
+                    .regDt(new Date())
+                    .regId("system")
+                    .tel(kakaoStoreDto.getPhone())
+                    .url(kakaoStoreDto.getPlaceUrl())
+                    .build();
+
+            storeRepository.save(store);
+
+
+//            StoreLocationInfoTbl storeLocationInfo = StoreLocationInfoTbl.builder()
+//                    .store(store)
+//                    .seq(store.getSeq())
+//                    .lat()
+//                    .lng()
+//                    .build();
+
+
+        }
+
+        return PublicStatus.SUCCESS;
     }
 
 }
