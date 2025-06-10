@@ -1,18 +1,15 @@
 package com.cho_co_song_i.yummy.yummy.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.domain.Persistable;
 
 import java.util.Date;
 
 @Entity
 @Table(name = "zero_possible_market")
-@Data
 @NoArgsConstructor
-@AllArgsConstructor
+@Getter
 public class ZeroPossibleMarket implements Persistable<Long> {
     @Id
     @Column(name = "seq")

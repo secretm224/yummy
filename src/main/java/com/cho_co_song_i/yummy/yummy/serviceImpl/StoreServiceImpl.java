@@ -3,15 +3,8 @@ package com.cho_co_song_i.yummy.yummy.serviceImpl;
 import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.dto.store.KakaoStoreDto;
-import com.cho_co_song_i.yummy.yummy.entity.Store;
-import com.cho_co_song_i.yummy.yummy.entity.StoreLocationInfoTbl;
-import com.cho_co_song_i.yummy.yummy.entity.StoreTypeMajor;
-import com.cho_co_song_i.yummy.yummy.entity.StoreTypeSub;
-import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
-import com.cho_co_song_i.yummy.yummy.repository.StoreLocationInfoRepository;
-import com.cho_co_song_i.yummy.yummy.repository.StoreRepository;
-import com.cho_co_song_i.yummy.yummy.repository.ZeroPossibleMarketRepository;
-import com.cho_co_song_i.yummy.yummy.service.LocationService;
+import com.cho_co_song_i.yummy.yummy.entity.*;
+import com.cho_co_song_i.yummy.yummy.repository.*;
 import com.cho_co_song_i.yummy.yummy.service.StoreService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -56,10 +49,10 @@ public class StoreServiceImpl implements StoreService {
 
     private final StoreRepository storeRepository;
     private final StoreLocationInfoRepository storeLocationInfoRepository;
+    private final StoreLocationRoadInfoRepository storeLocationRoadInfoRepository;
     private final ZeroPossibleMarketRepository zeroPossibleMarketRepository;
 
     private final JPAQueryFactory queryFactory;
-    private final LocationService locationService;
     private final RedisAdapter redisAdapter;
     private final RestTemplate resttemplate;
 
@@ -340,16 +333,16 @@ public class StoreServiceImpl implements StoreService {
         newStore.markAsNew();
 
         Long newStoreSeq = storeRepository.save(newStore).getSeq();
-        locationService.inputStoreLocationInfoTbl(addStoreDto, newStoreSeq, now);
+        //locationService.inputStoreLocationInfoTbl(addStoreDto, newStoreSeq, now);
 
 
         /* 비플페이 등록 업체라면 */
         if (addStoreDto.getIsBeefulPay()) {
-            locationService.inputZeroPossibleMarket(addStoreDto, newStoreSeq, now);
+            //locationService.inputZeroPossibleMarket(addStoreDto, newStoreSeq, now);
         }
 
         /* 음식점-타입 데이터 */
-        locationService.inputStoreTypeLinkTbl(addStoreDto, newStoreSeq, now);
+        //locationService.inputStoreTypeLinkTbl(addStoreDto, newStoreSeq, now);
 
         return true;
     }
@@ -481,12 +474,15 @@ public class StoreServiceImpl implements StoreService {
         return modifyStore(id,storeDto);
     }
 
+
     /**
      *
      * @param storeName
+     * @param pLat
+     * @param pLng
      * @return
      */
-    private Optional<KakaoStoreDto> getKakaoStoreDtoFromKakaoApi(String storeName) {
+    private Optional<KakaoStoreDto> getKakaoStoreDtoFromKakaoApi(String storeName, BigDecimal pLat, BigDecimal pLng) {
 
         if (storeName == null || storeName.isEmpty()) {
             return Optional.empty();
@@ -498,6 +494,13 @@ public class StoreServiceImpl implements StoreService {
                 .queryParam("size", 1)
                 .queryParam("category_group_code", "FD6")
                 .queryParam("query", storeName);
+
+        if (pLat != null && pLng != null) {
+            builder
+                    .queryParam("y", pLat)
+                    .queryParam("x", pLng);
+
+        }
 
         URI apiuri = builder
                 .encode(StandardCharsets.UTF_8)
@@ -519,6 +522,10 @@ public class StoreServiceImpl implements StoreService {
             if (documents.isArray() && !documents.isEmpty()) {
                 JsonNode firstDoc = documents.get(0);
 
+                BigDecimal lat = new BigDecimal(firstDoc.path("y").asText());
+                BigDecimal lng = new BigDecimal(firstDoc.path("x").asText());
+
+
                 KakaoStoreDto dto = KakaoStoreDto.builder()
                         .addressName(firstDoc.path("address_name").asText(null))
                         .categoryName(firstDoc.path("category_name").asText(null))
@@ -526,17 +533,9 @@ public class StoreServiceImpl implements StoreService {
                         .placeUrl(firstDoc.path("place_url").asText(null))
                         .placeName(firstDoc.path("place_name").asText(null))
                         .roadAddressName(firstDoc.path("road_address_name").asText(null))
+                        .lat(lat)
+                        .lng(lng)
                         .build();
-
-                JsonNode yNode = firstDoc.path("y");
-                JsonNode xNode = firstDoc.path("x");
-
-                if (yNode.isNumber()) {
-                    dto.setLat(yNode.decimalValue());
-                }
-                if (xNode.isNumber()) {
-                    dto.setLng(xNode.decimalValue());
-                }
 
                 return Optional.of(dto);
             }
@@ -544,39 +543,345 @@ public class StoreServiceImpl implements StoreService {
         return Optional.empty();
     }
 
-
-    @Transactional(rollbackFor = Exception.class)
-    public PublicStatus inputNewStore(String storeName, Boolean zeroYn) {
-
-        Optional<KakaoStoreDto> kakaoStoreDtoOptional = getKakaoStoreDtoFromKakaoApi(storeName);
-
-        if (kakaoStoreDtoOptional.isPresent()) {
-            KakaoStoreDto kakaoStoreDto = kakaoStoreDtoOptional.get();
-
-            Store store = Store.builder()
-                    .name(kakaoStoreDto.getPlaceName())
-                    .type("store")
-                    .useYn('Y')
-                    .regDt(new Date())
-                    .regId("system")
-                    .tel(kakaoStoreDto.getPhone())
-                    .url(kakaoStoreDto.getPlaceUrl())
-                    .build();
-
-            storeRepository.save(store);
-
-
+//    /* 리팩토링 필요함 ! */
+//    @Transactional(rollbackFor = Exception.class)
+//    public PublicStatus inputNewStore(String storeName, BigDecimal pLat, BigDecimal pLng, Boolean zeroYn) {
+//
+//        Optional<KakaoStoreDto> kakaoStoreDtoOptional = getKakaoStoreDtoFromKakaoApi(storeName, null, null);
+//
+//        if (kakaoStoreDtoOptional.isPresent()) {
+//            KakaoStoreDto kakaoStoreDto = kakaoStoreDtoOptional.get();
+//
+//            Date curDate = new Date();
+//
+//            /* 상점 등록 */
+//            Store store = Store.builder()
+//                    .name(kakaoStoreDto.getPlaceName())
+//                    .type("store")
+//                    .useYn('Y')
+//                    .regDt(curDate)
+//                    .regId("system")
+//                    .tel(kakaoStoreDto.getPhone())
+//                    .url(kakaoStoreDto.getPlaceUrl())
+//                    .build();
+//
+//            storeRepository.save(store);
+//
+//            /* 시/군/구 나누기 위함. */
+//            String[] parts = kakaoStoreDto.getAddressName().split("\\s+");
+//            List<String> result = Arrays.asList(parts);
+//
+//            String[] roadParts = kakaoStoreDto.getRoadAddressName().split("\\s+");
+//            List<String> roadResult = Arrays.asList(roadParts);
+//
+//            String county = result.get(0);
+//            String city = "";
+//            String district = "";
+//            String districtRoad = "";
+//
+//            if (county.equals("경기")) {
+//                county = result.get(0) + " " + result.get(1);
+//                city = result.get(2);
+//                district = result.get(3);
+//                districtRoad = roadResult.get(3);
+//            } else {
+//                city = result.get(1);
+//                district = result.get(2);
+//                districtRoad = roadResult.get(2);
+//            }
+//
+//            /* 상점 위치정보 등록 */
 //            StoreLocationInfoTbl storeLocationInfo = StoreLocationInfoTbl.builder()
 //                    .store(store)
 //                    .seq(store.getSeq())
-//                    .lat()
-//                    .lng()
+//                    .lat(kakaoStoreDto.getLat())
+//                    .lng(kakaoStoreDto.getLng())
+//                    .regId("system")
+//                    .locationCounty(county)
+//                    .locationCity(city)
+//                    .locationDistrict(district)
+//                    .address(kakaoStoreDto.getAddressName())
+//                    .regDt(curDate)
 //                    .build();
+//
+//            storeLocationInfoRepository.save(storeLocationInfo);
+//
+//            /* 상점 위치정보 - 도로명 등록 */
+//            StoreLocationRoadInfoTbl storeLocationRoadInfoTbl = StoreLocationRoadInfoTbl.builder()
+//                    .store(store)
+//                    .seq(store.getSeq())
+//                    .lat(kakaoStoreDto.getLat())
+//                    .lng(kakaoStoreDto.getLng())
+//                    .regId("system")
+//                    .locationCounty(county)
+//                    .locationCity(city)
+//                    .locationDistrictRoad(districtRoad)
+//                    .address(kakaoStoreDto.getAddressName())
+//                    .regDt(curDate)
+//                    .build();
+//
+//            storeLocationRoadInfoRepository.save(storeLocationRoadInfoTbl);
+//
+//            if (zeroYn != null && zeroYn) {
+//                ZeroPossibleMarket zeroPossibleMarket = ZeroPossibleMarket.builder()
+//                        .store(store)
+//                        .seq(store.getSeq())
+//                        .useYn('Y')
+//                        .name(kakaoStoreDto.getPlaceName())
+//                        .regDt(curDate)
+//                        .regId("system")
+//                        .build();
+//
+//                zeroPossibleMarketRepository.save(zeroPossibleMarket);
+//            }
+//
+//            LocationCountyTbl locationCounty = null;
+//            LocationCityTbl locationCity = null;
+//            LocationDistrictTbl locationDistrict = null;
+//            LocationDistrictRoadTbl locationDistrictRoad = null;
+//
+//            List<LocationCountyTbl> locationCounties = locationCountyRepository.findByLocationCounty(county);
+//
+//            if (locationCounties.isEmpty()) {
+//                locationCounty = LocationCountyTbl.builder()
+//                        .locationCounty(county)
+//                        .regDt(curDate)
+//                        .regId("system")
+//                        .build();
+//
+//                locationCountyRepository.save(locationCounty);
+//            }
+//
+//            if (locationCounty != null) {
+//                List<LocationCityTbl> locationCities = locationCityRepository
+//                        .findByLocationCityAndLocationCountyCode(city, locationCounty.getLocationCountyCode());
+//
+//                if (locationCities.isEmpty()) {
+//                    locationCity = LocationCityTbl.builder()
+//                            .locationCountyCode(locationCounty.getLocationCountyCode())
+//                            .locationCity(city)
+//                            .regDt(curDate)
+//                            .regId("system")
+//                            .build();
+//
+//                    locationCityRepository.save(locationCity);
+//                }
+//            }
+//
+//            if (locationCity != null) {
+//                List<LocationDistrictTbl> locationDistricts = locationDistrictRepository
+//                        .findByLocationDistrictAndLocationCityCodeAndLocationCountyCode(
+//                                district,
+//                                locationCity.getLocationCityCode(),
+//                                locationCounty.getLocationCountyCode());
+//
+//                if (locationDistricts.isEmpty()) {
+//                    locationDistrict = LocationDistrictTbl.builder()
+//                            .locationCityCode(locationCity.getLocationCityCode())
+//                            .locationCountyCode(locationCounty.getLocationCountyCode())
+//                            .locationDistrict(district)
+//                            .regDt(curDate)
+//                            .regId("system")
+//                            .build();
+//
+//                    locationDistrictRepository.save(locationDistrict);
+//                }
+//
+//                List<LocationDistrictRoadTbl> locationDistrictRoads = locationDistrictRoadRepository
+//                        .findByLocationDistrictRoadAndLocationCityCodeAndLocationCountyCode(
+//                                districtRoad,
+//                                locationCity.getLocationCityCode(),
+//                                locationCounty.getLocationCountyCode());
+//
+//                if (locationDistrictRoads.isEmpty()) {
+//                    locationDistrictRoad = LocationDistrictRoadTbl.builder()
+//                            .locationCityCode(locationCity.getLocationCityCode())
+//                            .locationCountyCode(locationCounty.getLocationCountyCode())
+//                            .locationDistrictRoad(districtRoad)
+//                            .regDt(curDate)
+//                            .regId("system")
+//                            .build();
+//
+//                    locationDistrictRoadRepository.save(locationDistrictRoad);
+//                }
+//
+//            }
+//        }
+//
+//        return PublicStatus.SUCCESS;
+//    }
+//
+//    private List<Store> findStoreJoinLocation() {
+//        return queryFactory
+//                .selectFrom(store)
+//                .innerJoin(store.storeLocations, storeLocationInfoTbl)
+//                .fetch();
+//    }
+//
+//    @Transactional(rollbackFor = Exception.class)
+//    public PublicStatus transferAllStoreData() {
+//
+//        List<Store> stores = findStoreJoinLocation();
+//
+//        Date curDate = new Date();
+//
+//        for (Store store : stores) {
+//
+//            Optional<KakaoStoreDto> kakaoStoreDtoOptional = getKakaoStoreDtoFromKakaoApi(
+//                    store.getName(),
+//                    store.getStoreLocations().getLat(),
+//                    store.getStoreLocations().getLng());
+//
+//            if (kakaoStoreDtoOptional.isPresent()) {
+//                KakaoStoreDto kakaoStoreDto = kakaoStoreDtoOptional.get();
+//
+//                store.setName(kakaoStoreDto.getPlaceName());
+//                store.setChgDt(curDate);
+//                store.setChgId("transferAllStoreData");
+//
+//                String[] parts = kakaoStoreDto.getAddressName().split("\\s+");
+//                List<String> result = Arrays.asList(parts);
+//
+//                String[] roadParts = kakaoStoreDto.getRoadAddressName().split("\\s+");
+//                List<String> roadResult = Arrays.asList(roadParts);
+//
+//                String county = result.get(0);
+//                String city = "";
+//                String district = "";
+//                String districtRoad = "";
+//
+//                if (result.size() > 4) {
+//
+//                    if (county.equals("경기")) {
+//                        county = result.get(0) + " " + result.get(1);
+//                        city = result.get(2);
+//                        district = result.get(3);
+//                        districtRoad = roadResult.get(3);
+//                    } else {
+//                        city = result.get(1);
+//
+//                    }
+//
+//
+//
+//                } else {
+//                    city = result.get(1);
+//                    district = result.get(2);
+//                    districtRoad = roadResult.get(2);
+//                }
+//
+//                StoreLocationInfoTbl storeLocation = store.getStoreLocations();
+//                storeLocation.setLat(kakaoStoreDto.getLat());
+//                storeLocation.setLng(kakaoStoreDto.getLng());
+//                storeLocation.setChgId("transferAllStoreData");
+//                storeLocation.setLocationCounty(county);
+//                storeLocation.setLocationCity(city);
+//                storeLocation.setLocationDistrict(district);
+//                storeLocation.setAddress(kakaoStoreDto.getAddressName());
+//                storeLocation.setChgDt(curDate);
+//
+//
+//                /* 상점 위치정보 - 도로명 등록 */
+//                StoreLocationRoadInfoTbl storeLocationRoadInfoTbl = StoreLocationRoadInfoTbl.builder()
+//                        .store(store)
+//                        .seq(store.getSeq())
+//                        .lat(kakaoStoreDto.getLat())
+//                        .lng(kakaoStoreDto.getLng())
+//                        .regId("system")
+//                        .locationCounty(county)
+//                        .locationCity(city)
+//                        .locationDistrictRoad(districtRoad)
+//                        .address(kakaoStoreDto.getRoadAddressName())
+//                        .regDt(curDate)
+//                        .build();
+//
+//                storeLocationRoadInfoRepository.save(storeLocationRoadInfoTbl);
+//
+//                LocationCountyTbl locationCounty = null;
+//                LocationCityTbl locationCity = null;
+//                LocationDistrictTbl locationDistrict = null;
+//                LocationDistrictRoadTbl locationDistrictRoad = null;
+//
+//                List<LocationCountyTbl> locationCounties = locationCountyRepository.findByLocationCounty(county);
+//
+//                if (locationCounties.isEmpty()) {
+//                    locationCounty = LocationCountyTbl.builder()
+//                            .locationCounty(county)
+//                            .regDt(curDate)
+//                            .regId("system")
+//                            .build();
+//
+//                    locationCountyRepository.save(locationCounty);
+//                } else {
+//                    locationCounty = locationCounties.get(0);
+//                }
+//
+//                if (locationCounty != null) {
+//                    List<LocationCityTbl> locationCities = locationCityRepository
+//                            .findByLocationCityAndLocationCountyCode(city, locationCounty.getLocationCountyCode());
+//
+//                    if (locationCities.isEmpty()) {
+//                        locationCity = LocationCityTbl.builder()
+//                                .locationCountyCode(locationCounty.getLocationCountyCode())
+//                                .locationCity(city)
+//                                .regDt(curDate)
+//                                .regId("system")
+//                                .build();
+//
+//                        locationCityRepository.save(locationCity);
+//                    } else {
+//                        locationCity = locationCities.get(0);
+//                    }
+//                }
+//
+//                if (locationCity != null) {
+//                    List<LocationDistrictTbl> locationDistricts = locationDistrictRepository
+//                            .findByLocationDistrictAndLocationCityCodeAndLocationCountyCode(
+//                                    district,
+//                                    locationCity.getLocationCityCode(),
+//                                    locationCounty.getLocationCountyCode());
+//
+//                    if (locationDistricts.isEmpty()) {
+//                        locationDistrict = LocationDistrictTbl.builder()
+//                                .locationCityCode(locationCity.getLocationCityCode())
+//                                .locationCountyCode(locationCounty.getLocationCountyCode())
+//                                .locationDistrict(district)
+//                                .regDt(curDate)
+//                                .regId("system")
+//                                .build();
+//
+//                        locationDistrictRepository.save(locationDistrict);
+//                    }
+//
+//                    List<LocationDistrictRoadTbl> locationDistrictRoads = locationDistrictRoadRepository
+//                            .findByLocationDistrictRoadAndLocationCityCodeAndLocationCountyCode(
+//                                    districtRoad,
+//                                    locationCity.getLocationCityCode(),
+//                                    locationCounty.getLocationCountyCode());
+//
+//                    if (locationDistrictRoads.isEmpty()) {
+//                        locationDistrictRoad = LocationDistrictRoadTbl.builder()
+//                                .locationCityCode(locationCity.getLocationCityCode())
+//                                .locationCountyCode(locationCounty.getLocationCountyCode())
+//                                .locationDistrictRoad(districtRoad)
+//                                .regDt(curDate)
+//                                .regId("system")
+//                                .build();
+//
+//                        locationDistrictRoadRepository.save(locationDistrictRoad);
+//                    }
+//
+//                }
+//
+//            } else {
+//                //System.out.println("========================");
+//                //System.out.println(store.getName());
+//                //log.error(store.getName());
+//            }
+//        }
+//
+//        return PublicStatus.SUCCESS;
+//    }
 
-
-        }
-
-        return PublicStatus.SUCCESS;
-    }
 
 }

@@ -69,6 +69,6 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
 
-        return source;  // UrlBasedCorsConfigurationSource 타입 그대로 반환
+        return source;  /* UrlBasedCorsConfigurationSource 타입 그대로 반환 */
     }
 }

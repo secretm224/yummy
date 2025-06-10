@@ -1,20 +1,15 @@
 package com.cho_co_song_i.yummy.yummy.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.domain.Persistable;
 
 import java.util.Date;
 
 @Entity
 @Table(name = "user_oauth_kakao_tbl")
-@Data
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Getter
 public class UserOauthKakaoTbl implements Persistable<Long> {
 
     @Id

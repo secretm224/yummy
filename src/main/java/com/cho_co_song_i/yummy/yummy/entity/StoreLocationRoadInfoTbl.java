@@ -1,28 +1,31 @@
 package com.cho_co_song_i.yummy.yummy.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Persistable;
 
-import java.util.ArrayList;
+import java.math.BigDecimal;
 import java.util.Date;
-import java.util.List;
 
 @Entity
-@Table(name = "location_county_tbl")
-@Data
+@Table(name = "store_location_road_info_tbl")
+@Getter
 @NoArgsConstructor
-@AllArgsConstructor
-public class LocationCountyTbl implements Persistable<Long> {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "location_county_code")
-    private Long locationCountyCode;
+public class StoreLocationRoadInfoTbl implements Persistable<Long> {
 
-    @Column(name = "location_county", nullable = false, length = 25)
-    private String locationCounty;
+    @Id
+    @Column(name = "seq")
+    private Long seq;
+
+    @Column(name = "lat", precision = 10, scale = 7, nullable = false)
+    private BigDecimal lat;
+
+    @Column(name = "lng", precision = 10, scale = 7, nullable = false)
+    private BigDecimal lng;
+
+    @Column(name = "address", nullable = true, length = 500)
+    private String address;
 
     @Column(name = "reg_dt", nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
@@ -44,12 +47,12 @@ public class LocationCountyTbl implements Persistable<Long> {
 
     @Override
     public Long getId() {
-        return this.locationCountyCode;
+        return this.seq;
     }
 
     @Override
     public boolean isNew() {
-        return isNew || this.locationCountyCode == null;
+        return isNew || this.seq == null;
     }
 
     /* ✅ 새로운 엔티티를 표시하는 메서드 */
@@ -57,7 +60,6 @@ public class LocationCountyTbl implements Persistable<Long> {
         this.isNew = true;
     }
 
-    /* 관계 설정 */
-    @OneToMany(mappedBy = "locationCounty", fetch = FetchType.LAZY)
-    private List<LocationCityTbl> locationCities = new ArrayList<>();
+    @OneToOne(mappedBy = "storeLocationRoadInfos", fetch = FetchType.LAZY)
+    private Store store;
 }

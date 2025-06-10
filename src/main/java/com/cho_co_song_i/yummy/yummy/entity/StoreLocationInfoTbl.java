@@ -2,8 +2,8 @@ package com.cho_co_song_i.yummy.yummy.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Persistable;
 
@@ -12,10 +12,8 @@ import java.util.Date;
 
 @Entity
 @Table(name = "store_location_info_tbl")
-@Data
+@Getter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class StoreLocationInfoTbl implements Persistable<Long> {
 
     @Id
@@ -27,15 +25,6 @@ public class StoreLocationInfoTbl implements Persistable<Long> {
 
     @Column(name = "lng", precision = 10, scale = 7, nullable = false)
     private BigDecimal lng;
-
-    @Column(name = "location_city", nullable = true, length = 25)
-    private String locationCity;
-
-    @Column(name = "location_county", nullable = true, length = 25)
-    private String locationCounty;
-
-    @Column(name = "location_district", nullable = true, length = 25)
-    private String locationDistrict;
 
     @Column(name = "address", nullable = true, length = 500)
     private String address;

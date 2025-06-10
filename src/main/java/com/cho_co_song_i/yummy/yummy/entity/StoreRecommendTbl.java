@@ -3,6 +3,7 @@ package com.cho_co_song_i.yummy.yummy.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Persistable;
 
@@ -10,9 +11,8 @@ import java.util.Date;
 
 @Entity
 @Table(name = "store_recommend_tbl")
-@Data
+@Getter
 @NoArgsConstructor
-@AllArgsConstructor
 public class StoreRecommendTbl implements Persistable<StoreRecommendTblId> {
     @EmbeddedId
     private StoreRecommendTblId id;

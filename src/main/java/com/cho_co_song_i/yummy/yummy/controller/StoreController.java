@@ -110,15 +110,20 @@ public class StoreController {
         Optional<JsonNode> result = storeService.modifyEmptyStoreDetail();
         return ResponseEntity.ok(result);
     }
-
+    
     /* 상점 등록 ... */
-    @GetMapping("/inputNewStore")
-    public ResponseEntity<PublicStatus> inputNewStore(
-            @RequestParam(value = "storeName", required = true) String storeName,
-            @RequestParam(value = "zeroYn", required = false) Boolean zeroYn
-            ) {
-
-        return ResponseEntity.ok(storeService.inputNewStore(storeName, zeroYn));
-    }
+//    @GetMapping("/inputNewStore")
+//    public ResponseEntity<PublicStatus> inputNewStore(
+//            @RequestParam(value = "storeName", required = true) String storeName,
+//            @RequestParam(value = "zeroYn", required = false) Boolean zeroYn
+//            ) {
+//
+//        return ResponseEntity.ok(storeService.inputNewStore(storeName, null, null, zeroYn));
+//    }
+//
+//    @GetMapping("/convertStore")
+//    public ResponseEntity<PublicStatus> transferAllStoreData() {
+//        return ResponseEntity.ok(storeService.transferAllStoreData());
+//    }
 
 }

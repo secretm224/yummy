@@ -11,10 +11,8 @@ import java.util.List;
 
 @Entity
 @Table(name = "store")
-@Data
+@Getter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Store implements Persistable<Long> {
 
     @Id
@@ -74,11 +72,15 @@ public class Store implements Persistable<Long> {
     @OneToMany(mappedBy = "store", fetch = FetchType.LAZY)
     private List<StoreTypeLinkTbl> storeTypeLinks = new ArrayList<>();
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name="seq")
     private StoreLocationInfoTbl storeLocations;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name="seq")
     private ZeroPossibleMarket zeroPossibles;
+
+    @OneToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name="seq")
+    private StoreLocationRoadInfoTbl storeLocationRoadInfos;
 }

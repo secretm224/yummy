@@ -3,6 +3,7 @@ package com.cho_co_song_i.yummy.yummy.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Persistable;
 
@@ -12,9 +13,8 @@ import java.util.List;
 
 @Entity
 @Table(name = "store_type_major")
-@Data
 @NoArgsConstructor
-@AllArgsConstructor
+@Getter
 public class StoreTypeMajor implements Persistable<Long> {
     @Id
     @Column(name = "major_type")

@@ -103,11 +103,15 @@ public interface StoreService {
      */
     StoreDto modifySingleStoreDetail(long id, String tel, String url);
 
-    /**
-     * 새로운 상점을 등록해주는 기능.
-     * @param storeName
-     * @param zeroYn
-     * @return
-     */
-    PublicStatus inputNewStore(String storeName, Boolean zeroYn);
+//    /**
+//     * 새로운 상점을 등록해주는 기능.
+//     * @param storeName
+//     * @param pLat
+//     * @param pLng
+//     * @param zeroYn
+//     * @return
+//     */
+//    PublicStatus inputNewStore(String storeName, BigDecimal pLat, BigDecimal pLng, Boolean zeroYn);
+//
+//    PublicStatus transferAllStoreData();
 }

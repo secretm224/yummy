@@ -4,6 +4,7 @@ package com.cho_co_song_i.yummy.yummy.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Persistable;
 
@@ -11,9 +12,8 @@ import java.util.Date;
 
 @Entity
 @Table(name = "user_picture_tbl")
-@Data
 @NoArgsConstructor
-@AllArgsConstructor
+@Getter
 public class UserPictureTbl implements Persistable<UserPictureTblId>  {
 
     @EmbeddedId
