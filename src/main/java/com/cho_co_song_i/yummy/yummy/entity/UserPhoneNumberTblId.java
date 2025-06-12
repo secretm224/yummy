@@ -16,4 +16,9 @@ public class UserPhoneNumberTblId {
 
     @Column(name = "phone_number", columnDefinition = "CHAR(11)")
     private String phoneNumber;
+
+    public UserPhoneNumberTblId(Long userNo, String phoneNumber) {
+        this.userNo = userNo;
+        this.phoneNumber = phoneNumber;
+    }
 }

@@ -16,4 +16,9 @@ public class UserTokenIdTblId {
 
     @Column(name = "user_no", nullable = false)
     private Long userNo;
+
+    public UserTokenIdTblId(String tokenId, Long userNo) {
+        this.tokenId = tokenId;
+        this.userNo = userNo;
+    }
 }

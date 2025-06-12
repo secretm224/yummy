@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Persistable;
 
+import java.time.Instant;
 import java.util.Date;
 
 @Entity
@@ -52,4 +53,14 @@ public class UserEmailTbl implements Persistable<Long> {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_no")
     private UserTbl user;
+
+    public UserEmailTbl(UserTbl user, String email, String regId) {
+        Instant nowInstant = Instant.now();
+
+        this.user = user;
+        this.userNo = user.getUserNo();
+        this.userEmailAddress = email;
+        this.regDt = Date.from(nowInstant);
+        this.regId = regId;
+    }
 }

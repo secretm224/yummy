@@ -27,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -174,16 +173,12 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         String pwSalt = HashUtil.generateSalt();
         String hashedPw = HashUtil.hashWithSalt(tempPw, pwSalt);
 
-        UserTempPwTbl userTempPwTbl = new UserTempPwTbl();
-        userTempPwTbl.setUserNo(userTbl.getUserNo());
-        userTempPwTbl.setUserId(userTbl.getUserId());
-        userTempPwTbl.setRegDt(new Date());
-        userTempPwTbl.setRegId("system");
+        UserTempPwTbl userTempPwTbl =
+                new UserTempPwTbl(userTbl.getUserNo(), userTbl.getUserId(), "issueAndSaveTempPass");
 
         userService.inputUserTempPwTbl(userTempPwTbl);
 
-        userTbl.setUserPwSalt(pwSalt);
-        userTbl.setUserPw(hashedPw);
+        userTbl.modifyUserPwAndSalt(hashedPw, pwSalt);
 
         return tempPw;
     }
@@ -498,8 +493,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
 
             if (userOptional.isPresent()) {
                 UserTbl user = userOptional.get();
-                user.setUserPw(userPwHash);
-                user.setUserPwSalt(saltValue);
+                user.modifyUserPwAndSalt(userPwHash, saltValue);
             }
 
             Optional<UserTempPwTbl> userTempPwOptional =

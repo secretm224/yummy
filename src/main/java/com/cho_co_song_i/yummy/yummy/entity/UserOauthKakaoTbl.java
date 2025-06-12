@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.domain.Persistable;
 
+import java.time.Instant;
 import java.util.Date;
 
 @Entity
@@ -52,5 +53,15 @@ public class UserOauthKakaoTbl implements Persistable<Long> {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_no")
     private UserTbl user;
+
+    public UserOauthKakaoTbl(UserTbl userTbl, String idToken, String regId) {
+        Instant nowInstant = Instant.now();
+        this.user = userTbl;
+        this.userNo = userTbl.getUserNo();
+        this.tokenId = idToken;
+        this.oauthBannedYn = 'N';
+        this.reg_dt = Date.from(nowInstant);
+        this.reg_id = regId;
+    }
 
 }

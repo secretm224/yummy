@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import org.springframework.data.domain.Persistable;
 
+import java.time.Instant;
 import java.util.Date;
 
 @Entity
@@ -57,4 +58,15 @@ public class UserTokenIdTbl implements Persistable<UserTokenIdTblId>{
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_no")
     private UserTbl user;
+
+    public UserTokenIdTbl(UserTbl user, String tokenId, String regId) {
+        Instant nowInstant = Instant.now();
+
+        UserTokenIdTblId userTokenIdTblId = new UserTokenIdTblId(tokenId, user.getUserNo());
+        this.user = user;
+        this.id = userTokenIdTblId;
+        this.regId = regId;
+        this.regDt = Date.from(nowInstant);
+    }
+
 }

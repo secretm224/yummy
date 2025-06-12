@@ -21,7 +21,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 
@@ -270,15 +269,7 @@ public class KakaoLoginServiceImpl implements LoginService {
     }
 
     public void inputUserOauth(UserTbl userTbl, String idToken) {
-        UserOauthKakaoTbl oauthTbl = UserOauthKakaoTbl.builder()
-                .user(userTbl)
-                .userNo(userTbl.getUserNo())
-                .tokenId(idToken)
-                .oauthBannedYn('N')
-                .reg_dt(new Date())
-                .reg_id("system")
-                .build();
-
+        UserOauthKakaoTbl oauthTbl = new UserOauthKakaoTbl(userTbl, idToken, "inputUserOauth");
         userService.inputUserOauthKakaoTbl(oauthTbl);
     }
 

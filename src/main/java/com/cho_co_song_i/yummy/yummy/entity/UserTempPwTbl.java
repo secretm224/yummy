@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.util.Date;
 
 @Entity
@@ -54,4 +55,13 @@ public class UserTempPwTbl {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_no")
     private UserTbl user;
+
+    public UserTempPwTbl(Long userNo, String userId, String regId) {
+        Instant nowInstant = Instant.now();
+        this.userNo = userNo;
+        this.userId = userId;
+        this.regDt = Date.from(nowInstant);
+        this.regId = regId;
+    }
 }
+

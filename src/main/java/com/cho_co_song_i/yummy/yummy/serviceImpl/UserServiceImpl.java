@@ -1,32 +1,19 @@
 package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
 import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
-import com.cho_co_song_i.yummy.yummy.component.JwtProvider;
 import com.cho_co_song_i.yummy.yummy.dto.JoinMemberDto;
-import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
-import com.cho_co_song_i.yummy.yummy.dto.oauth.UserOAuthResponse;
 import com.cho_co_song_i.yummy.yummy.dto.userCache.UserBasicInfoDto;
 import com.cho_co_song_i.yummy.yummy.entity.*;
-import com.cho_co_song_i.yummy.yummy.enums.JwtValidationStatus;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.repository.*;
 import com.cho_co_song_i.yummy.yummy.service.UserService;
-import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
 import com.cho_co_song_i.yummy.yummy.utils.HashUtil;
-import com.querydsl.jpa.impl.JPAQueryFactory;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
-import java.util.Date;
 import java.util.Optional;
-
-import static com.cho_co_song_i.yummy.yummy.entity.QUserLocationDetailTbl.userLocationDetailTbl;
-import static com.cho_co_song_i.yummy.yummy.entity.QUserPictureTbl.userPictureTbl;
 
 @Service
 @Slf4j
@@ -70,7 +57,7 @@ public class UserServiceImpl implements UserService {
         String mainOauthChannel = loginChannel.toString();
 
         /* DB 저장 */
-        user.setMainOauthChannel(mainOauthChannel);
+        user.modifyUserOauthChannel(mainOauthChannel, "modifyUserTblMainOauthC");
         userRepository.save(user);
 
         /* Redis 저장 */
@@ -79,14 +66,7 @@ public class UserServiceImpl implements UserService {
     }
 
     public void inputUserTokenId(UserTbl user, String tokenId) {
-        UserTokenIdTbl userTokenIdTbl = new UserTokenIdTbl();
-        userTokenIdTbl.setUser(user);
-
-        UserTokenIdTblId userTokenIdTblId = new UserTokenIdTblId(tokenId, user.getUserNo());
-        userTokenIdTbl.setId(userTokenIdTblId);
-        userTokenIdTbl.setRegDt(new Date());
-        userTokenIdTbl.setRegId("system");
-
+        UserTokenIdTbl userTokenIdTbl = new UserTokenIdTbl(user, tokenId, "inputUserTokenId");
         userTokenIdRepository.save(userTokenIdTbl);
     }
 
@@ -107,46 +87,19 @@ public class UserServiceImpl implements UserService {
     }
 
     public void inputUserEmail(UserTbl user, String email) {
-        UserEmailTbl userEmailTbl = new UserEmailTbl();
-        userEmailTbl.setUser(user);
-        userEmailTbl.setUserNo(user.getUserNo());
-        userEmailTbl.setUserEmailAddress(email);
-        userEmailTbl.setRegDt(new Date());
-        userEmailTbl.setRegId("system");
-        userEmailTbl.setChgDt(null);
-        userEmailTbl.setChgId(null);
-
+        UserEmailTbl userEmailTbl = new UserEmailTbl(user, email, "inputUserEmail");
         userEmailRepository.save(userEmailTbl);
     }
 
     public UserTbl createUser(JoinMemberDto joinMemberDto) throws Exception {
         String saltValue = HashUtil.generateSalt();
         String userPwHash = HashUtil.hashWithSalt(joinMemberDto.getPassword(), saltValue);
-
-        UserTbl user = new UserTbl();
-        user.setUserId(joinMemberDto.getUserId());
-        user.setUserPw(userPwHash);
-        user.setUserPwSalt(saltValue);
-        user.setUserNm(joinMemberDto.getName());
-        user.setUserBirth(joinMemberDto.getBirthDate());
-        user.setUserGender(joinMemberDto.getGender());
-        user.setRegDt(new Date());
-        user.setRegId("system");
-
+        UserTbl user = new UserTbl(joinMemberDto, userPwHash, saltValue, "createUser");
         return userRepository.save(user);
     }
 
     public void inputUserPhoneNumber(UserTbl user, String phoneNumber, String telecom) {
-        UserPhoneNumberTblId userPhoneNumberTblId = new UserPhoneNumberTblId(user.getUserNo(), phoneNumber);
-        UserPhoneNumberTbl userPhoneNumberTbl = new UserPhoneNumberTbl();
-        userPhoneNumberTbl.setUser(user);
-        userPhoneNumberTbl.setId(userPhoneNumberTblId);
-        userPhoneNumberTbl.setTelecomName(telecom);
-        userPhoneNumberTbl.setRegDt(new Date());
-        userPhoneNumberTbl.setRegId("system");
-        userPhoneNumberTbl.setChgDt(null);
-        userPhoneNumberTbl.setChgId(null);
-
+        UserPhoneNumberTbl userPhoneNumberTbl = new UserPhoneNumberTbl(user, phoneNumber, telecom, "inputUserPhoneNumber");
         userPhoneNumberRepository.save(userPhoneNumberTbl);
     }
 

@@ -1,10 +1,13 @@
 package com.cho_co_song_i.yummy.yummy.entity;
 
+import com.cho_co_song_i.yummy.yummy.dto.AddStoreDto;
+import com.cho_co_song_i.yummy.yummy.dto.StoreDto;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.domain.Persistable;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -83,4 +86,68 @@ public class Store implements Persistable<Long> {
     @OneToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name="seq")
     private StoreLocationRoadInfoTbl storeLocationRoadInfos;
+
+    public Store(StoreDto dto) {
+        this.name = dto.getName();
+        this.type = dto.getType();
+        this.useYn = dto.getUseYn();
+        this.regDt = dto.getRegDt();
+        this.regId = dto.getRegId();
+        this.chgDt = dto.getChgDt();
+        this.chgId = dto.getChgId();
+        this.tel = dto.getTel();
+        this.url = dto.getUrl();
+    }
+
+    public Store(AddStoreDto addStoreDto) {
+        Instant nowInstant = Instant.now();
+
+        this.name = addStoreDto.getName();
+        this.type = addStoreDto.getType();
+        this.useYn = 'Y';
+        this.regDt = Date.from(nowInstant);
+        this.regId = "system";
+        this.tel = addStoreDto.getTel();
+        this.url = addStoreDto.getUrl();
+        markAsNew();
+    }
+
+    /**
+     * StoreDto 의 데이터를 수정해주는 함수
+     * @param dto
+     * @param chgId
+     */
+    public void updateStore(StoreDto dto, String chgId) {
+
+        Instant nowInstant = Instant.now();
+
+        this.name = dto.getName();
+        this.type = dto.getType();
+        this.useYn = dto.getUseYn();
+        this.regDt = dto.getRegDt();
+        this.regId = dto.getRegId();
+        this.chgDt = Date.from(nowInstant);
+        this.chgId = chgId;
+        this.tel = dto.getTel();
+        this.url = dto.getUrl();
+    }
+
+    /**
+     * 삼정의 연락처, url 을 update 해주는 함수
+     * @param tel
+     * @param url
+     * @param chgId
+     */
+    public void updateContactInfo(String tel, String url, String chgId) {
+
+        Instant nowInstant = Instant.now();
+
+        this.tel = tel;
+        this.url = url;
+        this.chgId = chgId;
+        this.chgDt = Date.from(nowInstant);
+    }
+
+
+
 }

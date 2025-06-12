@@ -1,5 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.entity;
 
+import com.cho_co_song_i.yummy.yummy.dto.JoinMemberDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -7,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Persistable;
 
+import java.time.Instant;
 import java.util.Date;
 
 @Entity
@@ -68,5 +70,41 @@ public class UserTbl implements Persistable<Long> {
     public void markNotNew(){
         this.isNew = false;
     }
+
+    /**
+     * User의 비밀번호와 비밀번호 솔트값 수정 해주는 함수
+     * @param hashedPw
+     * @param pwSalt
+     */
+    public void modifyUserPwAndSalt(String hashedPw, String pwSalt) {
+        this.userPw = hashedPw;
+        this.userPwSalt = pwSalt;
+    }
+
+    public UserTbl(JoinMemberDto joinMemberDto, String userPwHash, String saltValue, String regId) {
+        Instant nowInstant = Instant.now();
+        this.userId = joinMemberDto.getUserId();
+        this.userPw = userPwHash;
+        this.userPwSalt = saltValue;
+        this.userNm = joinMemberDto.getName();
+        this.userBirth = joinMemberDto.getBirthDate();
+        this.userGender = joinMemberDto.getGender();
+        this.regId = regId;
+        this.regDt = Date.from(nowInstant);
+    }
+
+    /**
+     * user의 Oauth 채널을 수정해주는 함수
+     * @param mainOauthChannel
+     * @param chgId
+     */
+    public void modifyUserOauthChannel(String mainOauthChannel, String chgId) {
+        Instant nowInstant = Instant.now();
+        this.mainOauthChannel = mainOauthChannel;
+        this.chgDt = Date.from(nowInstant);
+        this.chgId = chgId;
+    }
+
+
 
 }

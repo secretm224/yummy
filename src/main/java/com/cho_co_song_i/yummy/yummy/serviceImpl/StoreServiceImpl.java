@@ -88,26 +88,6 @@ public class StoreServiceImpl implements StoreService {
     }
 
     /**
-     * DTO -> Entity 변환
-     * @param dto
-     * @return
-     */
-    private Store convertToEntity(StoreDto dto) {
-        Store store = new Store();
-        store.setName(dto.getName());
-        store.setType(dto.getType());
-        store.setUseYn(dto.getUseYn());
-        store.setRegDt(dto.getRegDt());
-        store.setRegId(dto.getRegId());
-        store.setChgDt(dto.getChgDt());
-        store.setChgId(dto.getChgId());
-        store.setTel(dto.getTel());
-        store.setUrl(dto.getUrl());
-        return store;
-    }
-
-
-    /**
      * Entity -> DTO 변환 (StorTypeMajor)
      * @param storeTypeMajor
      * @return
@@ -215,9 +195,7 @@ public class StoreServiceImpl implements StoreService {
         /* tel, url 컬럼 업데이트 */
         for (Store store : stores) {
             DetailInfo info = updateMap.get(store.getSeq());
-            store.setTel(info.tel());
-            store.setUrl(info.url());
-            store.setChgId("Store>UpdateStoreDetail");
+            store.updateContactInfo(info.tel(), info.url(), "Store>UpdateStoreDetail");
         }
     }
 
@@ -274,7 +252,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     public StoreDto createStore(StoreDto dto) {
-        Store store = convertToEntity(dto);
+        Store store = new Store(dto);
         store = storeRepository.save(store);
         return convertToDto(store);
     }
@@ -287,16 +265,7 @@ public class StoreServiceImpl implements StoreService {
 
         if (optionalStore.isPresent()) {
             Store store = optionalStore.get();
-            store.setName(dto.getName());
-            store.setType(dto.getType());
-            store.setUseYn(dto.getUseYn());
-            store.setRegDt(dto.getRegDt());
-            store.setRegId(dto.getRegId());
-            store.setChgDt(now);
-            store.setChgId(dto.getChgId());
-            store.setTel(dto.getTel());
-            store.setUrl(dto.getUrl());
-
+            store.updateStore(dto, "modifyStore");
             store = storeRepository.save(store);
             return convertToDto(store);
         } else {
@@ -306,10 +275,6 @@ public class StoreServiceImpl implements StoreService {
 
     @Transactional(rollbackFor = Exception.class)
     public Boolean isAddedStore(AddStoreDto addStoreDto) throws Exception {
-
-        /* 현재 시각 */
-        Instant nowInstant = Instant.now();
-        Date now = Date.from(nowInstant);
 
         if (addStoreDto == null) {
             throw new IllegalArgumentException("[Error][StoreService->addStore] AddStoreDto object is null.");
@@ -322,16 +287,7 @@ public class StoreServiceImpl implements StoreService {
         }
 
         /* Store 객체*/
-        Store newStore = new Store();
-        newStore.setName(addStoreDto.getName());
-        newStore.setType(addStoreDto.getType());
-        newStore.setUseYn('Y');
-        newStore.setRegDt(now);
-        newStore.setRegId("system");
-        newStore.setTel(addStoreDto.getTel());
-        newStore.setUrl(addStoreDto.getUrl());
-        newStore.markAsNew();
-
+        Store newStore = new Store(addStoreDto);
         Long newStoreSeq = storeRepository.save(newStore).getSeq();
         //locationService.inputStoreLocationInfoTbl(addStoreDto, newStoreSeq, now);
 
@@ -542,346 +498,4 @@ public class StoreServiceImpl implements StoreService {
         }
         return Optional.empty();
     }
-
-//    /* 리팩토링 필요함 ! */
-//    @Transactional(rollbackFor = Exception.class)
-//    public PublicStatus inputNewStore(String storeName, BigDecimal pLat, BigDecimal pLng, Boolean zeroYn) {
-//
-//        Optional<KakaoStoreDto> kakaoStoreDtoOptional = getKakaoStoreDtoFromKakaoApi(storeName, null, null);
-//
-//        if (kakaoStoreDtoOptional.isPresent()) {
-//            KakaoStoreDto kakaoStoreDto = kakaoStoreDtoOptional.get();
-//
-//            Date curDate = new Date();
-//
-//            /* 상점 등록 */
-//            Store store = Store.builder()
-//                    .name(kakaoStoreDto.getPlaceName())
-//                    .type("store")
-//                    .useYn('Y')
-//                    .regDt(curDate)
-//                    .regId("system")
-//                    .tel(kakaoStoreDto.getPhone())
-//                    .url(kakaoStoreDto.getPlaceUrl())
-//                    .build();
-//
-//            storeRepository.save(store);
-//
-//            /* 시/군/구 나누기 위함. */
-//            String[] parts = kakaoStoreDto.getAddressName().split("\\s+");
-//            List<String> result = Arrays.asList(parts);
-//
-//            String[] roadParts = kakaoStoreDto.getRoadAddressName().split("\\s+");
-//            List<String> roadResult = Arrays.asList(roadParts);
-//
-//            String county = result.get(0);
-//            String city = "";
-//            String district = "";
-//            String districtRoad = "";
-//
-//            if (county.equals("경기")) {
-//                county = result.get(0) + " " + result.get(1);
-//                city = result.get(2);
-//                district = result.get(3);
-//                districtRoad = roadResult.get(3);
-//            } else {
-//                city = result.get(1);
-//                district = result.get(2);
-//                districtRoad = roadResult.get(2);
-//            }
-//
-//            /* 상점 위치정보 등록 */
-//            StoreLocationInfoTbl storeLocationInfo = StoreLocationInfoTbl.builder()
-//                    .store(store)
-//                    .seq(store.getSeq())
-//                    .lat(kakaoStoreDto.getLat())
-//                    .lng(kakaoStoreDto.getLng())
-//                    .regId("system")
-//                    .locationCounty(county)
-//                    .locationCity(city)
-//                    .locationDistrict(district)
-//                    .address(kakaoStoreDto.getAddressName())
-//                    .regDt(curDate)
-//                    .build();
-//
-//            storeLocationInfoRepository.save(storeLocationInfo);
-//
-//            /* 상점 위치정보 - 도로명 등록 */
-//            StoreLocationRoadInfoTbl storeLocationRoadInfoTbl = StoreLocationRoadInfoTbl.builder()
-//                    .store(store)
-//                    .seq(store.getSeq())
-//                    .lat(kakaoStoreDto.getLat())
-//                    .lng(kakaoStoreDto.getLng())
-//                    .regId("system")
-//                    .locationCounty(county)
-//                    .locationCity(city)
-//                    .locationDistrictRoad(districtRoad)
-//                    .address(kakaoStoreDto.getAddressName())
-//                    .regDt(curDate)
-//                    .build();
-//
-//            storeLocationRoadInfoRepository.save(storeLocationRoadInfoTbl);
-//
-//            if (zeroYn != null && zeroYn) {
-//                ZeroPossibleMarket zeroPossibleMarket = ZeroPossibleMarket.builder()
-//                        .store(store)
-//                        .seq(store.getSeq())
-//                        .useYn('Y')
-//                        .name(kakaoStoreDto.getPlaceName())
-//                        .regDt(curDate)
-//                        .regId("system")
-//                        .build();
-//
-//                zeroPossibleMarketRepository.save(zeroPossibleMarket);
-//            }
-//
-//            LocationCountyTbl locationCounty = null;
-//            LocationCityTbl locationCity = null;
-//            LocationDistrictTbl locationDistrict = null;
-//            LocationDistrictRoadTbl locationDistrictRoad = null;
-//
-//            List<LocationCountyTbl> locationCounties = locationCountyRepository.findByLocationCounty(county);
-//
-//            if (locationCounties.isEmpty()) {
-//                locationCounty = LocationCountyTbl.builder()
-//                        .locationCounty(county)
-//                        .regDt(curDate)
-//                        .regId("system")
-//                        .build();
-//
-//                locationCountyRepository.save(locationCounty);
-//            }
-//
-//            if (locationCounty != null) {
-//                List<LocationCityTbl> locationCities = locationCityRepository
-//                        .findByLocationCityAndLocationCountyCode(city, locationCounty.getLocationCountyCode());
-//
-//                if (locationCities.isEmpty()) {
-//                    locationCity = LocationCityTbl.builder()
-//                            .locationCountyCode(locationCounty.getLocationCountyCode())
-//                            .locationCity(city)
-//                            .regDt(curDate)
-//                            .regId("system")
-//                            .build();
-//
-//                    locationCityRepository.save(locationCity);
-//                }
-//            }
-//
-//            if (locationCity != null) {
-//                List<LocationDistrictTbl> locationDistricts = locationDistrictRepository
-//                        .findByLocationDistrictAndLocationCityCodeAndLocationCountyCode(
-//                                district,
-//                                locationCity.getLocationCityCode(),
-//                                locationCounty.getLocationCountyCode());
-//
-//                if (locationDistricts.isEmpty()) {
-//                    locationDistrict = LocationDistrictTbl.builder()
-//                            .locationCityCode(locationCity.getLocationCityCode())
-//                            .locationCountyCode(locationCounty.getLocationCountyCode())
-//                            .locationDistrict(district)
-//                            .regDt(curDate)
-//                            .regId("system")
-//                            .build();
-//
-//                    locationDistrictRepository.save(locationDistrict);
-//                }
-//
-//                List<LocationDistrictRoadTbl> locationDistrictRoads = locationDistrictRoadRepository
-//                        .findByLocationDistrictRoadAndLocationCityCodeAndLocationCountyCode(
-//                                districtRoad,
-//                                locationCity.getLocationCityCode(),
-//                                locationCounty.getLocationCountyCode());
-//
-//                if (locationDistrictRoads.isEmpty()) {
-//                    locationDistrictRoad = LocationDistrictRoadTbl.builder()
-//                            .locationCityCode(locationCity.getLocationCityCode())
-//                            .locationCountyCode(locationCounty.getLocationCountyCode())
-//                            .locationDistrictRoad(districtRoad)
-//                            .regDt(curDate)
-//                            .regId("system")
-//                            .build();
-//
-//                    locationDistrictRoadRepository.save(locationDistrictRoad);
-//                }
-//
-//            }
-//        }
-//
-//        return PublicStatus.SUCCESS;
-//    }
-//
-//    private List<Store> findStoreJoinLocation() {
-//        return queryFactory
-//                .selectFrom(store)
-//                .innerJoin(store.storeLocations, storeLocationInfoTbl)
-//                .fetch();
-//    }
-//
-//    @Transactional(rollbackFor = Exception.class)
-//    public PublicStatus transferAllStoreData() {
-//
-//        List<Store> stores = findStoreJoinLocation();
-//
-//        Date curDate = new Date();
-//
-//        for (Store store : stores) {
-//
-//            Optional<KakaoStoreDto> kakaoStoreDtoOptional = getKakaoStoreDtoFromKakaoApi(
-//                    store.getName(),
-//                    store.getStoreLocations().getLat(),
-//                    store.getStoreLocations().getLng());
-//
-//            if (kakaoStoreDtoOptional.isPresent()) {
-//                KakaoStoreDto kakaoStoreDto = kakaoStoreDtoOptional.get();
-//
-//                store.setName(kakaoStoreDto.getPlaceName());
-//                store.setChgDt(curDate);
-//                store.setChgId("transferAllStoreData");
-//
-//                String[] parts = kakaoStoreDto.getAddressName().split("\\s+");
-//                List<String> result = Arrays.asList(parts);
-//
-//                String[] roadParts = kakaoStoreDto.getRoadAddressName().split("\\s+");
-//                List<String> roadResult = Arrays.asList(roadParts);
-//
-//                String county = result.get(0);
-//                String city = "";
-//                String district = "";
-//                String districtRoad = "";
-//
-//                if (result.size() > 4) {
-//
-//                    if (county.equals("경기")) {
-//                        county = result.get(0) + " " + result.get(1);
-//                        city = result.get(2);
-//                        district = result.get(3);
-//                        districtRoad = roadResult.get(3);
-//                    } else {
-//                        city = result.get(1);
-//
-//                    }
-//
-//
-//
-//                } else {
-//                    city = result.get(1);
-//                    district = result.get(2);
-//                    districtRoad = roadResult.get(2);
-//                }
-//
-//                StoreLocationInfoTbl storeLocation = store.getStoreLocations();
-//                storeLocation.setLat(kakaoStoreDto.getLat());
-//                storeLocation.setLng(kakaoStoreDto.getLng());
-//                storeLocation.setChgId("transferAllStoreData");
-//                storeLocation.setLocationCounty(county);
-//                storeLocation.setLocationCity(city);
-//                storeLocation.setLocationDistrict(district);
-//                storeLocation.setAddress(kakaoStoreDto.getAddressName());
-//                storeLocation.setChgDt(curDate);
-//
-//
-//                /* 상점 위치정보 - 도로명 등록 */
-//                StoreLocationRoadInfoTbl storeLocationRoadInfoTbl = StoreLocationRoadInfoTbl.builder()
-//                        .store(store)
-//                        .seq(store.getSeq())
-//                        .lat(kakaoStoreDto.getLat())
-//                        .lng(kakaoStoreDto.getLng())
-//                        .regId("system")
-//                        .locationCounty(county)
-//                        .locationCity(city)
-//                        .locationDistrictRoad(districtRoad)
-//                        .address(kakaoStoreDto.getRoadAddressName())
-//                        .regDt(curDate)
-//                        .build();
-//
-//                storeLocationRoadInfoRepository.save(storeLocationRoadInfoTbl);
-//
-//                LocationCountyTbl locationCounty = null;
-//                LocationCityTbl locationCity = null;
-//                LocationDistrictTbl locationDistrict = null;
-//                LocationDistrictRoadTbl locationDistrictRoad = null;
-//
-//                List<LocationCountyTbl> locationCounties = locationCountyRepository.findByLocationCounty(county);
-//
-//                if (locationCounties.isEmpty()) {
-//                    locationCounty = LocationCountyTbl.builder()
-//                            .locationCounty(county)
-//                            .regDt(curDate)
-//                            .regId("system")
-//                            .build();
-//
-//                    locationCountyRepository.save(locationCounty);
-//                } else {
-//                    locationCounty = locationCounties.get(0);
-//                }
-//
-//                if (locationCounty != null) {
-//                    List<LocationCityTbl> locationCities = locationCityRepository
-//                            .findByLocationCityAndLocationCountyCode(city, locationCounty.getLocationCountyCode());
-//
-//                    if (locationCities.isEmpty()) {
-//                        locationCity = LocationCityTbl.builder()
-//                                .locationCountyCode(locationCounty.getLocationCountyCode())
-//                                .locationCity(city)
-//                                .regDt(curDate)
-//                                .regId("system")
-//                                .build();
-//
-//                        locationCityRepository.save(locationCity);
-//                    } else {
-//                        locationCity = locationCities.get(0);
-//                    }
-//                }
-//
-//                if (locationCity != null) {
-//                    List<LocationDistrictTbl> locationDistricts = locationDistrictRepository
-//                            .findByLocationDistrictAndLocationCityCodeAndLocationCountyCode(
-//                                    district,
-//                                    locationCity.getLocationCityCode(),
-//                                    locationCounty.getLocationCountyCode());
-//
-//                    if (locationDistricts.isEmpty()) {
-//                        locationDistrict = LocationDistrictTbl.builder()
-//                                .locationCityCode(locationCity.getLocationCityCode())
-//                                .locationCountyCode(locationCounty.getLocationCountyCode())
-//                                .locationDistrict(district)
-//                                .regDt(curDate)
-//                                .regId("system")
-//                                .build();
-//
-//                        locationDistrictRepository.save(locationDistrict);
-//                    }
-//
-//                    List<LocationDistrictRoadTbl> locationDistrictRoads = locationDistrictRoadRepository
-//                            .findByLocationDistrictRoadAndLocationCityCodeAndLocationCountyCode(
-//                                    districtRoad,
-//                                    locationCity.getLocationCityCode(),
-//                                    locationCounty.getLocationCountyCode());
-//
-//                    if (locationDistrictRoads.isEmpty()) {
-//                        locationDistrictRoad = LocationDistrictRoadTbl.builder()
-//                                .locationCityCode(locationCity.getLocationCityCode())
-//                                .locationCountyCode(locationCounty.getLocationCountyCode())
-//                                .locationDistrictRoad(districtRoad)
-//                                .regDt(curDate)
-//                                .regId("system")
-//                                .build();
-//
-//                        locationDistrictRoadRepository.save(locationDistrictRoad);
-//                    }
-//
-//                }
-//
-//            } else {
-//                //System.out.println("========================");
-//                //System.out.println(store.getName());
-//                //log.error(store.getName());
-//            }
-//        }
-//
-//        return PublicStatus.SUCCESS;
-//    }
-
-
 }
