@@ -103,15 +103,21 @@ public interface StoreService {
      */
     StoreDto modifySingleStoreDetail(long id, String tel, String url);
 
-//    /**
-//     * 새로운 상점을 등록해주는 기능.
-//     * @param storeName
-//     * @param pLat
-//     * @param pLng
-//     * @param zeroYn
-//     * @return
-//     */
-//    PublicStatus inputNewStore(String storeName, BigDecimal pLat, BigDecimal pLng, Boolean zeroYn);
-//
-//    PublicStatus transferAllStoreData();
+    /**
+     * 새로운 상점을 등록해주는 기능.
+     * @param storeName
+     * @param page
+     * @param size
+     * @param pLat
+     * @param pLng
+     * @param zeroYn
+     * @return
+     */
+    PublicStatus inputNewStore(String storeName, Integer page, Integer size, BigDecimal pLat, BigDecimal pLng, Boolean zeroYn);
+
+    /**
+     * 기존 store 데이터를 모두 Kakao 기반으로 update 시켜주는 메소드
+     * @return
+     */
+    PublicStatus modifyExistsStores();
 }

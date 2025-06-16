@@ -13,6 +13,8 @@ import java.math.BigDecimal;
 @Builder
 public class KakaoStoreDto {
     private String addressName;
+    private String categoryGroupCode;
+    private String categoryGroupName;
     private String categoryName;
     private String phone;
     private String placeUrl;

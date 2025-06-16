@@ -110,19 +110,31 @@ public class StoreController {
         Optional<JsonNode> result = storeService.modifyEmptyStoreDetail();
         return ResponseEntity.ok(result);
     }
-    
-    /* 상점 등록 ... */
-//    @GetMapping("/inputNewStore")
-//    public ResponseEntity<PublicStatus> inputNewStore(
-//            @RequestParam(value = "storeName", required = true) String storeName,
-//            @RequestParam(value = "zeroYn", required = false) Boolean zeroYn
-//            ) {
-//
-//        return ResponseEntity.ok(storeService.inputNewStore(storeName, null, null, zeroYn));
-//    }
-//
-//    @GetMapping("/convertStore")
-//    public ResponseEntity<PublicStatus> transferAllStoreData() {
-//        return ResponseEntity.ok(storeService.transferAllStoreData());
-//    }
+
+    /**
+     * 상점등록 메소드
+     * @param storeName
+     * @param page
+     * @param size
+     * @param pLat
+     * @param pLng
+     * @param zeroYn
+     * @return
+     */
+    @GetMapping("/inputNewStore")
+    public ResponseEntity<PublicStatus> inputNewStore(
+            @RequestParam(value = "storeName", required = true) String storeName,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size,
+            @RequestParam(value = "pLat", required = false) BigDecimal pLat,
+            @RequestParam(value = "pLng", required = false) BigDecimal pLng,
+            @RequestParam(value = "zeroYn", required = true) Boolean zeroYn
+            ) {
+        return ResponseEntity.ok(storeService.inputNewStore(storeName, page, size, pLat, pLng,  zeroYn));
+    }
+
+    @GetMapping("/updateExistsStore")
+    public ResponseEntity<PublicStatus> modifyExistsStoreDatas() {
+        return ResponseEntity.ok(storeService.modifyExistsStores());
+    }
 }

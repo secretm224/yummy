@@ -2,6 +2,7 @@ package com.cho_co_song_i.yummy.yummy.entity;
 
 import com.cho_co_song_i.yummy.yummy.dto.AddStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreDto;
+import com.cho_co_song_i.yummy.yummy.dto.store.KakaoStoreDto;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
@@ -52,7 +53,6 @@ public class Store implements Persistable<Long> {
     @Column(name = "url", nullable = true, length = 100)
     private String url;
 
-
     /* ✅ Hibernate 에게 신규 엔티티임을 알려주기 위해 사용 */
     @Transient
     private boolean isNew = false;
@@ -87,6 +87,11 @@ public class Store implements Persistable<Long> {
     @JoinColumn(name="seq")
     private StoreLocationRoadInfoTbl storeLocationRoadInfos;
 
+    @OneToOne(mappedBy = "store", fetch = FetchType.LAZY)
+    @JoinColumn(name="seq")
+    private StoreCategoryTbl storeCategoryTbl;
+
+
     public Store(StoreDto dto) {
         this.name = dto.getName();
         this.type = dto.getType();
@@ -110,6 +115,18 @@ public class Store implements Persistable<Long> {
         this.tel = addStoreDto.getTel();
         this.url = addStoreDto.getUrl();
         markAsNew();
+    }
+
+    public Store(KakaoStoreDto kakaoStoreDto, String regId) {
+        Instant nowInstant = Instant.now();
+
+        this.name = kakaoStoreDto.getPlaceName();
+        this.type = "store";
+        this.useYn = 'Y';
+        this.regId = regId;
+        this.regDt = Date.from(nowInstant);
+        this.tel = kakaoStoreDto.getPhone();
+        this.url = kakaoStoreDto.getPlaceUrl();
     }
 
     /**

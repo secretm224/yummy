@@ -4,11 +4,13 @@ import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.*;
 import com.cho_co_song_i.yummy.yummy.dto.store.KakaoStoreDto;
 import com.cho_co_song_i.yummy.yummy.entity.*;
+import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.repository.*;
 import com.cho_co_song_i.yummy.yummy.service.StoreService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
@@ -36,8 +38,10 @@ import java.util.stream.Collectors;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QStore.store;
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreLocationInfoTbl.storeLocationInfoTbl;
+import static com.cho_co_song_i.yummy.yummy.entity.QStoreLocationRoadInfoTbl.storeLocationRoadInfoTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreTypeMajor.storeTypeMajor;
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreTypeSub.storeTypeSub;
+import static com.cho_co_song_i.yummy.yummy.entity.QStoreRecommendTbl.storeRecommendTbl;
 
 @Service
 @Slf4j
@@ -51,6 +55,8 @@ public class StoreServiceImpl implements StoreService {
     private final StoreLocationInfoRepository storeLocationInfoRepository;
     private final StoreLocationRoadInfoRepository storeLocationRoadInfoRepository;
     private final ZeroPossibleMarketRepository zeroPossibleMarketRepository;
+    private final CategoryRepository categoryRepository;
+    private final StoreCategoryRepository storeCategoryRepository;
 
     private final JPAQueryFactory queryFactory;
     private final RedisAdapter redisAdapter;
@@ -431,24 +437,29 @@ public class StoreServiceImpl implements StoreService {
     }
 
     /**
-     *
+     * Kakao api 에서 상점정보들을 가져와주는 기능
      * @param storeName
+     * @param page
+     * @param size
      * @param pLat
      * @param pLng
      * @return
      */
-    private Optional<KakaoStoreDto> getKakaoStoreDtoFromKakaoApi(String storeName, BigDecimal pLat, BigDecimal pLng) {
+    private Optional<List<KakaoStoreDto>> getKakaoStoreDtoFromKakaoApi(String storeName, int page, int size, BigDecimal pLat, BigDecimal pLng) {
 
         if (storeName == null || storeName.isEmpty()) {
             return Optional.empty();
         }
 
+        List<KakaoStoreDto> kakaoStoreDtos = new ArrayList<>();
+
         UriComponentsBuilder builder = UriComponentsBuilder
                 .fromUriString(KAKAO_SEARCH_API_URL)
-                .queryParam("page", 1)
-                .queryParam("size", 1)
                 .queryParam("category_group_code", "FD6")
                 .queryParam("query", storeName);
+
+        if (page != 0) builder.queryParam("page", page);
+        if (size != 0) builder.queryParam("size", size);
 
         if (pLat != null && pLng != null) {
             builder
@@ -475,26 +486,154 @@ public class StoreServiceImpl implements StoreService {
             JsonNode documents = root.path("documents");
 
             if (documents.isArray() && !documents.isEmpty()) {
-                JsonNode firstDoc = documents.get(0);
+                ArrayNode documentsArray = (ArrayNode)documents;
 
-                BigDecimal lat = new BigDecimal(firstDoc.path("y").asText());
-                BigDecimal lng = new BigDecimal(firstDoc.path("x").asText());
+                for (JsonNode doc : documentsArray) {
+                    BigDecimal lat = new BigDecimal(doc.path("y").asText());
+                    BigDecimal lng = new BigDecimal(doc.path("x").asText());
+
+                    KakaoStoreDto dto = KakaoStoreDto.builder()
+                            .addressName(doc.path("address_name").asText(null))
+                            .categoryGroupName(doc.path("category_group_name").asText(null))
+                            .categoryGroupCode(doc.path("category_group_code").asText(null))
+                            .categoryName(doc.path("category_name").asText(null))
+                            .phone(doc.path("phone").asText(null))
+                            .placeUrl(doc.path("place_url").asText(null))
+                            .placeName(doc.path("place_name").asText(null))
+                            .roadAddressName(doc.path("road_address_name").asText(null))
+                            .lat(lat)
+                            .lng(lng)
+                            .build();
+
+                    kakaoStoreDtos.add(dto);
+                }
+            }
+
+            return Optional.of(kakaoStoreDtos);
+        }
 
 
-                KakaoStoreDto dto = KakaoStoreDto.builder()
-                        .addressName(firstDoc.path("address_name").asText(null))
-                        .categoryName(firstDoc.path("category_name").asText(null))
-                        .phone(firstDoc.path("phone").asText(null))
-                        .placeUrl(firstDoc.path("place_url").asText(null))
-                        .placeName(firstDoc.path("place_name").asText(null))
-                        .roadAddressName(firstDoc.path("road_address_name").asText(null))
-                        .lat(lat)
-                        .lng(lng)
-                        .build();
+        return Optional.empty();
+    }
 
-                return Optional.of(dto);
+    private Optional<Store> createStoreFromKakaoStore(KakaoStoreDto kakaoStoreDto) {
+        /* 이미 존재하는 음식점인지 체크 */
+        Store existsStore = queryFactory
+                .selectFrom(store)
+                .join(store.storeLocations, storeLocationInfoTbl)
+                .where(
+                        store.name.eq(kakaoStoreDto.getPlaceName()),
+                        storeLocationInfoTbl.lat.eq(kakaoStoreDto.getLat()),
+                        storeLocationInfoTbl.lng.eq(kakaoStoreDto.getLng())
+                )
+                .fetchFirst();
+
+        if (existsStore == null) {
+            Store createStore = new Store(kakaoStoreDto, "createStoreFromKakao");
+            storeRepository.save(createStore);
+            return Optional.of(createStore);
+        } else {
+            log.warn("[WARN][StoreServiceImpl->createStoreFromKakaoStore] It's a store that already exists.: {}", kakaoStoreDto);
+            return Optional.empty();
+        }
+    }
+
+    private void inputZeroPossibleTbl(Store store) {
+        ZeroPossibleMarket zeroPossibleMarket = new ZeroPossibleMarket(store, "inputZeroPossibleTbl");
+        zeroPossibleMarketRepository.save(zeroPossibleMarket);
+    }
+
+    private void inputStoreLocationInfo(KakaoStoreDto kakaoStoreDto, Store store) {
+        StoreLocationInfoTbl storeLocationInfo = new StoreLocationInfoTbl(kakaoStoreDto, store, "inputNewStore");
+        storeLocationInfoRepository.save(storeLocationInfo);
+    }
+
+    private void inputStoreLocationRoadInfo(KakaoStoreDto kakaoStoreDto, Store store) {
+        StoreLocationRoadInfoTbl storeLocationRoadInfoTbl = new StoreLocationRoadInfoTbl(kakaoStoreDto, store, "inputStoreLocationRoad");
+        storeLocationRoadInfoRepository.save(storeLocationRoadInfoTbl);
+    }
+
+    private CategoryTbl createOrFindCategoryTbl(KakaoStoreDto kakaoStoreDto) {
+        Optional<CategoryTbl> categoryTblOpt =
+                categoryRepository.findByCategoryGroupCodeAndCategoryGroupNameAndCategoryName(
+                        kakaoStoreDto.getCategoryGroupCode(),
+                        kakaoStoreDto.getCategoryGroupName(),
+                        kakaoStoreDto.getCategoryName()
+                );
+
+        if (categoryTblOpt.isPresent()) {
+            return categoryTblOpt.get();
+        } else {
+            CategoryTbl categoryTbl = new CategoryTbl(kakaoStoreDto, "createOrFindCategoryTbl");
+            categoryRepository.save(categoryTbl);
+            return categoryTbl;
+        }
+    }
+
+    private void inputStoreCategory(Store store, CategoryTbl categoryTbl) {
+        StoreCategoryTbl storeCategoryTbl = new StoreCategoryTbl(store, categoryTbl, "inputStoreCategory");
+        storeCategoryRepository.save(storeCategoryTbl);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public PublicStatus inputNewStore(String storeName, Integer page, Integer size, BigDecimal pLat, BigDecimal pLng, Boolean zeroYn) {
+
+        int inputPage = page == null ? 1 : page;
+        int inputSize = size == null ? 1 : size;
+
+        Optional<List<KakaoStoreDto>> kakaoStoreDto = getKakaoStoreDtoFromKakaoApi(storeName, inputPage, inputSize, pLat, pLng);
+
+        if (kakaoStoreDto.isPresent()) {
+            List<KakaoStoreDto> kakaoStoreDtos = kakaoStoreDto.get();
+
+            for (KakaoStoreDto dto : kakaoStoreDtos) {
+                Optional<Store> storeOpt = createStoreFromKakaoStore(dto);
+
+                if (storeOpt.isPresent()) {
+                    Store inputStore = storeOpt.get();
+
+                    if (zeroYn) inputZeroPossibleTbl(inputStore);
+
+                    inputStoreLocationInfo(dto, inputStore);
+                    inputStoreLocationRoadInfo(dto, inputStore);
+                    CategoryTbl categoryTbl = createOrFindCategoryTbl(dto);
+                    inputStoreCategory(inputStore, categoryTbl);
+                }
             }
         }
-        return Optional.empty();
+
+
+        return PublicStatus.SUCCESS;
+    }
+
+    public PublicStatus modifyExistsStores() {
+
+//        List<Store> stores = queryFactory
+//                .selectFrom(store)
+//                .join(store)
+
+//        List<Store> stores = queryFactory
+//                .select(store)
+//                .from(store)
+//                .join(storeLocationInfoTbl)
+//                .on(store.seq.eq(storeLocationInfoTbl.store.seq))
+//                .fetch();
+
+//        List<Store> stores = queryFactory
+//                .selectFrom(store)
+//                .join(store.storeLocations, storeLocationInfoTbl)//.fetchJoin()
+//                //.join(store.storeLocationRoadInfos, storeLocationRoadInfoTbl).fetchJoin()
+//                .fetch();
+
+//        System.out.println("====================================");
+//        System.out.println(stores.size());
+
+//        for (Store store : stores) {
+//
+//        }
+
+
+
+        return PublicStatus.SUCCESS;
     }
 }

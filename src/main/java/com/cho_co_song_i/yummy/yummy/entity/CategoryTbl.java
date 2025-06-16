@@ -6,28 +6,29 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Persistable;
 
-import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 @Entity
-@Table(name = "store_location_road_info_tbl")
+@Table(name = "category_tbl")
 @Getter
 @NoArgsConstructor
-public class StoreLocationRoadInfoTbl implements Persistable<Long> {
-
+public class CategoryTbl implements Persistable<Long> {
     @Id
-    @Column(name = "seq")
-    private Long seq;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "category_seq")
+    private Long categorySeq;
 
-    @Column(name = "lat", precision = 20, scale = 16, nullable = false)
-    private BigDecimal lat;
+    @Column(name = "category_group_code", nullable = false, length = 25)
+    private String categoryGroupCode;
 
-    @Column(name = "lng", precision = 20, scale = 16, nullable = false)
-    private BigDecimal lng;
+    @Column(name = "category_group_name", nullable = false, length = 30)
+    private String categoryGroupName;
 
-    @Column(name = "address", nullable = true, length = 500)
-    private String address;
+    @Column(name = "category_name", nullable = false, length = 100)
+    private String categoryName;
 
     @Column(name = "reg_dt", nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
@@ -43,8 +44,8 @@ public class StoreLocationRoadInfoTbl implements Persistable<Long> {
     @Column(name = "chg_id", nullable = true, length = 25)
     private String chgId;
 
-    @OneToOne(mappedBy = "storeLocationRoadInfos", fetch = FetchType.LAZY)
-    private Store store;
+    @OneToMany(mappedBy = "categoryTbl", fetch = FetchType.LAZY)
+    private List<StoreCategoryTbl> storeCategoryTbls = new ArrayList<>();
 
     /* ✅ Hibernate 에게 신규 엔티티임을 알려주기 위해 사용 */
     @Transient
@@ -52,12 +53,12 @@ public class StoreLocationRoadInfoTbl implements Persistable<Long> {
 
     @Override
     public Long getId() {
-        return this.seq;
+        return this.categorySeq;
     }
 
     @Override
     public boolean isNew() {
-        return isNew || this.seq == null;
+        return isNew || this.categorySeq == null;
     }
 
     /* ✅ 새로운 엔티티를 표시하는 메서드 */
@@ -65,17 +66,13 @@ public class StoreLocationRoadInfoTbl implements Persistable<Long> {
         this.isNew = true;
     }
 
-    public StoreLocationRoadInfoTbl(KakaoStoreDto kakaoStoreDto, Store store, String regId) {
+    public CategoryTbl(KakaoStoreDto kakaoStoreDto, String regId) {
         Instant nowInstant = Instant.now();
 
-        this.store = store;
-        this.seq = store.getSeq();
-        this.lat = kakaoStoreDto.getLat();
-        this.lng = kakaoStoreDto.getLng();
-        this.address = kakaoStoreDto.getRoadAddressName();
+        this.categoryGroupCode = kakaoStoreDto.getCategoryGroupCode();
+        this.categoryGroupName = kakaoStoreDto.getCategoryGroupName();
+        this.categoryName = kakaoStoreDto.getCategoryName();
         this.regId = regId;
         this.regDt = Date.from(nowInstant);
     }
-
-
 }
