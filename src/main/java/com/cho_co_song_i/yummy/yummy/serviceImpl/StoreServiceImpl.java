@@ -67,6 +67,11 @@ public class StoreServiceImpl implements StoreService {
     @Value("${kakao.search.header}")
     private String KAKAO_SEARCH_HEADER;
 
+    /* 오류 테스트 코드 */
+    private void test() {
+        throw new IllegalArgumentException("test");
+    }
+
     /**
      * Entity -> DTO 변환
      * @param store
@@ -176,11 +181,6 @@ public class StoreServiceImpl implements StoreService {
                 .from(store)
                 .innerJoin(store.storeLocations, storeLocationInfoTbl)
                 .fetch();
-    }
-
-
-    private void test() {
-        throw new IllegalArgumentException("test");
     }
 
     /**
@@ -429,7 +429,6 @@ public class StoreServiceImpl implements StoreService {
 
         return modifyStore(id,storeDto);
     }
-
 
     /**
      *

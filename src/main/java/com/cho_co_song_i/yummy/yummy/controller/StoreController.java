@@ -125,5 +125,4 @@ public class StoreController {
 //    public ResponseEntity<PublicStatus> transferAllStoreData() {
 //        return ResponseEntity.ok(storeService.transferAllStoreData());
 //    }
-
 }
