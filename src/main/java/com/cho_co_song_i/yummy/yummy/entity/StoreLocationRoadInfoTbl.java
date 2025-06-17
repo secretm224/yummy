@@ -43,7 +43,10 @@ public class StoreLocationRoadInfoTbl implements Persistable<Long> {
     @Column(name = "chg_id", nullable = true, length = 25)
     private String chgId;
 
-    @OneToOne(mappedBy = "storeLocationRoadInfos", fetch = FetchType.LAZY)
+//    @OneToOne(mappedBy = "storeLocationRoadInfos", fetch = FetchType.LAZY)
+//    private Store store;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "seq")
     private Store store;
 
     /* ✅ Hibernate 에게 신규 엔티티임을 알려주기 위해 사용 */
@@ -68,8 +71,8 @@ public class StoreLocationRoadInfoTbl implements Persistable<Long> {
     public StoreLocationRoadInfoTbl(KakaoStoreDto kakaoStoreDto, Store store, String regId) {
         Instant nowInstant = Instant.now();
 
-        this.store = store;
         this.seq = store.getSeq();
+        this.store = store;
         this.lat = kakaoStoreDto.getLat();
         this.lng = kakaoStoreDto.getLng();
         this.address = kakaoStoreDto.getRoadAddressName();

@@ -2,8 +2,6 @@ package com.cho_co_song_i.yummy.yummy.entity;
 
 import com.cho_co_song_i.yummy.yummy.dto.store.KakaoStoreDto;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Persistable;
@@ -45,7 +43,10 @@ public class StoreLocationInfoTbl implements Persistable<Long> {
     @Column(name = "chg_id", nullable = true, length = 25)
     private String chgId;
 
-    @OneToOne(mappedBy = "storeLocations", fetch = FetchType.LAZY)
+//    @OneToOne(mappedBy = "storeLocations", fetch = FetchType.LAZY)
+//    private Store store;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="seq")
     private Store store;
 
     /* ✅ Hibernate 에게 신규 엔티티임을 알려주기 위해 사용 */
@@ -78,6 +79,16 @@ public class StoreLocationInfoTbl implements Persistable<Long> {
         this.address = kakaoStoreDto.getAddressName();
         this.regId = regId;
         this.regDt = Date.from(nowInstant);
+    }
+
+    public void modifyStoreLocationInfoFromKakaoStoreDto(KakaoStoreDto kakaoStoreDto, String chgId) {
+        Instant nowInstant = Instant.now();
+
+        this.lat = kakaoStoreDto.getLat();
+        this.lng = kakaoStoreDto.getLng();
+        this.address = kakaoStoreDto.getAddressName();
+        this.chgId = chgId;
+        this.chgDt = Date.from(nowInstant);
     }
 
 }

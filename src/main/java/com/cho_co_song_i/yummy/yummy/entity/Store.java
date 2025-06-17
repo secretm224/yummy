@@ -1,9 +1,12 @@
 package com.cho_co_song_i.yummy.yummy.entity;
 
+import org.hibernate.annotations.LazyToOne;
+import org.hibernate.annotations.LazyToOneOption;
+import org.hibernate.annotations.Proxy;
+
 import com.cho_co_song_i.yummy.yummy.dto.AddStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.StoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.store.KakaoStoreDto;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.domain.Persistable;
@@ -75,21 +78,21 @@ public class Store implements Persistable<Long> {
     @OneToMany(mappedBy = "store", fetch = FetchType.LAZY)
     private List<StoreTypeLinkTbl> storeTypeLinks = new ArrayList<>();
 
-    @OneToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name="seq")
-    private StoreLocationInfoTbl storeLocations;
+//    @OneToOne(fetch = FetchType.LAZY, optional = true)
+//    @JoinColumn(name="seq")
+//    private StoreLocationInfoTbl storeLocations;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name="seq")
-    private ZeroPossibleMarket zeroPossibles;
+//    @OneToOne(fetch = FetchType.LAZY, optional = true)
+//    @JoinColumn(name="seq")
+//    private ZeroPossibleMarket zeroPossibles;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name="seq")
-    private StoreLocationRoadInfoTbl storeLocationRoadInfos;
+//    @OneToOne(fetch = FetchType.LAZY, optional = true)
+//    @JoinColumn(name="seq")
+//    private StoreLocationRoadInfoTbl storeLocationRoadInfos;
 
-    @OneToOne(mappedBy = "store", fetch = FetchType.LAZY)
-    @JoinColumn(name="seq")
-    private StoreCategoryTbl storeCategoryTbl;
+//    @OneToOne(mappedBy = "store", fetch = FetchType.LAZY)
+//    @JoinColumn(name="seq")
+//    private StoreCategoryTbl storeCategoryTbl;
 
 
     public Store(StoreDto dto) {
@@ -161,6 +164,21 @@ public class Store implements Persistable<Long> {
 
         this.tel = tel;
         this.url = url;
+        this.chgId = chgId;
+        this.chgDt = Date.from(nowInstant);
+    }
+
+    /**
+     * KakaoStoreDto 기준으로 Store 데이터를 update 해주는 기능.
+     * @param kakaoStoreDto
+     * @param chgId
+     */
+    public void updateStoreFromKakaoStoreDto(KakaoStoreDto kakaoStoreDto, String chgId) {
+        Instant nowInstant = Instant.now();
+
+        this.name = kakaoStoreDto.getPlaceName();
+        this.tel = kakaoStoreDto.getPhone();
+        this.url = kakaoStoreDto.getPlaceUrl();
         this.chgId = chgId;
         this.chgDt = Date.from(nowInstant);
     }

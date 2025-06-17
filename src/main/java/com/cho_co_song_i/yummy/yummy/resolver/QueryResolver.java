@@ -204,10 +204,10 @@ public class QueryResolver {
 //        }
 //
 //    }
-    @QueryMapping(name="StoreSubMajorsTypeList")
-    public List<StoreTypeSubDto>GetStoreSubMajorsType(@Argument("major_code") int major_code) throws Exception {
-        return storeService.findStoreTypeSubs((long)major_code);
-    }
+//    @QueryMapping(name="StoreSubMajorsTypeList")
+//    public List<StoreTypeSubDto>GetStoreSubMajorsType(@Argument("major_code") int major_code) throws Exception {
+//        return storeService.findStoreTypeSubs((long)major_code);
+//    }
 
 }
 

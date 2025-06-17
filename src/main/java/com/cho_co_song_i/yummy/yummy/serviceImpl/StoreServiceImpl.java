@@ -35,13 +35,14 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.cho_co_song_i.yummy.yummy.entity.QStore.store;
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreLocationInfoTbl.storeLocationInfoTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreLocationRoadInfoTbl.storeLocationRoadInfoTbl;
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreTypeMajor.storeTypeMajor;
 import static com.cho_co_song_i.yummy.yummy.entity.QStoreTypeSub.storeTypeSub;
-import static com.cho_co_song_i.yummy.yummy.entity.QStoreRecommendTbl.storeRecommendTbl;
+import static com.cho_co_song_i.yummy.yummy.entity.QStoreTypeLinkTbl.storeTypeLinkTbl;
 
 @Service
 @Slf4j
@@ -150,27 +151,29 @@ public class StoreServiceImpl implements StoreService {
         return Optional.of(new DetailInfo(tel, url));
     }
 
-    /**
-     * tel, url 정보가 없는 Store, storeLocationInfoTbl 의 특정 데이터들만 쿼리해주는 함수
-     * 특정 컬럼만 가져와줘서 최대한 데이터 규모를 줄여준다.
-     * @return
-     */
-    private List<StoreLocationDto> findTelUrlEmptyData() {
-        return queryFactory
-                .select(Projections.constructor(StoreLocationDto.class,
-                        store.seq, store.name,
-                        storeLocationInfoTbl.lat, storeLocationInfoTbl.lng
-                ))
-                .from(store)
-                .innerJoin(store.storeLocations, storeLocationInfoTbl)
-                .where(
-                        store.tel.isEmpty()
-                                .or(store.url.isEmpty())
-                                .or(store.tel.isNull())
-                                .or(store.url.isNull())
-                )
-                .fetch();
-    }
+//    /**
+//     * tel, url 정보가 없는 Store, storeLocationInfoTbl 의 특정 데이터들만 쿼리해주는 함수
+//     * 특정 컬럼만 가져와줘서 최대한 데이터 규모를 줄여준다.
+//     * @return
+//     */
+//    private List<StoreLocationDto> findTelUrlEmptyData() {
+//        return queryFactory
+//                .select(Projections.constructor(StoreLocationDto.class,
+//                        store.seq,
+//                        store.name,
+//                        storeLocationInfoTbl.lat,
+//                        storeLocationInfoTbl.lng
+//                ))
+//                .from(storeLocationInfoTbl)
+//                .innerJoin(storeLocationInfoTbl.store, store)
+//                .where(
+//                        store.tel.isEmpty()
+//                                .or(store.url.isEmpty())
+//                                .or(store.tel.isNull())
+//                                .or(store.url.isNull())
+//                )
+//                .fetch();
+//    }
 
     /**
      * 모든 Store, storeLocationInfoTbl 의 특정 데이터들만 쿼리해주는 함수
@@ -178,67 +181,69 @@ public class StoreServiceImpl implements StoreService {
      * -> 향후에 데이터 사이즈가 커진다면 해당 메소드는 부하가 클 가능성이 있음.
      * @return
      */
-    private List<StoreLocationDto> findTelUrlAllData() {
-        return queryFactory
-                .select(Projections.constructor(StoreLocationDto.class,
-                        store.seq, store.name,
-                        storeLocationInfoTbl.lat, storeLocationInfoTbl.lng
-                ))
-                .from(store)
-                .innerJoin(store.storeLocations, storeLocationInfoTbl)
-                .fetch();
-    }
+//    private List<StoreLocationDto> findTelUrlAllData() {
+//        return queryFactory
+//                .select(Projections.constructor(StoreLocationDto.class,
+//                        store.seq,
+//                        store.name,
+//                        storeLocationInfoTbl.lat,
+//                        storeLocationInfoTbl.lng
+//                ))
+//                .from(storeLocationInfoTbl)
+//                .innerJoin(storeLocationInfoTbl.store, store)
+//                .fetch();
+//    }
 
-    /**
-     * Store 테이블에 tel, url 정보를 업데이트 해주는 함수 (일괄 업데이트)
-     * @param updateMap
-     */
-    private void bulkUpdateTelAndUrl(Map<Long, DetailInfo> updateMap) {
-        List<Long> ids = new ArrayList<>(updateMap.keySet());
+//    /**
+//     * Store 테이블에 tel, url 정보를 업데이트 해주는 함수 (일괄 업데이트)
+//     * @param updateMap
+//     */
+//    private void bulkUpdateTelAndUrl(Map<Long, DetailInfo> updateMap) {
+//        List<Long> ids = new ArrayList<>(updateMap.keySet());
+//
+//        List<Store> stores = storeRepository.findAllById(ids); /* SELECT IN 쿼리 한 번 */
+//
+//        /* tel, url 컬럼 업데이트 */
+//        for (Store store : stores) {
+//            DetailInfo info = updateMap.get(store.getSeq());
+//            store.updateContactInfo(info.tel(), info.url(), "Store>UpdateStoreDetail");
+//        }
+//    }
 
-        List<Store> stores = storeRepository.findAllById(ids); /* SELECT IN 쿼리 한 번 */
-
-        /* tel, url 컬럼 업데이트 */
-        for (Store store : stores) {
-            DetailInfo info = updateMap.get(store.getSeq());
-            store.updateContactInfo(info.tel(), info.url(), "Store>UpdateStoreDetail");
-        }
-    }
-
-    /**
-     * Store 테이블을 StoreLocationDto 존재하는 데이터를 기반으로 update 해주는 함수
-     * @param storeLocationDtos
-     * @return
-     */
-    private Optional<JsonNode> modifyStoreDetail(List<StoreLocationDto> storeLocationDtos) {
-        ObjectMapper mapper = new ObjectMapper();
-        int successCount = 0;
-
-        if (!storeLocationDtos.isEmpty()) {
-            Map<Long, DetailInfo> updateMap = new HashMap<>();
-
-            for (StoreLocationDto store : storeLocationDtos) {
-                inputDetailQuery(store.getName(), store.getLng(), store.getLat())
-                        .ifPresent(jsonNode -> {
-                            Optional<DetailInfo> detailOpt = parseDetailInfo(jsonNode);
-                            detailOpt.ifPresent(detail -> {
-                                updateMap.put(store.getSeq(), detail);
-                            });
-                        });
-            }
-
-            if (!updateMap.isEmpty()) {
-                bulkUpdateTelAndUrl(updateMap);
-                successCount += updateMap.size();
-            }
-        }
-
-        ObjectNode result = mapper.createObjectNode()
-                .put("success", successCount > 0)
-                .put("successCount", successCount);
-
-        return Optional.of(result);
-    }
+//    /**
+//     * Store 테이블을 StoreLocationDto 존재하는 데이터를 기반으로 update 해주는 함수
+//     * @param storeLocationDtos
+//     * @return
+//     */
+//    private Optional<JsonNode> modifyStoreDetail(List<StoreLocationDto> storeLocationDtos) {
+//        ObjectMapper mapper = new ObjectMapper();
+//        int successCount = 0;
+//
+//        if (!storeLocationDtos.isEmpty()) {
+//            Map<Long, DetailInfo> updateMap = new HashMap<>();
+//
+//            for (StoreLocationDto store : storeLocationDtos) {
+//                inputDetailQuery(store.getName(), store.getLng(), store.getLat())
+//                        .ifPresent(jsonNode -> {
+//                            Optional<DetailInfo> detailOpt = parseDetailInfo(jsonNode);
+//                            detailOpt.ifPresent(detail -> {
+//                                updateMap.put(store.getSeq(), detail);
+//                            });
+//                        });
+//            }
+//
+//            if (!updateMap.isEmpty()) {
+//                bulkUpdateTelAndUrl(updateMap);
+//                successCount += updateMap.size();
+//            }
+//        }
+//
+//        ObjectNode result = mapper.createObjectNode()
+//                .put("success", successCount > 0)
+//                .put("successCount", successCount);
+//
+//        return Optional.of(result);
+//    }
 
 
     public List<StoreDto> findAllStores() {
@@ -330,110 +335,167 @@ public class StoreServiceImpl implements StoreService {
         }
     }
 
-    public List<StoreTypeSubDto> findStoreTypeSubs(Long majorType) throws Exception {
+//    public List<StoreTypeSubDto> findStoreTypeSubs(Long majorType) throws Exception {
+//
+//        if (majorType == null || majorType <= 0) {
+//            log.error("[Error][StoreService->getStoreTypeSubs] `majorType` must be at least 1 natural number.");
+//            return Collections.emptyList();
+//        }
+//
+//        String storeSubKey = String.format("%s:%s", categorySub, majorType);
+//        List<StoreTypeSubDto> storeTypeSubs = redisAdapter.getValue(storeSubKey, new TypeReference<List<StoreTypeSubDto>>() {});
+//
+//        if (storeTypeSubs == null || storeTypeSubs.isEmpty()) {
+//            /* Redis 에서 데이터를 못가져오거나 데이터가 존재하지 않을 경우 */
+//            var query = queryFactory
+//                    .select(storeTypeSub)
+//                    .from(storeTypeSub)
+//                    .join(storeTypeSub.storeTypeMajor, storeTypeMajor)
+//                    .where(
+//                            new BooleanBuilder()
+//                                    .and(storeTypeSub.majorType.eq(majorType))
+//                    );
+//
+//            List<StoreTypeSub> storeTypeSubsDb = query.fetch();
+//
+//            return storeTypeSubsDb.stream()
+//                    .map(this::convertTypeSubToDto)
+//                    .collect(Collectors.toList());
+//        } else {
+//            return storeTypeSubs;
+//        }
+//    }
 
-        if (majorType == null || majorType <= 0) {
-            log.error("[Error][StoreService->getStoreTypeSubs] `majorType` must be at least 1 natural number.");
-            return Collections.emptyList();
-        }
+//    public Optional<JsonNode> inputDetailQuery(String storeName , BigDecimal lng, BigDecimal lat)
+//    {
+//        if (storeName == null || storeName.isEmpty()) {
+//            return Optional.empty();
+//        }
+//
+//        String categoryGroupCode = "FD6";
+//        String page = "1";
+//        String size = "1";
+//
+//        UriComponentsBuilder builder = UriComponentsBuilder
+//                .fromUriString(KAKAO_SEARCH_API_URL)
+//                .queryParam("page", page)
+//                .queryParam("size", size)
+//                .queryParam("category_group_code", categoryGroupCode)
+//                .queryParam("query", storeName);
+//
+//        if (lng != null && lat != null &&
+//            lng.compareTo(BigDecimal.ZERO) > 0 && lat.compareTo(BigDecimal.ZERO) > 0) {
+//            builder.queryParam("x", lng)
+//                   .queryParam("y", lat);
+//        }
+//
+//        URI apiuri = builder
+//                .encode(StandardCharsets.UTF_8)
+//                .build()
+//                .toUri();
+//
+//
+//        HttpHeaders headers = new HttpHeaders();
+//        headers.add("Authorization",KAKAO_SEARCH_HEADER);
+//        HttpEntity<Void> request = new HttpEntity<>(headers);
+//
+//        ResponseEntity<JsonNode> resp = resttemplate.exchange(
+//                apiuri, HttpMethod.GET, request, JsonNode.class
+//        );
+//
+//        if (resp.getStatusCode().is2xxSuccessful() && resp.hasBody()) {
+//            return Optional.of(resp.getBody());
+//        } else {
+//            return Optional.empty();
+//        }
+//    }
 
-        String storeSubKey = String.format("%s:%s", categorySub, majorType);
-        List<StoreTypeSubDto> storeTypeSubs = redisAdapter.getValue(storeSubKey, new TypeReference<List<StoreTypeSubDto>>() {});
+//    @Transactional(rollbackFor = Exception.class)
+//    public Optional<JsonNode> modifyAllStoreDetail() {
+//        List<StoreLocationDto> allStore = findTelUrlAllData();
+//        return modifyStoreDetail(allStore);
+//    }
 
-        if (storeTypeSubs == null || storeTypeSubs.isEmpty()) {
-            /* Redis 에서 데이터를 못가져오거나 데이터가 존재하지 않을 경우 */
-            var query = queryFactory
-                    .select(storeTypeSub)
-                    .from(storeTypeSub)
-                    .join(storeTypeSub.storeTypeMajor, storeTypeMajor)
-                    .where(
-                            new BooleanBuilder()
-                                    .and(storeTypeSub.majorType.eq(majorType))
-                    );
+//    @Transactional(rollbackFor = Exception.class)
+//    public Optional<JsonNode> modifyEmptyStoreDetail() {
+//        /* tel, url 이 없는 Store 정보만 쿼리한다.*/
+//        List<StoreLocationDto> emptyStore = findTelUrlEmptyData();
+//        return modifyStoreDetail(emptyStore);
+//    }
 
-            List<StoreTypeSub> storeTypeSubsDb = query.fetch();
+//    @Transactional(rollbackFor = Exception.class)
+//    public StoreDto modifySingleStoreDetail(long id, String tel, String url) {
+//
+//        if (id <= 0) {
+//            throw new IllegalArgumentException("Invalid store ID");
+//        }
+//
+//        Optional<StoreDto> optionalStore = findStoreById(id);
+//        optionalStore.orElseThrow(() -> new NoSuchElementException("Store not found"));
+//
+//        StoreDto storeDto = optionalStore.get();
+//        storeDto.setTel(tel);
+//        storeDto.setUrl(url);
+//        storeDto.setChgId("Store>UpdateStoreDetail");
+//
+//        return modifyStore(id,storeDto);
+//    }
 
-            return storeTypeSubsDb.stream()
-                    .map(this::convertTypeSubToDto)
-                    .collect(Collectors.toList());
-        } else {
-            return storeTypeSubs;
-        }
-    }
 
-    public Optional<JsonNode> inputDetailQuery(String storeName , BigDecimal lng, BigDecimal lat)
-    {
-        if (storeName == null || storeName.isEmpty()) {
-            return Optional.empty();
-        }
-
-        String categoryGroupCode = "FD6";
-        String page = "1";
-        String size = "1";
-
+    private URI buildKakaoApiUri(String storeName, int page, int size,
+                                 BigDecimal pLat, BigDecimal pLng, String category) {
         UriComponentsBuilder builder = UriComponentsBuilder
                 .fromUriString(KAKAO_SEARCH_API_URL)
-                .queryParam("page", page)
-                .queryParam("size", size)
-                .queryParam("category_group_code", categoryGroupCode)
+                .queryParam("category_group_code", category)
                 .queryParam("query", storeName);
 
-        if (lng != null && lat != null &&
-            lng.compareTo(BigDecimal.ZERO) > 0 && lat.compareTo(BigDecimal.ZERO) > 0) {
-            builder.queryParam("x", lng)
-                   .queryParam("y", lat);
+        if (page > 0) builder.queryParam("page", page);
+        if (size > 0) builder.queryParam("size", size);
+        if (pLat != null && pLng != null) {
+            builder.queryParam("y", pLat).queryParam("x", pLng);
         }
 
-        URI apiuri = builder
-                .encode(StandardCharsets.UTF_8)
-                .build()
-                .toUri();
+        return builder.encode(StandardCharsets.UTF_8).build().toUri();
+    }
 
-
+    private JsonNode fetchKakaoApiResponse(URI uri) {
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization",KAKAO_SEARCH_HEADER);
+        headers.add("Authorization", KAKAO_SEARCH_HEADER);
         HttpEntity<Void> request = new HttpEntity<>(headers);
 
-        ResponseEntity<JsonNode> resp = resttemplate.exchange(
-                apiuri, HttpMethod.GET, request, JsonNode.class
-        );
+        ResponseEntity<JsonNode> response = resttemplate.exchange(
+                uri, HttpMethod.GET, request, JsonNode.class);
 
-        if (resp.getStatusCode().is2xxSuccessful() && resp.hasBody()) {
-            return Optional.of(resp.getBody());
-        } else {
-            return Optional.empty();
-        }
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public Optional<JsonNode> modifyAllStoreDetail() {
-        List<StoreLocationDto> allStore = findTelUrlAllData();
-        return modifyStoreDetail(allStore);
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public Optional<JsonNode> modifyEmptyStoreDetail() {
-        /* tel, url 이 없는 Store 정보만 쿼리한다.*/
-        List<StoreLocationDto> emptyStore = findTelUrlEmptyData();
-        return modifyStoreDetail(emptyStore);
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public StoreDto modifySingleStoreDetail(long id, String tel, String url) {
-
-        if (id <= 0) {
-            throw new IllegalArgumentException("Invalid store ID");
+        if (response.getStatusCode().is2xxSuccessful()) {
+            return response.getBody();
         }
 
-        Optional<StoreDto> optionalStore = findStoreById(id);
-        optionalStore.orElseThrow(() -> new NoSuchElementException("Store not found"));
+        return null;
+    }
 
-        StoreDto storeDto = optionalStore.get();
-        storeDto.setTel(tel);
-        storeDto.setUrl(url);
-        storeDto.setChgId("Store>UpdateStoreDetail");
+    private List<KakaoStoreDto> parseKakaoDocuments(JsonNode documents) {
+        List<KakaoStoreDto> list = new ArrayList<>();
 
-        return modifyStore(id,storeDto);
+        if (documents != null && documents.isArray()) {
+            for (JsonNode doc : documents) {
+                KakaoStoreDto dto = KakaoStoreDto.builder()
+                        .addressName(doc.path("address_name").asText(null))
+                        .categoryGroupName(doc.path("category_group_name").asText(null))
+                        .categoryGroupCode(doc.path("category_group_code").asText(null))
+                        .categoryName(doc.path("category_name").asText(null))
+                        .phone(doc.path("phone").asText(null))
+                        .placeUrl(doc.path("place_url").asText(null))
+                        .placeName(doc.path("place_name").asText(null))
+                        .roadAddressName(doc.path("road_address_name").asText(null))
+                        .lat(new BigDecimal(doc.path("y").asText("0")))
+                        .lng(new BigDecimal(doc.path("x").asText("0")))
+                        .build();
+
+                list.add(dto);
+            }
+        }
+
+        return list;
     }
 
     /**
@@ -445,82 +507,117 @@ public class StoreServiceImpl implements StoreService {
      * @param pLng
      * @return
      */
-    private Optional<List<KakaoStoreDto>> getKakaoStoreDtoFromKakaoApi(String storeName, int page, int size, BigDecimal pLat, BigDecimal pLng) {
+    private Optional<List<KakaoStoreDto>> getKakaoStoreDtoFromKakaoApi(
+            String storeName, int page, int size,
+            BigDecimal pLat, BigDecimal pLng) {
 
         if (storeName == null || storeName.isEmpty()) {
             return Optional.empty();
         }
 
-        List<KakaoStoreDto> kakaoStoreDtos = new ArrayList<>();
+        List<KakaoStoreDto> result = new ArrayList<>();
 
-        UriComponentsBuilder builder = UriComponentsBuilder
-                .fromUriString(KAKAO_SEARCH_API_URL)
-                .queryParam("category_group_code", "FD6")
-                .queryParam("query", storeName);
+        /* category 우선순위: FD6, CE7 */
+        List<String> categories = List.of("FD6", "CE7");
 
-        if (page != 0) builder.queryParam("page", page);
-        if (size != 0) builder.queryParam("size", size);
+        for (String category : categories) {
+            URI uri = buildKakaoApiUri(storeName, page, size, pLat, pLng, category);
+            JsonNode root = fetchKakaoApiResponse(uri);
 
-        if (pLat != null && pLng != null) {
-            builder
-                    .queryParam("y", pLat)
-                    .queryParam("x", pLng);
-
-        }
-
-        URI apiuri = builder
-                .encode(StandardCharsets.UTF_8)
-                .build()
-                .toUri();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization",KAKAO_SEARCH_HEADER);
-        HttpEntity<Void> request = new HttpEntity<>(headers);
-
-        ResponseEntity<JsonNode> resp = resttemplate.exchange(
-                apiuri, HttpMethod.GET, request, JsonNode.class);
-
-        JsonNode root = resp.getBody();
-
-        if (resp.getStatusCode().is2xxSuccessful() && resp.hasBody() && root != null) {
-            JsonNode documents = root.path("documents");
-
-            if (documents.isArray() && !documents.isEmpty()) {
-                ArrayNode documentsArray = (ArrayNode)documents;
-
-                for (JsonNode doc : documentsArray) {
-                    BigDecimal lat = new BigDecimal(doc.path("y").asText());
-                    BigDecimal lng = new BigDecimal(doc.path("x").asText());
-
-                    KakaoStoreDto dto = KakaoStoreDto.builder()
-                            .addressName(doc.path("address_name").asText(null))
-                            .categoryGroupName(doc.path("category_group_name").asText(null))
-                            .categoryGroupCode(doc.path("category_group_code").asText(null))
-                            .categoryName(doc.path("category_name").asText(null))
-                            .phone(doc.path("phone").asText(null))
-                            .placeUrl(doc.path("place_url").asText(null))
-                            .placeName(doc.path("place_name").asText(null))
-                            .roadAddressName(doc.path("road_address_name").asText(null))
-                            .lat(lat)
-                            .lng(lng)
-                            .build();
-
-                    kakaoStoreDtos.add(dto);
-                }
+            if (root != null) {
+                List<KakaoStoreDto> parsed = parseKakaoDocuments(root.path("documents"));
+                result.addAll(parsed);
             }
 
-            return Optional.of(kakaoStoreDtos);
+            if (!result.isEmpty()) break; /* 첫 번째 성공 시, 반복 중지 */
         }
 
-
-        return Optional.empty();
+        return result.isEmpty() ? Optional.empty() : Optional.of(result);
     }
+
+
+
+//    private Optional<List<KakaoStoreDto>> getKakaoStoreDtoFromKakaoApi(
+//            String storeName, int page, int size,
+//            BigDecimal pLat, BigDecimal pLng)
+//    {
+//
+//        if (storeName == null || storeName.isEmpty()) {
+//            return Optional.empty();
+//        }
+//
+//        List<KakaoStoreDto> kakaoStoreDtos = new ArrayList<>();
+//
+//        List<String> categoryList = List.of("FD6", "CE7");
+//
+//        for (String category : categoryList) {
+//
+//            UriComponentsBuilder builder = UriComponentsBuilder
+//                    .fromUriString(KAKAO_SEARCH_API_URL)
+//                    .queryParam("category_group_code", category)
+//                    .queryParam("query", storeName);
+//
+//            if (page != 0) builder.queryParam("page", page);
+//            if (size != 0) builder.queryParam("size", size);
+//
+//            if (pLat != null && pLng != null) {
+//                builder
+//                        .queryParam("y", pLat)
+//                        .queryParam("x", pLng);
+//            }
+//
+//            URI apiuri = builder
+//                    .encode(StandardCharsets.UTF_8)
+//                    .build()
+//                    .toUri();
+//
+//            HttpHeaders headers = new HttpHeaders();
+//            headers.add("Authorization",KAKAO_SEARCH_HEADER);
+//            HttpEntity<Void> request = new HttpEntity<>(headers);
+//
+//            ResponseEntity<JsonNode> resp = resttemplate.exchange(
+//                    apiuri, HttpMethod.GET, request, JsonNode.class);
+//
+//            JsonNode root = resp.getBody();
+//
+//            if (resp.getStatusCode().is2xxSuccessful() && resp.hasBody() && root != null) {
+//                JsonNode documents = root.path("documents");
+//
+//                if (documents.isArray() && !documents.isEmpty()) {
+//                    ArrayNode documentsArray = (ArrayNode)documents;
+//
+//                    for (JsonNode doc : documentsArray) {
+//                        BigDecimal lat = new BigDecimal(doc.path("y").asText());
+//                        BigDecimal lng = new BigDecimal(doc.path("x").asText());
+//
+//                        KakaoStoreDto dto = KakaoStoreDto.builder()
+//                                .addressName(doc.path("address_name").asText(null))
+//                                .categoryGroupName(doc.path("category_group_name").asText(null))
+//                                .categoryGroupCode(doc.path("category_group_code").asText(null))
+//                                .categoryName(doc.path("category_name").asText(null))
+//                                .phone(doc.path("phone").asText(null))
+//                                .placeUrl(doc.path("place_url").asText(null))
+//                                .placeName(doc.path("place_name").asText(null))
+//                                .roadAddressName(doc.path("road_address_name").asText(null))
+//                                .lat(lat)
+//                                .lng(lng)
+//                                .build();
+//
+//                        kakaoStoreDtos.add(dto);
+//                    }
+//                }
+//            }
+//        }
+//
+//        return Optional.of(kakaoStoreDtos);
+//    }
 
     private Optional<Store> createStoreFromKakaoStore(KakaoStoreDto kakaoStoreDto) {
         /* 이미 존재하는 음식점인지 체크 */
         Store existsStore = queryFactory
-                .selectFrom(store)
-                .join(store.storeLocations, storeLocationInfoTbl)
+                .select(storeLocationInfoTbl.store)
+                .from(storeLocationInfoTbl)
+                .join(storeLocationInfoTbl.store, store)
                 .where(
                         store.name.eq(kakaoStoreDto.getPlaceName()),
                         storeLocationInfoTbl.lat.eq(kakaoStoreDto.getLat()),
@@ -550,6 +647,7 @@ public class StoreServiceImpl implements StoreService {
 
     private void inputStoreLocationRoadInfo(KakaoStoreDto kakaoStoreDto, Store store) {
         StoreLocationRoadInfoTbl storeLocationRoadInfoTbl = new StoreLocationRoadInfoTbl(kakaoStoreDto, store, "inputStoreLocationRoad");
+        storeLocationRoadInfoTbl.markAsNew();
         storeLocationRoadInfoRepository.save(storeLocationRoadInfoTbl);
     }
 
@@ -581,7 +679,8 @@ public class StoreServiceImpl implements StoreService {
         int inputPage = page == null ? 1 : page;
         int inputSize = size == null ? 1 : size;
 
-        Optional<List<KakaoStoreDto>> kakaoStoreDto = getKakaoStoreDtoFromKakaoApi(storeName, inputPage, inputSize, pLat, pLng);
+        Optional<List<KakaoStoreDto>> kakaoStoreDto =
+                getKakaoStoreDtoFromKakaoApi(storeName, inputPage, inputSize, pLat, pLng);
 
         if (kakaoStoreDto.isPresent()) {
             List<KakaoStoreDto> kakaoStoreDtos = kakaoStoreDto.get();
@@ -606,33 +705,44 @@ public class StoreServiceImpl implements StoreService {
         return PublicStatus.SUCCESS;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public PublicStatus modifyExistsStores() {
 
-//        List<Store> stores = queryFactory
-//                .selectFrom(store)
-//                .join(store)
+        /* StoreLocationInfoTbl + Store join 한 결과 리스트 */
+        List<StoreLocationInfoTbl> existsLocations = queryFactory
+                .selectFrom(storeLocationInfoTbl)
+                .join(storeLocationInfoTbl.store, store).fetchJoin()
+                .fetch();
 
-//        List<Store> stores = queryFactory
-//                .select(store)
-//                .from(store)
-//                .join(storeLocationInfoTbl)
-//                .on(store.seq.eq(storeLocationInfoTbl.store.seq))
-//                .fetch();
+        for (StoreLocationInfoTbl location: existsLocations) {
+            /* location 객체를 Kakao api 호출하여 */
+            Optional<List<KakaoStoreDto>> kakaoStoreDtoOpts =
+                getKakaoStoreDtoFromKakaoApi(location.getStore().getName(), 1, 1, location.getLat(), location.getLng());
 
-//        List<Store> stores = queryFactory
-//                .selectFrom(store)
-//                .join(store.storeLocations, storeLocationInfoTbl)//.fetchJoin()
-//                //.join(store.storeLocationRoadInfos, storeLocationRoadInfoTbl).fetchJoin()
-//                .fetch();
+            if (kakaoStoreDtoOpts.isPresent()) {
+                List<KakaoStoreDto> kakaoStoreDtos = kakaoStoreDtoOpts.get();
 
-//        System.out.println("====================================");
-//        System.out.println(stores.size());
+                if (kakaoStoreDtos.size() == 1) {
+                    KakaoStoreDto kakaoStoreDto = kakaoStoreDtos.get(0);
 
-//        for (Store store : stores) {
-//
-//        }
+                    Store modifyStore = location.getStore();
+                    modifyStore.updateStoreFromKakaoStoreDto(kakaoStoreDto, "modifyExistsStores");
 
+                    location.modifyStoreLocationInfoFromKakaoStoreDto(kakaoStoreDto, "modifyExistsStores");
 
+                    inputStoreLocationRoadInfo(kakaoStoreDto, modifyStore);
+
+                    CategoryTbl categoryTbl = createOrFindCategoryTbl(kakaoStoreDto);
+
+                    inputStoreCategory(modifyStore, categoryTbl);
+
+                } else {
+                    log.warn("[WARN][StoreServiceImpl->modifyExistsStores] There are more than one filtered object. (location.seq: {})", location.getSeq());
+                }
+            } else {
+                log.warn("[WARN][StoreServiceImpl->modifyExistsStores] No matching value exists for Kakao API. (location.seq: {})", location.getSeq());
+            }
+        }
 
         return PublicStatus.SUCCESS;
     }
