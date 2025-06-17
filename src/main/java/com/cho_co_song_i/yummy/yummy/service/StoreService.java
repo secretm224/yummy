@@ -56,12 +56,12 @@ public interface StoreService {
      */
     Boolean isAddedStore(AddStoreDto addStoreDto) throws Exception;
 
-    /**
-     * 음식점 대분류 데이터를 가져와주는 함수
-     * @return
-     * @throws Exception
-     */
-    List<StoreTypeMajorDto> findStoreTypeMajors() throws Exception;
+//    /**
+//     * 음식점 대분류 데이터를 가져와주는 함수
+//     * @return
+//     * @throws Exception
+//     */
+//    List<StoreTypeMajorDto> findStoreTypeMajors() throws Exception;
 
 //    /**
 //     * 음식점 소분류 데이터를 가져와주는 함수

@@ -63,12 +63,6 @@ public class StoreServiceImpl implements StoreService {
     private final RedisAdapter redisAdapter;
     private final RestTemplate resttemplate;
 
-
-    /* Redis Cache 관련 필드 */
-    @Value("${spring.redis.category_main}")
-    private String categoryMain;
-    @Value("${spring.redis.category_sub}")
-    private String categorySub;
     @Value("${kakao.search.api-url}")
     private String KAKAO_SEARCH_API_URL;
     @Value("${kakao.search.header}")
@@ -314,26 +308,26 @@ public class StoreServiceImpl implements StoreService {
         return true;
     }
 
-    public List<StoreTypeMajorDto> findStoreTypeMajors() throws Exception {
-
-        List<StoreTypeMajorDto> storeMajors = redisAdapter.getValue(categoryMain, new TypeReference<List<StoreTypeMajorDto>>() {});
-
-        if (storeMajors == null || storeMajors.isEmpty()) {
-
-            var query = queryFactory
-                    .select(storeTypeMajor)
-                    .from(storeTypeMajor);
-
-            List<StoreTypeMajor> storeMajorsDb = query.fetch();
-
-            return storeMajorsDb.stream()
-                    .map(this::convertTypeMajorToDto)
-                    .collect(Collectors.toList());
-
-        } else {
-            return storeMajors;
-        }
-    }
+//    public List<StoreTypeMajorDto> findStoreTypeMajors() throws Exception {
+//
+//        List<StoreTypeMajorDto> storeMajors = redisAdapter.getValue(categoryMain, new TypeReference<List<StoreTypeMajorDto>>() {});
+//
+//        if (storeMajors == null || storeMajors.isEmpty()) {
+//
+//            var query = queryFactory
+//                    .select(storeTypeMajor)
+//                    .from(storeTypeMajor);
+//
+//            List<StoreTypeMajor> storeMajorsDb = query.fetch();
+//
+//            return storeMajorsDb.stream()
+//                    .map(this::convertTypeMajorToDto)
+//                    .collect(Collectors.toList());
+//
+//        } else {
+//            return storeMajors;
+//        }
+//    }
 
 //    public List<StoreTypeSubDto> findStoreTypeSubs(Long majorType) throws Exception {
 //
@@ -441,7 +435,16 @@ public class StoreServiceImpl implements StoreService {
 //        return modifyStore(id,storeDto);
 //    }
 
-
+    /**
+     * Kakao API 를 사용하기 위해서 정보들을 빌드해주는 함수.
+     * @param storeName
+     * @param page
+     * @param size
+     * @param pLat
+     * @param pLng
+     * @param category
+     * @return
+     */
     private URI buildKakaoApiUri(String storeName, int page, int size,
                                  BigDecimal pLat, BigDecimal pLng, String category) {
         UriComponentsBuilder builder = UriComponentsBuilder
@@ -458,6 +461,11 @@ public class StoreServiceImpl implements StoreService {
         return builder.encode(StandardCharsets.UTF_8).build().toUri();
     }
 
+    /**
+     * Kakao api 를 통해서 음식점 데이터를 fetch 해주는 함수
+     * @param uri
+     * @return
+     */
     private JsonNode fetchKakaoApiResponse(URI uri) {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", KAKAO_SEARCH_HEADER);
@@ -473,6 +481,11 @@ public class StoreServiceImpl implements StoreService {
         return null;
     }
 
+    /**
+     * Kakao Api 에서 호출된 json 객체를 KakaoStoreDto 리스트로 파싱해주는 메소드.
+     * @param documents
+     * @return
+     */
     private List<KakaoStoreDto> parseKakaoDocuments(JsonNode documents) {
         List<KakaoStoreDto> list = new ArrayList<>();
 
@@ -517,7 +530,7 @@ public class StoreServiceImpl implements StoreService {
 
         List<KakaoStoreDto> result = new ArrayList<>();
 
-        /* category 우선순위: FD6, CE7 */
+        /* category 우선순위: FD6(음식점) -> CE7(카페) */
         List<String> categories = List.of("FD6", "CE7");
 
         for (String category : categories) {
