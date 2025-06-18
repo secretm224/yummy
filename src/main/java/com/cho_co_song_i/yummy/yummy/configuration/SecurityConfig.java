@@ -36,8 +36,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                     .requestMatchers(
                         "/auth/token", // 토큰 발급 API는 허용
-                        "/error",      // 오류 페이지 허용
-                        "/favicon.ico"
+                        "/error"      // 오류 페이지 허용
                     ).permitAll()
                     .anyRequest().permitAll() // 모든 요청은 허용 → 실제 인증은 필터에서만 Swagger에 대해 수행
                        //.requestMatchers("/**").permitAll()
