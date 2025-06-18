@@ -15,10 +15,10 @@ import java.util.Optional;
 public class MutationResolver {
     private final StoreService storeService;
 
-    @MutationMapping
-    public Boolean addStore(@Argument("addStoreDto") AddStoreDto addStoreDto) throws Exception {
-        return storeService.isAddedStore(addStoreDto);
-    }
+//    @MutationMapping
+//    public Boolean addStore(@Argument("addStoreDto") AddStoreDto addStoreDto) throws Exception {
+//        return storeService.isAddedStore(addStoreDto);
+//    }
 
 //    @MutationMapping
 //    public Optional<JsonNode> UpdateStoreDetail() {

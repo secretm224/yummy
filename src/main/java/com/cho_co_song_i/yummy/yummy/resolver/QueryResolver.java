@@ -191,11 +191,11 @@ public class QueryResolver {
 //
 //        }
 //    }
-    @QueryMapping(name="StoreMajorsTypeList")
-    public List<StoreTypeMajorDto> findStoreMajorsType() throws Exception {
-
-        return storeService.findStoreTypeMajors();
-    }
+//    @QueryMapping(name="StoreMajorsTypeList")
+//    public List<StoreTypeMajorDto> findStoreMajorsType() throws Exception {
+//
+//        return storeService.findStoreTypeMajors();
+//    }
 //    query{
 //        StoreSubMajorsTypeList(major_code:1){
 //            subType
