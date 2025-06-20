@@ -140,8 +140,7 @@ public class StoreServiceImpl implements StoreService {
      * @param pLng
      * @return
      */
-    private Optional<List<KakaoStoreDto>> getKakaoStoreDtoFromKakaoApi(
-            String storeName, int page, int size,
+    private Optional<List<KakaoStoreDto>> getKakaoStoreDtoFromKakaoApiFromCategories(String storeName, int page, int size,
             BigDecimal pLat, BigDecimal pLng) {
 
         if (storeName == null || storeName.isEmpty()) {
@@ -154,14 +153,7 @@ public class StoreServiceImpl implements StoreService {
         List<String> categories = List.of("FD6", "CE7");
 
         for (String category : categories) {
-            URI uri = buildKakaoApiUri(storeName, page, size, pLat, pLng, category);
-            JsonNode root = fetchKakaoApiResponse(uri);
-
-            if (root != null) {
-                List<KakaoStoreDto> parsed = parseKakaoDocuments(root.path("documents"));
-                result.addAll(parsed);
-            }
-
+            result = getKakaoStoreDtoFromKakaoApiByCategory(storeName, page, size, pLat, pLng, category);
             if (!result.isEmpty()) break; /* 첫 번째 성공 시, 반복 중지 */
         }
 
@@ -221,6 +213,7 @@ public class StoreServiceImpl implements StoreService {
      */
     private void inputStoreLocationInfo(KakaoStoreDto kakaoStoreDto, Store store) {
         StoreLocationInfoTbl storeLocationInfo = new StoreLocationInfoTbl(kakaoStoreDto, store, "inputNewStore");
+        storeLocationInfo.markAsNew();
         storeLocationInfoRepository.save(storeLocationInfo);
     }
 
@@ -278,6 +271,28 @@ public class StoreServiceImpl implements StoreService {
                 .fetch();
     }
 
+    /**
+     * KakaoStoreDto 데이터를 기준으로 디비에 상점 관련 데이터들을 저장해주는 메소드
+     * @param kakaoStoreDtos
+     * @param zeroYn
+     */
+    private void inputNewStoreDataToDb(List<KakaoStoreDto> kakaoStoreDtos, Boolean zeroYn) {
+        for (KakaoStoreDto dto : kakaoStoreDtos) {
+            Optional<Store> storeOpt = createStoreFromKakaoStore(dto);
+
+            if (storeOpt.isPresent()) {
+                Store inputStore = storeOpt.get();
+
+                if (zeroYn) inputZeroPossibleTbl(inputStore);
+
+                inputStoreLocationInfo(dto, inputStore);
+                inputStoreLocationRoadInfo(dto, inputStore);
+                CategoryTbl categoryTbl = createOrFindCategoryTbl(dto);
+                inputStoreCategory(inputStore, categoryTbl);
+            }
+        }
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus inputNewStore(String storeName, Integer page, Integer size, BigDecimal pLat, BigDecimal pLng, Boolean zeroYn) {
 
@@ -285,27 +300,58 @@ public class StoreServiceImpl implements StoreService {
         int inputSize = size == null ? 1 : size;
 
         Optional<List<KakaoStoreDto>> kakaoStoreDto =
-                getKakaoStoreDtoFromKakaoApi(storeName, inputPage, inputSize, pLat, pLng);
+                getKakaoStoreDtoFromKakaoApiFromCategories(storeName, inputPage, inputSize, pLat, pLng);
 
         if (kakaoStoreDto.isPresent()) {
             List<KakaoStoreDto> kakaoStoreDtos = kakaoStoreDto.get();
 
-            for (KakaoStoreDto dto : kakaoStoreDtos) {
-                Optional<Store> storeOpt = createStoreFromKakaoStore(dto);
+            inputNewStoreDataToDb(kakaoStoreDtos, zeroYn);
+        }
 
-                if (storeOpt.isPresent()) {
-                    Store inputStore = storeOpt.get();
+        return PublicStatus.SUCCESS;
+    }
 
-                    if (zeroYn) inputZeroPossibleTbl(inputStore);
+    private List<KakaoStoreDto> getKakaoStoreDtoFromKakaoApiByCategory(String storeName, int page, int size,
+                                                                                 BigDecimal pLat, BigDecimal pLng, String category) {
+        List<KakaoStoreDto> result = new ArrayList<>();
 
-                    inputStoreLocationInfo(dto, inputStore);
-                    inputStoreLocationRoadInfo(dto, inputStore);
-                    CategoryTbl categoryTbl = createOrFindCategoryTbl(dto);
-                    inputStoreCategory(inputStore, categoryTbl);
-                }
+        URI uri = buildKakaoApiUri(storeName, page, size, pLat, pLng, category);
+        JsonNode root = fetchKakaoApiResponse(uri);
+
+        if (root != null) {
+            List<KakaoStoreDto> parsed = parseKakaoDocuments(root.path("documents"));
+            result.addAll(parsed);
+        }
+
+        return result;
+    }
+
+
+    @Transactional(rollbackFor = Exception.class)
+    public PublicStatus inputNewStores(String storeName, Integer page, String category, Boolean zeroYn) {
+
+        int sizePerPage = 15;
+        int quotient = (page + sizePerPage - 1) / sizePerPage;
+        int remainder = page % sizePerPage;
+
+        System.out.println("=====================");
+        System.out.println("quotient:" + quotient);
+        System.out.println("remainder:" + remainder);
+
+        List<KakaoStoreDto> totalkakaoStoreDto = new ArrayList<>();
+
+        for (int i = 1; i <= quotient; i++) {
+            int currentPageSize = (i == quotient && remainder != 0) ? remainder : sizePerPage;
+
+            List<KakaoStoreDto> kakaoStoreDtos =
+                    getKakaoStoreDtoFromKakaoApiByCategory(storeName, i, currentPageSize, null, null, category);
+
+            if (!kakaoStoreDtos.isEmpty()) {
+                totalkakaoStoreDto.addAll(kakaoStoreDtos);
             }
         }
 
+        inputNewStoreDataToDb(totalkakaoStoreDto, zeroYn);
 
         return PublicStatus.SUCCESS;
     }
@@ -318,7 +364,7 @@ public class StoreServiceImpl implements StoreService {
 
         for (StoreLocationInfoTbl location: existsLocations) {
             Optional<List<KakaoStoreDto>> kakaoStoreDtoOpts =
-                getKakaoStoreDtoFromKakaoApi(location.getStore().getName(), 1, 1, location.getLat(), location.getLng());
+                    getKakaoStoreDtoFromKakaoApiFromCategories(location.getStore().getName(), 1, 1, location.getLat(), location.getLng());
 
             if (kakaoStoreDtoOpts.isPresent()) {
                 List<KakaoStoreDto> kakaoStoreDtos = kakaoStoreDtoOpts.get();

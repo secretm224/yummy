@@ -18,7 +18,7 @@ public class StoreController {
     private final StoreService storeService;
 
     /**
-     * 상점등록 메소드
+     * 상점등록 기능
      * @param storeName
      * @param page
      * @param size
@@ -37,6 +37,23 @@ public class StoreController {
             @RequestParam(value = "zeroYn", required = true) Boolean zeroYn
             ) {
         return ResponseEntity.ok(storeService.inputNewStore(storeName, page, size, pLat, pLng,  zeroYn));
+    }
+
+    /**
+     * 키워드 기준 여러개의 삼점을 등록하는 기능
+     * @param storeName
+     * @param size
+     * @param zeroYn
+     * @return
+     */
+    @GetMapping("/inputNewStores")
+    public ResponseEntity<PublicStatus> inputNewStores(
+            @RequestParam(value = "storeName", required = true) String storeName,
+            @RequestParam(value = "size", required = true) Integer size,
+            @RequestParam(value = "category", required = true) String category,
+            @RequestParam(value = "zeroYn", required = true) Boolean zeroYn) {
+
+        return ResponseEntity.ok(storeService.inputNewStores(storeName, size, category, zeroYn));
     }
 
     /**

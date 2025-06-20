@@ -25,7 +25,15 @@ public interface StoreService {
      * @return
      */
     PublicStatus inputNewStore(String storeName, Integer page, Integer size, BigDecimal pLat, BigDecimal pLng, Boolean zeroYn);
-
+    /**
+     * 새로운 상점 여러개를 등록해주는 기능.
+     * @param storeName
+     * @param page
+     * @param category
+     * @param zeroYn
+     * @return
+     */
+    PublicStatus inputNewStores(String storeName, Integer page, String category, Boolean zeroYn);
     /**
      * 기존 store 데이터를 모두 Kakao API 기반으로 update 시켜주는 메소드
      * @return
