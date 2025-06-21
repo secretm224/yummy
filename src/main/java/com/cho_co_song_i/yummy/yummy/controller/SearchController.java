@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 
 @RequestMapping("/search")
@@ -25,8 +26,9 @@ public class SearchController {
     private String autoKeywordIndex;
 
     @GetMapping("allData")
-    public ResponseEntity<List<SearchStoreDto>> findAllStores() throws Exception {
-        return ResponseEntity.ok(searchService.findSearchAllStores(storeIndex));
+    public CompletableFuture<ResponseEntity<List<SearchStoreDto>>> findAllStores() throws Exception {
+        return searchService.findSearchAllStores(storeIndex)
+                .thenApply(ResponseEntity::ok);
     }
 
     @GetMapping("totalSearch")
@@ -40,9 +42,10 @@ public class SearchController {
     }
 
     @GetMapping("autoKeyword")
-    public ResponseEntity<List<AutoCompleteResDto>> findAutoKeyword(
+    public CompletableFuture<ResponseEntity<List<AutoCompleteResDto>>> findAutoKeyword(
             @RequestParam(value = "searchText", required = false) String searchText
-    ) throws Exception {
-        return ResponseEntity.ok(searchService.findAutoSearchKeyword(autoKeywordIndex, searchText));
+    ) {
+        return searchService.findAutoSearchKeyword(autoKeywordIndex, searchText)
+                .thenApply(ResponseEntity::ok);
     }
 }

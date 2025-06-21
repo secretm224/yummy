@@ -1,5 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.adapter.elasticsearch;
 
+import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
@@ -30,6 +31,11 @@ public class ElasticsearchConfig {
     @Value("${spring.elasticsearch.password}")
     private String password;
 
+
+    /**
+     * @deprecated Use elasticsearchAsyncClient() instead.
+     */
+    @Deprecated
     @Bean
     public ElasticsearchClient elasticClient() {
         BasicCredentialsProvider credentialProvider = new BasicCredentialsProvider();
@@ -66,5 +72,40 @@ public class ElasticsearchConfig {
         RestClientTransport transport = new RestClientTransport(restClient, jsonMapper);
 
         return new ElasticsearchClient(transport);
+    }
+
+    @Bean
+    public ElasticsearchAsyncClient elasticsearchAsyncClient() {
+        /* 인증 설정 */
+        BasicCredentialsProvider credentialProvider = new BasicCredentialsProvider();
+        credentialProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(userName, password));
+
+        /* RestClient 설정 */
+        RestClientBuilder builder = RestClient.builder(
+                Stream.of(uris).map(HttpHost::create).toArray(HttpHost[]::new)
+        ).setHttpClientConfigCallback(httpClientBuilder ->
+                httpClientBuilder
+                        .setDefaultCredentialsProvider(credentialProvider)
+                        .setMaxConnTotal(30)       /* 전체 최대 커넥션 수 */
+                        .setMaxConnPerRoute(10)    /* 노드당 최대 10개 (3노드 × 10 = 30) */
+        ).setRequestConfigCallback(requestConfigBuilder ->
+                requestConfigBuilder
+                        .setConnectTimeout(2000)              /* 2초 안에 연결되지 않으면 실패 */
+                        .setSocketTimeout(10000)              /* 10초 내에 응답 없으면 실패 */
+                        .setConnectionRequestTimeout(1000)    /* 커넥션 풀 대기 최대 1초 */
+        );
+
+        RestClient restClient = builder.build();
+
+        /* JSON 매퍼 설정 */
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        JacksonJsonpMapper jsonMapper = new JacksonJsonpMapper(mapper);
+        RestClientTransport transport = new RestClientTransport(restClient, jsonMapper);
+
+        /* 비동기 클라이언트 반환 */
+        return new ElasticsearchAsyncClient(transport);
     }
 }

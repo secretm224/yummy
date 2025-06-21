@@ -6,6 +6,7 @@ import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteResDto;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 public interface SearchService {
     /**
@@ -14,7 +15,7 @@ public interface SearchService {
      * @return
      * @throws Exception
      */
-    List<SearchStoreDto> findSearchAllStores(String indexName) throws Exception;
+    CompletableFuture<List<SearchStoreDto>> findSearchAllStores(String indexName);
     /**
      * 가게 이름으로 단건 조회 (secretm test)
      * @param indexName Elasticsearch 인덱스명
@@ -51,6 +52,6 @@ public interface SearchService {
      * @return
      * @throws Exception
      */
-    List<AutoCompleteResDto> findAutoSearchKeyword(String indexName, String searchText) throws Exception;
+    CompletableFuture<List<AutoCompleteResDto>> findAutoSearchKeyword(String indexName, String searchText);
 
 }

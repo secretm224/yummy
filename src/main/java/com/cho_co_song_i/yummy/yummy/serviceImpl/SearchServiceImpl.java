@@ -1,5 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
+import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.SortOrder;
@@ -19,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 
@@ -28,6 +30,7 @@ import java.util.stream.Collectors;
 public class SearchServiceImpl implements SearchService {
 
     private final ElasticsearchClient searchClient;
+    private final ElasticsearchAsyncClient asyncSearchClient;
 
     /* ERROR 테스트용2 */
     private void test2() {
@@ -91,22 +94,17 @@ public class SearchServiceImpl implements SearchService {
         }
         return boolQuery;
     }
-
-    public List<SearchStoreDto> findSearchAllStores(String indexName) throws Exception {
-
+    public CompletableFuture<List<SearchStoreDto>> findSearchAllStores(String indexName) {
         SearchRequest searchRequest = SearchRequest.of(s -> s
                 .index(indexName)
                 .size(10000)
-                .query(q -> q
-                        .matchAll(m -> m)));
+                .query(q -> q.matchAll(m -> m)));
 
-
-        SearchResponse<SearchStoreDto> resp = searchClient.search(searchRequest, SearchStoreDto.class);
-
-        return resp.hits().hits().stream()
-                .map(Hit::source)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        return asyncSearchClient.search(searchRequest, SearchStoreDto.class)
+                .thenApply(response -> response.hits().hits().stream()
+                        .map(Hit::source)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList()));
     }
 
     public Optional<SearchStoreDto> findStoreByName(String indexName, String storeName) throws Exception {
@@ -204,9 +202,8 @@ public class SearchServiceImpl implements SearchService {
      * @param searchText
      * @param topCnt
      * @return
-     * @throws Exception
      */
-    private List<AutoCompleteDto> findTopAutoSearchKeyword(String indexName, String searchText, int topCnt) throws Exception {
+    private CompletableFuture<List<AutoCompleteDto>> findTopAutoSearchKeyword(String indexName, String searchText, int topCnt) {
         SearchRequest searchRequest = SearchRequest.of(s -> s
                 .index(indexName)
                 .query(q -> q
@@ -218,13 +215,12 @@ public class SearchServiceImpl implements SearchService {
                 )
                 .size(topCnt)
         );
-
-        SearchResponse<AutoCompleteDto> response = searchClient.search(searchRequest, AutoCompleteDto.class);
-
-        return response.hits().hits().stream()
-                .map(Hit::source)
-                .filter(Objects::nonNull)
-                .toList();
+        return asyncSearchClient.search(searchRequest, AutoCompleteDto.class)
+                .thenApply(response -> response.hits().hits().stream()
+                        .map(Hit::source)
+                        .filter(Objects::nonNull)
+                        .toList()
+                );
     }
 
     /**
@@ -246,10 +242,6 @@ public class SearchServiceImpl implements SearchService {
             double similarityWord = AnalyzerUtil.similarityByLevenstein(searchText, dtoName);
             double similarityChosung = AnalyzerUtil.similarityByLevenstein(searchText, dtoChosung);
 
-            //System.out.println(dto.getName());
-            //System.out.println("similarityWord: " + similarityWord);
-            //System.out.println("similarityChosung: " + similarityChosung);
-
             if (similarityWord > 0.6 || similarityChosung == 1.0) {
                 double bigScore = Math.max(similarityWord, similarityChosung);
                 float rounded = Math.round((float) bigScore * 100) / 100f;
@@ -267,19 +259,21 @@ public class SearchServiceImpl implements SearchService {
         return resultResp;
     }
 
-    public List<AutoCompleteResDto> findAutoSearchKeyword(String indexName, String searchText) throws Exception {
+    public CompletableFuture<List<AutoCompleteResDto>> findAutoSearchKeyword(String indexName, String searchText) {
 
+        return findTopAutoSearchKeyword(indexName, searchText, 15)
+                .thenCompose(searchResp -> {
+                    List<AutoCompleteResDto> resultResp = getSimilarAutoCompleteResults(searchText, searchResp);
 
+                    if (resultResp.isEmpty() && AnalyzerUtil.isAllEnglish(searchText)) {
+                        String convertKeyword = HangulQwertyConverter.convertQwertyToHangul(searchText);
+                        return findTopAutoSearchKeyword(indexName, convertKeyword, 15)
+                                .thenApply(fallbackResp ->
+                                        getSimilarAutoCompleteResults(convertKeyword, fallbackResp)
+                                );
+                    }
 
-        List<AutoCompleteDto> searchResp = findTopAutoSearchKeyword(indexName, searchText, 15);
-        List<AutoCompleteResDto> resultResp = getSimilarAutoCompleteResults(searchText, searchResp);
-
-        if (resultResp.isEmpty() && AnalyzerUtil.isAllEnglish(searchText)) {
-            String convertKeyword = HangulQwertyConverter.convertQwertyToHangul(searchText);
-            searchResp = findTopAutoSearchKeyword(indexName, convertKeyword, 15);
-            resultResp = getSimilarAutoCompleteResults(convertKeyword, searchResp);
-        }
-
-        return resultResp;
+                    return CompletableFuture.completedFuture(resultResp);
+                });
     }
 }

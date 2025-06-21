@@ -293,6 +293,31 @@ public class StoreServiceImpl implements StoreService {
         }
     }
 
+    /**
+     * 카테고리별로 상점 정보를 Kakao API 를통해서 가져와주는 메소드.
+     * @param storeName
+     * @param page
+     * @param size
+     * @param pLat
+     * @param pLng
+     * @param category
+     * @return
+     */
+    private List<KakaoStoreDto> getKakaoStoreDtoFromKakaoApiByCategory(String storeName, int page, int size,
+                                                                       BigDecimal pLat, BigDecimal pLng, String category) {
+        List<KakaoStoreDto> result = new ArrayList<>();
+
+        URI uri = buildKakaoApiUri(storeName, page, size, pLat, pLng, category);
+        JsonNode root = fetchKakaoApiResponse(uri);
+
+        if (root != null) {
+            List<KakaoStoreDto> parsed = parseKakaoDocuments(root.path("documents"));
+            result.addAll(parsed);
+        }
+
+        return result;
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus inputNewStore(String storeName, Integer page, Integer size, BigDecimal pLat, BigDecimal pLng, Boolean zeroYn) {
 
@@ -311,32 +336,12 @@ public class StoreServiceImpl implements StoreService {
         return PublicStatus.SUCCESS;
     }
 
-    private List<KakaoStoreDto> getKakaoStoreDtoFromKakaoApiByCategory(String storeName, int page, int size,
-                                                                                 BigDecimal pLat, BigDecimal pLng, String category) {
-        List<KakaoStoreDto> result = new ArrayList<>();
-
-        URI uri = buildKakaoApiUri(storeName, page, size, pLat, pLng, category);
-        JsonNode root = fetchKakaoApiResponse(uri);
-
-        if (root != null) {
-            List<KakaoStoreDto> parsed = parseKakaoDocuments(root.path("documents"));
-            result.addAll(parsed);
-        }
-
-        return result;
-    }
-
-
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus inputNewStores(String storeName, Integer page, String category, Boolean zeroYn) {
 
         int sizePerPage = 15;
         int quotient = (page + sizePerPage - 1) / sizePerPage;
         int remainder = page % sizePerPage;
-
-        System.out.println("=====================");
-        System.out.println("quotient:" + quotient);
-        System.out.println("remainder:" + remainder);
 
         List<KakaoStoreDto> totalkakaoStoreDto = new ArrayList<>();
 

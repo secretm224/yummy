@@ -64,13 +64,13 @@ public class QueryResolver {
             }
         }
      */
-    @QueryMapping(name = "SearchStoreAllData")
-    public List<SearchStoreDto> findSearchAllStores() throws Exception {
-        if (!StringUtils.hasText(storeIndex)) {
-            return Collections.emptyList();
-        }
-        return searchService.findSearchAllStores(storeIndex);
-    }
+//    @QueryMapping(name = "SearchStoreAllData")
+//    public List<SearchStoreDto> findSearchAllStores() throws Exception {
+//        if (!StringUtils.hasText(storeIndex)) {
+//            return Collections.emptyList();
+//        }
+//        return searchService.findSearchAllStores(storeIndex);
+//    }
 
     /*
         단일 상점 조회
