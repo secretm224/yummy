@@ -57,8 +57,6 @@ public class ZeroPossibleMarket implements Persistable<Long> {
         this.isNew = true;
     }
 
-//    @OneToOne(mappedBy = "zeroPossibles", fetch = FetchType.LAZY)
-//    private Store store;
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seq")
     private Store store;
@@ -67,7 +65,7 @@ public class ZeroPossibleMarket implements Persistable<Long> {
         Instant nowInstant = Instant.now();
 
         this.useYn = 'Y';
-        //this.store = store;
+        this.name = store.getName();
         this.seq = store.getSeq();
         this.regId = regId;
         this.regDt = Date.from(nowInstant);

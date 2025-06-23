@@ -203,6 +203,7 @@ public class StoreServiceImpl implements StoreService {
      */
     private void inputZeroPossibleTbl(Store store) {
         ZeroPossibleMarket zeroPossibleMarket = new ZeroPossibleMarket(store, "inputZeroPossibleTbl");
+        zeroPossibleMarket.markAsNew();
         zeroPossibleMarketRepository.save(zeroPossibleMarket);
     }
 
