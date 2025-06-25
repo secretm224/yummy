@@ -3,6 +3,8 @@ package com.cho_co_song_i.yummy.yummy.serviceImpl;
 import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.FieldValue;
+import co.elastic.clients.elasticsearch._types.GeoLocation;
+import co.elastic.clients.elasticsearch._types.LatLonGeoLocation;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
@@ -94,6 +96,7 @@ public class SearchServiceImpl implements SearchService {
         }
         return boolQuery;
     }
+
     public CompletableFuture<List<SearchStoreDto>> findSearchAllStores(String indexName) {
         SearchRequest searchRequest = SearchRequest.of(s -> s
                 .index(indexName)
@@ -102,6 +105,51 @@ public class SearchServiceImpl implements SearchService {
 
         return asyncSearchClient.search(searchRequest, SearchStoreDto.class)
                 .thenApply(response -> response.hits().hits().stream()
+                        .map(Hit::source)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList()));
+    }
+
+    public CompletableFuture<List<SearchStoreDto>> findSearchStoresBoundary(String indexName, double minLat, double maxLat, double minLon, double maxLon, int zoom) {
+        SearchRequest searchRequest = SearchRequest.of(s -> s
+                .index(indexName)
+                .size(1000)
+                .query(q -> q
+                        .bool(b -> b
+                                .filter(f -> f
+                                        .geoBoundingBox(gb -> gb
+                                                .field("location")
+                                                .boundingBox(bb -> bb
+                                                        /* ▶ use the tlbr() variant here: */
+                                                        .tlbr(tlbr -> tlbr
+                                                                /* Top-left corner */
+                                                                .topLeft(GeoLocation.of(gl -> gl
+                                                                        .latlon(
+                                                                                LatLonGeoLocation.of(ll -> ll
+                                                                                        .lat(maxLat)
+                                                                                        .lon(minLon)
+                                                                                )
+                                                                        )
+                                                                ))
+                                                                /* Bottom-right corner */
+                                                                .bottomRight(GeoLocation.of(gl -> gl
+                                                                        .latlon(
+                                                                                LatLonGeoLocation.of(ll -> ll
+                                                                                        .lat(minLat)
+                                                                                        .lon(maxLon)
+                                                                                )
+                                                                        )
+                                                                ))
+                                                        )
+                                                )
+                                        )
+                                )
+                        )
+                )
+        );
+
+        return asyncSearchClient.search(searchRequest, SearchStoreDto.class)
+                .thenApply(resp -> resp.hits().hits().stream()
                         .map(Hit::source)
                         .filter(Objects::nonNull)
                         .collect(Collectors.toList()));
