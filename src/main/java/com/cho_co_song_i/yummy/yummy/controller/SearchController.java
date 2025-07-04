@@ -31,6 +31,18 @@ public class SearchController {
                 .thenApply(ResponseEntity::ok);
     }
 
+    @GetMapping("searchStore")
+    public CompletableFuture<ResponseEntity<List<SearchStoreDto>>> findStoresBoundary(
+            @RequestParam(value = "minLat", required = true) double minLat,
+            @RequestParam(value = "maxLat", required = true) double maxLat,
+            @RequestParam(value = "minLon", required = true) double minLon,
+            @RequestParam(value = "maxLon", required = true) double maxLon,
+            @RequestParam(value = "zoom", required = true) int zoom
+    ) {
+        return searchService.findSearchStoresBoundary(storeIndex, minLat, maxLat, minLon, maxLon, zoom)
+                .thenApply(ResponseEntity::ok);
+    }
+
     @GetMapping("totalSearch")
     public ResponseEntity<List<SearchStoreDto>> findTotalSearch(
             @RequestParam(value = "searchText", required = false) String searchText,

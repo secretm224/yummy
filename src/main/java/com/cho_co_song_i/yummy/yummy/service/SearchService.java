@@ -17,6 +17,17 @@ public interface SearchService {
      */
     CompletableFuture<List<SearchStoreDto>> findSearchAllStores(String indexName);
     /**
+     * 특정 바운더리 내에 있는 상점 데이터를 검색해주는 함수
+     * @param indexName
+     * @param minLat
+     * @param maxLat
+     * @param minLon
+     * @param maxLon
+     * @param zoom
+     * @return
+     */
+    CompletableFuture<List<SearchStoreDto>> findSearchStoresBoundary(String indexName, double minLat, double maxLat, double minLon, double maxLon, int zoom);
+    /**
      * 가게 이름으로 단건 조회 (secretm test)
      * @param indexName Elasticsearch 인덱스명
      * @param storeName 조회할 가게 이름 (match 질의)
