@@ -38,4 +38,6 @@ public class SearchStoreDto {
     private boolean zeroPossible;
     private String tel;
     private String url;
+    @JsonProperty("category_icon")
+    private String categoryIcon;
 }
