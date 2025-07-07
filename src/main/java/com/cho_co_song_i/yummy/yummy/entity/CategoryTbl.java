@@ -30,6 +30,9 @@ public class CategoryTbl implements Persistable<Long> {
     @Column(name = "category_name", nullable = false, length = 100)
     private String categoryName;
 
+    @Column(name = "category_icon", nullable = true, length = 100)
+    private String categoryIcon;
+
     @Column(name = "reg_dt", nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
     private Date regDt;
