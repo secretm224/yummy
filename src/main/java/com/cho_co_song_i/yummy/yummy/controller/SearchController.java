@@ -37,9 +37,10 @@ public class SearchController {
             @RequestParam(value = "maxLat", required = true) double maxLat,
             @RequestParam(value = "minLon", required = true) double minLon,
             @RequestParam(value = "maxLon", required = true) double maxLon,
-            @RequestParam(value = "zoom", required = true) int zoom
+            @RequestParam(value = "zoom", required = true) int zoom,
+            @RequestParam(value = "showOnlyZeroPay", required = true) boolean showOnlyZeroPay
     ) {
-        return searchService.findSearchStoresBoundary(storeIndex, minLat, maxLat, minLon, maxLon, zoom)
+        return searchService.findSearchStoresBoundary(storeIndex, minLat, maxLat, minLon, maxLon, zoom, showOnlyZeroPay)
                 .thenApply(ResponseEntity::ok);
     }
 

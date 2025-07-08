@@ -24,9 +24,10 @@ public interface SearchService {
      * @param minLon
      * @param maxLon
      * @param zoom
+     * @param showOnlyZeroPay
      * @return
      */
-    CompletableFuture<List<SearchStoreDto>> findSearchStoresBoundary(String indexName, double minLat, double maxLat, double minLon, double maxLon, int zoom);
+    CompletableFuture<List<SearchStoreDto>> findSearchStoresBoundary(String indexName, double minLat, double maxLat, double minLon, double maxLon, int zoom, boolean showOnlyZeroPay);
     /**
      * 가게 이름으로 단건 조회 (secretm test)
      * @param indexName Elasticsearch 인덱스명

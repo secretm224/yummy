@@ -7,6 +7,7 @@ import co.elastic.clients.elasticsearch._types.GeoLocation;
 import co.elastic.clients.elasticsearch._types.LatLonGeoLocation;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
@@ -110,43 +111,91 @@ public class SearchServiceImpl implements SearchService {
                         .collect(Collectors.toList()));
     }
 
-    public CompletableFuture<List<SearchStoreDto>> findSearchStoresBoundary(String indexName, double minLat, double maxLat, double minLon, double maxLon, int zoom) {
+    public CompletableFuture<List<SearchStoreDto>> findSearchStoresBoundary(String indexName, double minLat, double maxLat, double minLon, double maxLon, int zoom, boolean showOnlyZeroPay) {
+
+        /* 필터 리스트를 동적으로 구성 */
+        List<Query> filters = new ArrayList<>();
+
+        /* 1. geo_bounding_box 필터 추가 */
+        filters.add(Query.of(f -> f
+                .geoBoundingBox(gb -> gb
+                        .field("location")
+                        .boundingBox(bb -> bb
+                                .tlbr(tlbr -> tlbr
+                                        .topLeft(GeoLocation.of(gl -> gl
+                                                .latlon(LatLonGeoLocation.of(ll -> ll
+                                                        .lat(maxLat)
+                                                        .lon(minLon)
+                                                ))
+                                        ))
+                                        .bottomRight(GeoLocation.of(gl -> gl
+                                                .latlon(LatLonGeoLocation.of(ll -> ll
+                                                        .lat(minLat)
+                                                        .lon(maxLon)
+                                                ))
+                                        ))
+                                )
+                        )
+                )
+        ));
+
+        /* 2. 조건에 따라 term 필터 추가 */
+        if (showOnlyZeroPay) {
+            filters.add(Query.of(f -> f
+                    .term(t -> t
+                            .field("zero_possible")
+                            .value(true)
+                    )
+            ));
+        }
+
+        /* 최종 SearchRequest 구성 */
         SearchRequest searchRequest = SearchRequest.of(s -> s
                 .index(indexName)
                 .size(1000)
                 .query(q -> q
                         .bool(b -> b
-                                .filter(f -> f
-                                        .geoBoundingBox(gb -> gb
-                                                .field("location")
-                                                .boundingBox(bb -> bb
-                                                        /* ▶ use the tlbr() variant here: */
-                                                        .tlbr(tlbr -> tlbr
-                                                                /* Top-left corner */
-                                                                .topLeft(GeoLocation.of(gl -> gl
-                                                                        .latlon(
-                                                                                LatLonGeoLocation.of(ll -> ll
-                                                                                        .lat(maxLat)
-                                                                                        .lon(minLon)
-                                                                                )
-                                                                        )
-                                                                ))
-                                                                /* Bottom-right corner */
-                                                                .bottomRight(GeoLocation.of(gl -> gl
-                                                                        .latlon(
-                                                                                LatLonGeoLocation.of(ll -> ll
-                                                                                        .lat(minLat)
-                                                                                        .lon(maxLon)
-                                                                                )
-                                                                        )
-                                                                ))
-                                                        )
-                                                )
-                                        )
-                                )
+                                .filter(filters)
                         )
                 )
         );
+
+//        SearchRequest searchRequest = SearchRequest.of(s -> s
+//                .index(indexName)
+//                .size(1000)
+//                .query(q -> q
+//                        .bool(b -> b
+//                                .filter(f -> f
+//                                        .geoBoundingBox(gb -> gb
+//                                                .field("location")
+//                                                .boundingBox(bb -> bb
+//                                                        /* ▶ use the tlbr() variant here: */
+//                                                        .tlbr(tlbr -> tlbr
+//                                                                /* Top-left corner */
+//                                                                .topLeft(GeoLocation.of(gl -> gl
+//                                                                        .latlon(
+//                                                                                LatLonGeoLocation.of(ll -> ll
+//                                                                                        .lat(maxLat)
+//                                                                                        .lon(minLon)
+//                                                                                )
+//                                                                        )
+//                                                                ))
+//                                                                /* Bottom-right corner */
+//                                                                .bottomRight(GeoLocation.of(gl -> gl
+//                                                                        .latlon(
+//                                                                                LatLonGeoLocation.of(ll -> ll
+//                                                                                        .lat(minLat)
+//                                                                                        .lon(maxLon)
+//                                                                                )
+//                                                                        )
+//                                                                ))
+//                                                        )
+//                                                )
+//                                        )
+//                                )
+//                        )
+//                )
+//        );
 
         return asyncSearchClient.search(searchRequest, SearchStoreDto.class)
                 .thenApply(resp -> resp.hits().hits().stream()
