@@ -1,8 +1,6 @@
 package com.cho_co_song_i.yummy.yummy.resolver;
 
-import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
-import com.cho_co_song_i.yummy.yummy.dto.StoreTypeMajorDto;
-import com.cho_co_song_i.yummy.yummy.dto.StoreTypeSubDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.SearchStoreDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
 import com.cho_co_song_i.yummy.yummy.service.StoreService;
 import lombok.RequiredArgsConstructor;

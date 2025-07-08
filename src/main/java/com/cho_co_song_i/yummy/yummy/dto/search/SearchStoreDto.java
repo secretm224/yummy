@@ -1,4 +1,4 @@
-package com.cho_co_song_i.yummy.yummy.dto;
+package com.cho_co_song_i.yummy.yummy.dto.search;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

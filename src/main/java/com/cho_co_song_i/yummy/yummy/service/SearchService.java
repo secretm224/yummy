@@ -1,21 +1,14 @@
 package com.cho_co_song_i.yummy.yummy.service;
 
-import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteDto;
-import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.SearchStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteResDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.TotalSearchDto;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public interface SearchService {
-    /**
-     * 지도 데이터 -> Elasticsearch 에서 모든 음식점 데이터를 가져와준다. -> 향후에 로직 수정 필요함.
-     * @param indexName
-     * @return
-     * @throws Exception
-     */
-    CompletableFuture<List<SearchStoreDto>> findSearchAllStores(String indexName);
     /**
      * 특정 바운더리 내에 있는 상점 데이터를 검색해주는 함수
      * @param indexName
@@ -28,6 +21,14 @@ public interface SearchService {
      * @return
      */
     CompletableFuture<List<SearchStoreDto>> findSearchStoresBoundary(String indexName, double minLat, double maxLat, double minLon, double maxLon, int zoom, boolean showOnlyZeroPay);
+    /**
+     * 자동완성 키워드 알고리즘
+     * @param indexName
+     * @param searchText
+     * @return
+     * @throws Exception
+     */
+    CompletableFuture<List<AutoCompleteResDto>> findAutoSearchKeyword(String indexName, String searchText);
     /**
      * 가게 이름으로 단건 조회 (secretm test)
      * @param indexName Elasticsearch 인덱스명
@@ -58,12 +59,13 @@ public interface SearchService {
     List<SearchStoreDto> findTotalSearchDatas(String indexName, String searchText, int selectMajor, int selectSub, boolean zeroPossible) throws Exception;
 
     /**
-     * 자동완성 키워드 알고리즘
+     * 통합검색 알고리즘 (new)
      * @param indexName
      * @param searchText
+     * @param zeroPossible
+     * @param startIdx
+     * @param pageCnt
      * @return
-     * @throws Exception
      */
-    CompletableFuture<List<AutoCompleteResDto>> findAutoSearchKeyword(String indexName, String searchText);
-
+    CompletableFuture<List<TotalSearchDto>> findTotalsearch(String indexName, String searchText, boolean zeroPossible, int startIdx, int pageCnt);
 }

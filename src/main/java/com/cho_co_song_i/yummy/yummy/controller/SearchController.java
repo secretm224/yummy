@@ -1,8 +1,8 @@
 package com.cho_co_song_i.yummy.yummy.controller;
 
-import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteDto;
-import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.SearchStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteResDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.TotalSearchDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,12 +25,6 @@ public class SearchController {
     @Value("${spring.elasticsearch.index.auto-complete}")
     private String autoKeywordIndex;
 
-    @GetMapping("allData")
-    public CompletableFuture<ResponseEntity<List<SearchStoreDto>>> findAllStores() throws Exception {
-        return searchService.findSearchAllStores(storeIndex)
-                .thenApply(ResponseEntity::ok);
-    }
-
     @GetMapping("searchStore")
     public CompletableFuture<ResponseEntity<List<SearchStoreDto>>> findStoresBoundary(
             @RequestParam(value = "minLat", required = true) double minLat,
@@ -44,7 +38,8 @@ public class SearchController {
                 .thenApply(ResponseEntity::ok);
     }
 
-    @GetMapping("totalSearch")
+    @Deprecated
+    @GetMapping("totalSearchOld")
     public ResponseEntity<List<SearchStoreDto>> findTotalSearch(
             @RequestParam(value = "searchText", required = false) String searchText,
             @RequestParam(value = "selectMajor", required = false, defaultValue = "0") int selectMajor,
@@ -53,6 +48,18 @@ public class SearchController {
     ) throws Exception {
         return ResponseEntity.ok(searchService.findTotalSearchDatas(storeIndex, searchText, selectMajor, selectSub, zeroPossible));
     }
+
+    @GetMapping("totalSearch")
+    public CompletableFuture<ResponseEntity<List<TotalSearchDto>>> findTotalSearchData(
+            @RequestParam(value = "searchText", required = true) String searchText,
+            @RequestParam(value = "zeroPossible", required = true) boolean zeroPossible,
+            @RequestParam(value = "startIdx", required = true) int startIdx,
+            @RequestParam(value = "pageCnt", required = true) int pageCnt
+    ) {
+        return searchService.findTotalsearch(storeIndex, searchText, zeroPossible, startIdx, pageCnt)
+                .thenApply(ResponseEntity::ok);
+    }
+
 
     @GetMapping("autoKeyword")
     public CompletableFuture<ResponseEntity<List<AutoCompleteResDto>>> findAutoKeyword(

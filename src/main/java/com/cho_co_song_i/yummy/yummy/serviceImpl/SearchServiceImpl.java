@@ -7,14 +7,16 @@ import co.elastic.clients.elasticsearch._types.GeoLocation;
 import co.elastic.clients.elasticsearch._types.LatLonGeoLocation;
 import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteDto;
-import com.cho_co_song_i.yummy.yummy.dto.SearchStoreDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.SearchStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteResDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.TotalSearchDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
 import com.cho_co_song_i.yummy.yummy.utils.AnalyzerUtil;
 import com.cho_co_song_i.yummy.yummy.utils.HangulQwertyConverter;
@@ -98,19 +100,6 @@ public class SearchServiceImpl implements SearchService {
         return boolQuery;
     }
 
-    public CompletableFuture<List<SearchStoreDto>> findSearchAllStores(String indexName) {
-        SearchRequest searchRequest = SearchRequest.of(s -> s
-                .index(indexName)
-                .size(10000)
-                .query(q -> q.matchAll(m -> m)));
-
-        return asyncSearchClient.search(searchRequest, SearchStoreDto.class)
-                .thenApply(response -> response.hits().hits().stream()
-                        .map(Hit::source)
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toList()));
-    }
-
     public CompletableFuture<List<SearchStoreDto>> findSearchStoresBoundary(String indexName, double minLat, double maxLat, double minLon, double maxLon, int zoom, boolean showOnlyZeroPay) {
 
         /* 필터 리스트를 동적으로 구성 */
@@ -159,43 +148,6 @@ public class SearchServiceImpl implements SearchService {
                         )
                 )
         );
-
-//        SearchRequest searchRequest = SearchRequest.of(s -> s
-//                .index(indexName)
-//                .size(1000)
-//                .query(q -> q
-//                        .bool(b -> b
-//                                .filter(f -> f
-//                                        .geoBoundingBox(gb -> gb
-//                                                .field("location")
-//                                                .boundingBox(bb -> bb
-//                                                        /* ▶ use the tlbr() variant here: */
-//                                                        .tlbr(tlbr -> tlbr
-//                                                                /* Top-left corner */
-//                                                                .topLeft(GeoLocation.of(gl -> gl
-//                                                                        .latlon(
-//                                                                                LatLonGeoLocation.of(ll -> ll
-//                                                                                        .lat(maxLat)
-//                                                                                        .lon(minLon)
-//                                                                                )
-//                                                                        )
-//                                                                ))
-//                                                                /* Bottom-right corner */
-//                                                                .bottomRight(GeoLocation.of(gl -> gl
-//                                                                        .latlon(
-//                                                                                LatLonGeoLocation.of(ll -> ll
-//                                                                                        .lat(minLat)
-//                                                                                        .lon(maxLon)
-//                                                                                )
-//                                                                        )
-//                                                                ))
-//                                                        )
-//                                                )
-//                                        )
-//                                )
-//                        )
-//                )
-//        );
 
         return asyncSearchClient.search(searchRequest, SearchStoreDto.class)
                 .thenApply(resp -> resp.hits().hits().stream()
@@ -372,5 +324,58 @@ public class SearchServiceImpl implements SearchService {
 
                     return CompletableFuture.completedFuture(resultResp);
                 });
+    }
+
+
+    public CompletableFuture<List<TotalSearchDto>> findTotalsearch(String indexName, String searchText, boolean zeroPossible, int startIdx, int pageCnt) {
+
+        /* 검색금지단어 -> 향후 추가 예정 */
+
+
+        /* 필터 리스트를 동적으로 구성 */
+        List<Query> filters = new ArrayList<>();
+
+        /* 1. term filter 추가 (zero_possible: true) */
+        filters.add(Query.of(f -> f
+                .term(t -> t
+                        .field("zero_possible")
+                        .value(true)
+                )
+        ));
+
+        /* 2. multi_match query (must) */
+        Query mustQuery = Query.of(q -> q
+                .multiMatch(mm -> mm
+                        .query(searchText)
+                        .fields("name^3", "road_address", "address", "category_name")
+                        .operator(Operator.And)
+                        .type(TextQueryType.CrossFields)
+                )
+        );
+
+        /* 3. 최종 SearchRequest 생성 */
+        SearchRequest searchRequest = SearchRequest.of(s -> s
+                .index(indexName)
+                .from(startIdx)
+                .size(pageCnt)
+                .source(src -> src
+                        .filter(f -> f
+                                .includes("address", "lat", "lng", "name", "road_address", "seq", "tel", "url", "zeroPossible")
+                        )
+                )
+                .query(q -> q
+                        .bool(b -> b
+                                .must(mustQuery)
+                                .filter(filters)
+                        )
+                )
+        );
+
+        return asyncSearchClient.search(searchRequest, TotalSearchDto.class)
+                .thenApply(response -> response.hits().hits().stream()
+                        .map(Hit::source)
+                        .filter(Objects::nonNull)
+                        .toList()
+                );
     }
 }
