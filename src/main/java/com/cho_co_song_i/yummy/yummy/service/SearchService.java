@@ -2,6 +2,7 @@ package com.cho_co_song_i.yummy.yummy.service;
 
 import com.cho_co_song_i.yummy.yummy.dto.search.SearchStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteResDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.SubwayInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.search.TotalSearchDto;
 
 import java.util.List;
@@ -68,4 +69,17 @@ public interface SearchService {
      * @return
      */
     CompletableFuture<List<TotalSearchDto>> findTotalsearch(String indexName, String searchText, boolean zeroPossible, int startIdx, int pageCnt);
+
+    /**
+     * 맵에 지하철을 표시하기 위한 검색 메소드
+     * @param indexName
+     * @param minLat
+     * @param maxLat
+     * @param minLon
+     * @param maxLon
+     * @param zoom -> 향후에 필요해질 수 있음
+     * @return
+     */
+    CompletableFuture<List<SubwayInfoDto>> findSubwayInfoSearch(String indexName, double minLat, double maxLat, double minLon, double maxLon, int zoom);
+
 }

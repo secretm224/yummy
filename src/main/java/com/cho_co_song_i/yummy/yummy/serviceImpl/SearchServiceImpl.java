@@ -13,10 +13,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
-import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteDto;
-import com.cho_co_song_i.yummy.yummy.dto.search.SearchStoreDto;
-import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteResDto;
-import com.cho_co_song_i.yummy.yummy.dto.search.TotalSearchDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.*;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
 import com.cho_co_song_i.yummy.yummy.utils.AnalyzerUtil;
 import com.cho_co_song_i.yummy.yummy.utils.HangulQwertyConverter;
@@ -100,6 +97,20 @@ public class SearchServiceImpl implements SearchService {
         return boolQuery;
     }
 
+    /**
+     * elasticsearch async 유틸 공통함수 추출
+     * @param futureResponse
+     * @return
+     * @param <T>
+     */
+    private static <T> CompletableFuture<List<T>> extractSources(CompletableFuture<SearchResponse<T>> futureResponse) {
+        return futureResponse.thenApply(response -> response.hits().hits().stream()
+                .map(Hit::source)
+                .filter(Objects::nonNull)
+                .toList()
+        );
+    }
+
     public CompletableFuture<List<SearchStoreDto>> findSearchStoresBoundary(String indexName, double minLat, double maxLat, double minLon, double maxLon, int zoom, boolean showOnlyZeroPay) {
 
         /* 필터 리스트를 동적으로 구성 */
@@ -138,7 +149,7 @@ public class SearchServiceImpl implements SearchService {
             ));
         }
 
-        /* 최종 SearchRequest 구성 */
+        /* 3. 최종 SearchRequest 구성 */
         SearchRequest searchRequest = SearchRequest.of(s -> s
                 .index(indexName)
                 .size(1000)
@@ -149,11 +160,15 @@ public class SearchServiceImpl implements SearchService {
                 )
         );
 
-        return asyncSearchClient.search(searchRequest, SearchStoreDto.class)
-                .thenApply(resp -> resp.hits().hits().stream()
-                        .map(Hit::source)
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toList()));
+        return extractSources(
+                asyncSearchClient.search(searchRequest, SearchStoreDto.class)
+        );
+
+//        return asyncSearchClient.search(searchRequest, SearchStoreDto.class)
+//                .thenApply(resp -> resp.hits().hits().stream()
+//                        .map(Hit::source)
+//                        .filter(Objects::nonNull)
+//                        .collect(Collectors.toList()));
     }
 
     public Optional<SearchStoreDto> findStoreByName(String indexName, String storeName) throws Exception {
@@ -264,12 +279,16 @@ public class SearchServiceImpl implements SearchService {
                 )
                 .size(topCnt)
         );
-        return asyncSearchClient.search(searchRequest, AutoCompleteDto.class)
-                .thenApply(response -> response.hits().hits().stream()
-                        .map(Hit::source)
-                        .filter(Objects::nonNull)
-                        .toList()
-                );
+//        return asyncSearchClient.search(searchRequest, AutoCompleteDto.class)
+//                .thenApply(response -> response.hits().hits().stream()
+//                        .map(Hit::source)
+//                        .filter(Objects::nonNull)
+//                        .toList()
+//                );
+
+        return extractSources(
+                asyncSearchClient.search(searchRequest, AutoCompleteDto.class)
+        );
     }
 
     /**
@@ -371,11 +390,64 @@ public class SearchServiceImpl implements SearchService {
                 )
         );
 
-        return asyncSearchClient.search(searchRequest, TotalSearchDto.class)
-                .thenApply(response -> response.hits().hits().stream()
-                        .map(Hit::source)
-                        .filter(Objects::nonNull)
-                        .toList()
-                );
+//        return asyncSearchClient.search(searchRequest, TotalSearchDto.class)
+//                .thenApply(response -> response.hits().hits().stream()
+//                        .map(Hit::source)
+//                        .filter(Objects::nonNull)
+//                        .toList()
+//                );
+
+        return extractSources(
+                asyncSearchClient.search(searchRequest, TotalSearchDto.class)
+        );
+    }
+
+    public CompletableFuture<List<SubwayInfoDto>> findSubwayInfoSearch(String indexName, double minLat, double maxLat, double minLon, double maxLon, int zoom) {
+
+        /* 필터 리스트를 동적으로 구성 */
+        List<Query> filters = new ArrayList<>();
+
+        /* 1. geo_bounding_box 필터 추가 */
+        filters.add(Query.of(f -> f
+                .geoBoundingBox(gb -> gb
+                        .field("location")
+                        .boundingBox(bb -> bb
+                                .tlbr(tlbr -> tlbr
+                                        .topLeft(GeoLocation.of(gl -> gl
+                                                .latlon(LatLonGeoLocation.of(ll -> ll
+                                                        .lat(maxLat)
+                                                        .lon(minLon)
+                                                ))
+                                        ))
+                                        .bottomRight(GeoLocation.of(gl -> gl
+                                                .latlon(LatLonGeoLocation.of(ll -> ll
+                                                        .lat(minLat)
+                                                        .lon(maxLon)
+                                                ))
+                                        ))
+                                )
+                        )
+                )
+        ));
+
+        SearchRequest searchRequest = SearchRequest.of(s -> s
+                .index(indexName)
+                .size(1000)
+                .query(q -> q
+                        .bool(b -> b
+                                .filter(filters)
+                        )
+                )
+        );
+
+//        return asyncSearchClient.search(searchRequest, SubwayInfoDto.class)
+//                .thenApply(resp -> resp.hits().hits().stream()
+//                        .map(Hit::source)
+//                        .filter(Objects::nonNull)
+//                        .collect(Collectors.toList()));
+
+        return extractSources(
+                asyncSearchClient.search(searchRequest, SubwayInfoDto.class)
+        );
     }
 }

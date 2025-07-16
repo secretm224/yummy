@@ -2,6 +2,7 @@ package com.cho_co_song_i.yummy.yummy.controller;
 
 import com.cho_co_song_i.yummy.yummy.dto.search.SearchStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteResDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.SubwayInfoDto;
 import com.cho_co_song_i.yummy.yummy.dto.search.TotalSearchDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,8 @@ public class SearchController {
     private String storeIndex;
     @Value("${spring.elasticsearch.index.auto-complete}")
     private String autoKeywordIndex;
+    @Value("${spring.elasticsearch.index.subway}")
+    private String subwayIndex;
 
     @GetMapping("searchStore")
     public CompletableFuture<ResponseEntity<List<SearchStoreDto>>> findStoresBoundary(
@@ -66,6 +69,18 @@ public class SearchController {
             @RequestParam(value = "searchText", required = false) String searchText
     ) {
         return searchService.findAutoSearchKeyword(autoKeywordIndex, searchText)
+                .thenApply(ResponseEntity::ok);
+    }
+
+    @GetMapping("searchSubway")
+    public CompletableFuture<ResponseEntity<List<SubwayInfoDto>>> findSubwayInfo(
+            @RequestParam(value = "minLat", required = true) double minLat,
+            @RequestParam(value = "maxLat", required = true) double maxLat,
+            @RequestParam(value = "minLon", required = true) double minLon,
+            @RequestParam(value = "maxLon", required = true) double maxLon,
+            @RequestParam(value = "zoom", required = true) int zoom
+    ) {
+        return searchService.findSubwayInfoSearch(subwayIndex, minLat, maxLat, minLon, maxLon, zoom)
                 .thenApply(ResponseEntity::ok);
     }
 }
