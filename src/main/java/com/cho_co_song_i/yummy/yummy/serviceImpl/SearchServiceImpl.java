@@ -163,12 +163,6 @@ public class SearchServiceImpl implements SearchService {
         return extractSources(
                 asyncSearchClient.search(searchRequest, SearchStoreDto.class)
         );
-
-//        return asyncSearchClient.search(searchRequest, SearchStoreDto.class)
-//                .thenApply(resp -> resp.hits().hits().stream()
-//                        .map(Hit::source)
-//                        .filter(Objects::nonNull)
-//                        .collect(Collectors.toList()));
     }
 
     public Optional<SearchStoreDto> findStoreByName(String indexName, String storeName) throws Exception {
@@ -279,12 +273,6 @@ public class SearchServiceImpl implements SearchService {
                 )
                 .size(topCnt)
         );
-//        return asyncSearchClient.search(searchRequest, AutoCompleteDto.class)
-//                .thenApply(response -> response.hits().hits().stream()
-//                        .map(Hit::source)
-//                        .filter(Objects::nonNull)
-//                        .toList()
-//                );
 
         return extractSources(
                 asyncSearchClient.search(searchRequest, AutoCompleteDto.class)
@@ -390,13 +378,6 @@ public class SearchServiceImpl implements SearchService {
                 )
         );
 
-//        return asyncSearchClient.search(searchRequest, TotalSearchDto.class)
-//                .thenApply(response -> response.hits().hits().stream()
-//                        .map(Hit::source)
-//                        .filter(Objects::nonNull)
-//                        .toList()
-//                );
-
         return extractSources(
                 asyncSearchClient.search(searchRequest, TotalSearchDto.class)
         );
@@ -439,13 +420,6 @@ public class SearchServiceImpl implements SearchService {
                         )
                 )
         );
-
-//        return asyncSearchClient.search(searchRequest, SubwayInfoDto.class)
-//                .thenApply(resp -> resp.hits().hits().stream()
-//                        .map(Hit::source)
-//                        .filter(Objects::nonNull)
-//                        .collect(Collectors.toList()));
-
         return extractSources(
                 asyncSearchClient.search(searchRequest, SubwayInfoDto.class)
         );

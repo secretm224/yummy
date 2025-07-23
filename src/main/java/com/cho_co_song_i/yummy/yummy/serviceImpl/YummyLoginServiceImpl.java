@@ -207,8 +207,6 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         /* 1. 로그인 시도 기록 */
         eventProducerService.produceLoginAttemptEvent(req);
 
-        String type = loginDto.getOauthType();
-
         /* 2. Oauth 채널에 맞는 로그인 서비스 가져오기 */
         LoginService loginService = loginServiceFactory.getService(loginDto.getOauthType());
 
