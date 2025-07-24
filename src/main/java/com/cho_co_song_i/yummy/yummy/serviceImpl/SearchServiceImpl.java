@@ -19,6 +19,7 @@ import com.cho_co_song_i.yummy.yummy.utils.AnalyzerUtil;
 import com.cho_co_song_i.yummy.yummy.utils.HangulQwertyConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -30,6 +31,13 @@ import java.util.stream.Collectors;
 @Slf4j
 @RequiredArgsConstructor
 public class SearchServiceImpl implements SearchService {
+
+    @Value("${spring.elasticsearch.index.store}")
+    private String storeIndex;
+    @Value("${spring.elasticsearch.index.auto-complete}")
+    private String autoKeywordIndex;
+    @Value("${spring.elasticsearch.index.subway}")
+    private String subwayIndex;
 
     private final ElasticsearchClient searchClient;
     private final ElasticsearchAsyncClient asyncSearchClient;
@@ -111,136 +119,6 @@ public class SearchServiceImpl implements SearchService {
         );
     }
 
-    public CompletableFuture<List<SearchStoreDto>> findSearchStoresBoundary(String indexName, double minLat, double maxLat, double minLon, double maxLon, int zoom, boolean showOnlyZeroPay) {
-
-        /* 필터 리스트를 동적으로 구성 */
-        List<Query> filters = new ArrayList<>();
-
-        /* 1. geo_bounding_box 필터 추가 */
-        filters.add(Query.of(f -> f
-                .geoBoundingBox(gb -> gb
-                        .field("location")
-                        .boundingBox(bb -> bb
-                                .tlbr(tlbr -> tlbr
-                                        .topLeft(GeoLocation.of(gl -> gl
-                                                .latlon(LatLonGeoLocation.of(ll -> ll
-                                                        .lat(maxLat)
-                                                        .lon(minLon)
-                                                ))
-                                        ))
-                                        .bottomRight(GeoLocation.of(gl -> gl
-                                                .latlon(LatLonGeoLocation.of(ll -> ll
-                                                        .lat(minLat)
-                                                        .lon(maxLon)
-                                                ))
-                                        ))
-                                )
-                        )
-                )
-        ));
-
-        /* 2. 조건에 따라 term 필터 추가 */
-        if (showOnlyZeroPay) {
-            filters.add(Query.of(f -> f
-                    .term(t -> t
-                            .field("zero_possible")
-                            .value(true)
-                    )
-            ));
-        }
-
-        /* 3. 최종 SearchRequest 구성 */
-        SearchRequest searchRequest = SearchRequest.of(s -> s
-                .index(indexName)
-                .size(1000)
-                .query(q -> q
-                        .bool(b -> b
-                                .filter(filters)
-                        )
-                )
-        );
-
-        return extractSources(
-                asyncSearchClient.search(searchRequest, SearchStoreDto.class)
-        );
-    }
-
-    public Optional<SearchStoreDto> findStoreByName(String indexName, String storeName) throws Exception {
-        SearchRequest searchRequest = SearchRequest.of(s -> s
-                .index(indexName)
-                .size(1)
-                .query(q -> q
-                        .match(m -> m
-                                .field("name")
-                                .query(FieldValue.of(storeName))// 을 쓰면 variant 가 자동 지정됩니다
-                                //.query(FieldValue.of(fv -> fv.stringValue(storeName)))
-                        )
-                )
-        );
-
-        SearchResponse<SearchStoreDto> resp = searchClient.search(searchRequest, SearchStoreDto.class);
-
-        return resp.hits().hits().stream()
-                .map(Hit::source)
-                .filter(Objects::nonNull)
-                .findFirst();
-    }
-
-
-    public List<SearchStoreDto> findStoresByPage (
-            String indexName,
-            int page,
-            int size
-    ) throws Exception {
-        int from = (page - 1) * size;
-
-        SearchRequest searchRequest = SearchRequest.of(s -> s
-                .index(indexName)
-                .from(from)       // 건너뛸 도큐먼트 수
-                .size(size)
-                .sort(so -> so
-                        .field(f -> f
-                                .field("seq")
-                                .order(SortOrder.Asc)
-                        )
-                )// 한 번에 가져올 도큐먼트 수
-                .query(q -> q
-                        .matchAll(ma -> ma)    // 전체 조회, 필요에 따라 필터나 match 쿼리로 대체 가능
-                )
-        );
-
-        SearchResponse<SearchStoreDto> resp = searchClient.search(searchRequest, SearchStoreDto.class);
-
-        return resp.hits().hits().stream()
-                .map(Hit::source)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-    }
-
-    public List<SearchStoreDto> findTotalSearchDatas(String indexName, String searchText, int selectMajor, int selectSub, boolean zeroPossible) throws Exception {
-
-        BoolQuery.Builder boolQuery = getBuilder(selectMajor, selectSub, zeroPossible);
-
-        if (!searchText.isEmpty()) {
-            boolQuery.should(m -> m.match(mq -> mq.field("name").query(searchText).boost(2.0f)));
-            boolQuery.should(m -> m.match(mq -> mq.field("address").query(searchText).boost(1.5f)));
-            boolQuery.minimumShouldMatch("1");
-        }
-
-        SearchRequest searchRequest = SearchRequest.of(s -> s
-                .index(indexName)
-                .query(q -> q.bool(boolQuery.build()))
-                .size(10000)
-        );
-
-        SearchResponse<SearchStoreDto> resp = searchClient.search(searchRequest, SearchStoreDto.class);
-
-        return resp.hits().hits().stream()
-                .map(Hit::source)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-    }
-
     /**
      *
      * @param array
@@ -256,14 +134,13 @@ public class SearchServiceImpl implements SearchService {
 
     /**
      * score 순으로 특정 문자열을 검색해주는 함수
-     * @param indexName
      * @param searchText
      * @param topCnt
      * @return
      */
-    private CompletableFuture<List<AutoCompleteDto>> findTopAutoSearchKeyword(String indexName, String searchText, int topCnt) {
+    private CompletableFuture<List<AutoCompleteDto>> findTopAutoSearchKeyword(String searchText, int topCnt) {
         SearchRequest searchRequest = SearchRequest.of(s -> s
-                .index(indexName)
+                .index(autoKeywordIndex)
                 .query(q -> q
                         .multiMatch(m -> m
                                 .query(searchText)
@@ -315,15 +192,144 @@ public class SearchServiceImpl implements SearchService {
         return resultResp;
     }
 
-    public CompletableFuture<List<AutoCompleteResDto>> findAutoSearchKeyword(String indexName, String searchText) {
+    public CompletableFuture<List<SearchStoreDto>> findSearchStoresBoundary(double minLat, double maxLat, double minLon, double maxLon, int zoom, boolean showOnlyZeroPay) {
 
-        return findTopAutoSearchKeyword(indexName, searchText, 15)
+        /* 필터 리스트를 동적으로 구성 */
+        List<Query> filters = new ArrayList<>();
+
+        /* 1. geo_bounding_box 필터 추가 */
+        filters.add(Query.of(f -> f
+                .geoBoundingBox(gb -> gb
+                        .field("location")
+                        .boundingBox(bb -> bb
+                                .tlbr(tlbr -> tlbr
+                                        .topLeft(GeoLocation.of(gl -> gl
+                                                .latlon(LatLonGeoLocation.of(ll -> ll
+                                                        .lat(maxLat)
+                                                        .lon(minLon)
+                                                ))
+                                        ))
+                                        .bottomRight(GeoLocation.of(gl -> gl
+                                                .latlon(LatLonGeoLocation.of(ll -> ll
+                                                        .lat(minLat)
+                                                        .lon(maxLon)
+                                                ))
+                                        ))
+                                )
+                        )
+                )
+        ));
+
+        /* 2. 조건에 따라 term 필터 추가 */
+        if (showOnlyZeroPay) {
+            filters.add(Query.of(f -> f
+                    .term(t -> t
+                            .field("zero_possible")
+                            .value(true)
+                    )
+            ));
+        }
+
+        /* 3. 최종 SearchRequest 구성 */
+        SearchRequest searchRequest = SearchRequest.of(s -> s
+                .index(storeIndex)
+                .size(1000)
+                .query(q -> q
+                        .bool(b -> b
+                                .filter(filters)
+                        )
+                )
+        );
+
+        return extractSources(
+                asyncSearchClient.search(searchRequest, SearchStoreDto.class)
+        );
+    }
+
+    public Optional<SearchStoreDto> findStoreByName(String storeName) throws Exception {
+        SearchRequest searchRequest = SearchRequest.of(s -> s
+                .index(storeIndex)
+                .size(1)
+                .query(q -> q
+                        .match(m -> m
+                                .field("name")
+                                .query(FieldValue.of(storeName))// 을 쓰면 variant 가 자동 지정됩니다
+                                //.query(FieldValue.of(fv -> fv.stringValue(storeName)))
+                        )
+                )
+        );
+
+        SearchResponse<SearchStoreDto> resp = searchClient.search(searchRequest, SearchStoreDto.class);
+
+        return resp.hits().hits().stream()
+                .map(Hit::source)
+                .filter(Objects::nonNull)
+                .findFirst();
+    }
+
+
+    public List<SearchStoreDto> findStoresByPage (
+            int page,
+            int size
+    ) throws Exception {
+        int from = (page - 1) * size;
+
+        SearchRequest searchRequest = SearchRequest.of(s -> s
+                .index(storeIndex)
+                .from(from)       // 건너뛸 도큐먼트 수
+                .size(size)
+                .sort(so -> so
+                        .field(f -> f
+                                .field("seq")
+                                .order(SortOrder.Asc)
+                        )
+                )// 한 번에 가져올 도큐먼트 수
+                .query(q -> q
+                        .matchAll(ma -> ma)    // 전체 조회, 필요에 따라 필터나 match 쿼리로 대체 가능
+                )
+        );
+
+        SearchResponse<SearchStoreDto> resp = searchClient.search(searchRequest, SearchStoreDto.class);
+
+        return resp.hits().hits().stream()
+                .map(Hit::source)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    public List<SearchStoreDto> findTotalSearchDatas(String searchText, int selectMajor, int selectSub, boolean zeroPossible) throws Exception {
+
+        BoolQuery.Builder boolQuery = getBuilder(selectMajor, selectSub, zeroPossible);
+
+        if (!searchText.isEmpty()) {
+            boolQuery.should(m -> m.match(mq -> mq.field("name").query(searchText).boost(2.0f)));
+            boolQuery.should(m -> m.match(mq -> mq.field("address").query(searchText).boost(1.5f)));
+            boolQuery.minimumShouldMatch("1");
+        }
+
+        SearchRequest searchRequest = SearchRequest.of(s -> s
+                .index(storeIndex)
+                .query(q -> q.bool(boolQuery.build()))
+                .size(10000)
+        );
+
+        SearchResponse<SearchStoreDto> resp = searchClient.search(searchRequest, SearchStoreDto.class);
+
+        return resp.hits().hits().stream()
+                .map(Hit::source)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    public CompletableFuture<List<AutoCompleteResDto>> findAutoSearchKeyword(String searchText) {
+
+        return findTopAutoSearchKeyword(searchText, 15)
                 .thenCompose(searchResp -> {
                     List<AutoCompleteResDto> resultResp = getSimilarAutoCompleteResults(searchText, searchResp);
 
                     if (resultResp.isEmpty() && AnalyzerUtil.isAllEnglish(searchText)) {
                         String convertKeyword = HangulQwertyConverter.convertQwertyToHangul(searchText);
-                        return findTopAutoSearchKeyword(indexName, convertKeyword, 15)
+                        return findTopAutoSearchKeyword(convertKeyword, 15)
                                 .thenApply(fallbackResp ->
                                         getSimilarAutoCompleteResults(convertKeyword, fallbackResp)
                                 );
@@ -334,10 +340,28 @@ public class SearchServiceImpl implements SearchService {
     }
 
 
-    public CompletableFuture<List<TotalSearchDto>> findTotalsearch(String indexName, String searchText, boolean zeroPossible, int startIdx, int pageCnt) {
+    public CompletableFuture<TotalSearchDto> findTotalsearch(String searchText, boolean zeroPossible, int startIdx, int pageCnt) {
 
         /* 검색금지단어 -> 향후 추가 예정 */
+        CompletableFuture<List<StoreSearchDto>> storeFutures = findTotalStoreSearch(searchText, zeroPossible, startIdx, pageCnt);
+        CompletableFuture<List<SubwayInfoDto>> subwayFutures = findTotalSubwaySearch(searchText);
 
+        return CompletableFuture.allOf(storeFutures, subwayFutures)
+                .thenApply(voided -> {
+                    List<StoreSearchDto> storeList = storeFutures.join();
+                    List<SubwayInfoDto> subwayList = subwayFutures.join();
+
+                    return TotalSearchDto
+                            .builder()
+                            .storeSearchDtoList(storeList)
+                            .subwayInfoDtoList(subwayList)
+                            .build();
+
+                });
+
+    }
+
+    private CompletableFuture<List<StoreSearchDto>> findTotalStoreSearch(String searchText, boolean zeroPossible, int startIdx, int pageCnt) {
 
         /* 필터 리스트를 동적으로 구성 */
         List<Query> filters = new ArrayList<>();
@@ -362,7 +386,7 @@ public class SearchServiceImpl implements SearchService {
 
         /* 3. 최종 SearchRequest 생성 */
         SearchRequest searchRequest = SearchRequest.of(s -> s
-                .index(indexName)
+                .index(storeIndex)
                 .from(startIdx)
                 .size(pageCnt)
                 .source(src -> src
@@ -379,11 +403,46 @@ public class SearchServiceImpl implements SearchService {
         );
 
         return extractSources(
-                asyncSearchClient.search(searchRequest, TotalSearchDto.class)
+                asyncSearchClient.search(searchRequest, StoreSearchDto.class)
         );
     }
 
-    public CompletableFuture<List<SubwayInfoDto>> findSubwayInfoSearch(String indexName, double minLat, double maxLat, double minLon, double maxLon, int zoom) {
+    private CompletableFuture<List<SubwayInfoDto>> findTotalSubwaySearch(String searchText) {
+
+        /* Must Query */
+        Query mustQuery = Query.of(q -> q
+                .multiMatch(mm -> mm
+                        .query(searchText)
+                        .fields("station_name^50", "station_eng_name^10", "subway_line^2", "station_load_addr")
+                        .operator(Operator.And)
+                        .type(TextQueryType.BestFields)
+                )
+        );
+
+        /* Search Query */
+        SearchRequest searchRequest = SearchRequest.of(s -> s
+                .index(subwayIndex)
+                .size(5)
+                .source(src -> src
+                        .filter(f -> f
+                                .includes("seq", "station_name", "station_load_addr", "station_eng_name", "subway_line")
+                        )
+                )
+                .query(q -> q
+                        .bool(b -> b
+                                .must(mustQuery)
+                        )
+                )
+        );
+
+        return extractSources(
+                asyncSearchClient.search(searchRequest, SubwayInfoDto.class)
+        );
+
+    }
+
+
+    public CompletableFuture<List<SubwayInfoDto>> findSubwayInfoSearch(double minLat, double maxLat, double minLon, double maxLon, int zoom) {
 
         /* 필터 리스트를 동적으로 구성 */
         List<Query> filters = new ArrayList<>();
@@ -412,7 +471,7 @@ public class SearchServiceImpl implements SearchService {
         ));
 
         SearchRequest searchRequest = SearchRequest.of(s -> s
-                .index(indexName)
+                .index(subwayIndex)
                 .size(1000)
                 .query(q -> q
                         .bool(b -> b
@@ -420,6 +479,7 @@ public class SearchServiceImpl implements SearchService {
                         )
                 )
         );
+
         return extractSources(
                 asyncSearchClient.search(searchRequest, SubwayInfoDto.class)
         );

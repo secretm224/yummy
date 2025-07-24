@@ -3,7 +3,7 @@ package com.cho_co_song_i.yummy.yummy.controller;
 import com.cho_co_song_i.yummy.yummy.dto.search.SearchStoreDto;
 import com.cho_co_song_i.yummy.yummy.dto.search.AutoCompleteResDto;
 import com.cho_co_song_i.yummy.yummy.dto.search.SubwayInfoDto;
-import com.cho_co_song_i.yummy.yummy.dto.search.TotalSearchDto;
+import com.cho_co_song_i.yummy.yummy.dto.search.StoreSearchDto;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,12 +21,12 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public class SearchController {
     private final SearchService searchService;
-    @Value("${spring.elasticsearch.index.store}")
-    private String storeIndex;
-    @Value("${spring.elasticsearch.index.auto-complete}")
-    private String autoKeywordIndex;
-    @Value("${spring.elasticsearch.index.subway}")
-    private String subwayIndex;
+//    @Value("${spring.elasticsearch.index.store}")
+//    private String storeIndex;
+//    @Value("${spring.elasticsearch.index.auto-complete}")
+//    private String autoKeywordIndex;
+//    @Value("${spring.elasticsearch.index.subway}")
+//    private String subwayIndex;
 
     @GetMapping("searchStore")
     public CompletableFuture<ResponseEntity<List<SearchStoreDto>>> findStoresBoundary(
@@ -37,7 +37,7 @@ public class SearchController {
             @RequestParam(value = "zoom", required = true) int zoom,
             @RequestParam(value = "showOnlyZeroPay", required = true) boolean showOnlyZeroPay
     ) {
-        return searchService.findSearchStoresBoundary(storeIndex, minLat, maxLat, minLon, maxLon, zoom, showOnlyZeroPay)
+        return searchService.findSearchStoresBoundary(minLat, maxLat, minLon, maxLon, zoom, showOnlyZeroPay)
                 .thenApply(ResponseEntity::ok);
     }
 
@@ -49,17 +49,17 @@ public class SearchController {
             @RequestParam(value = "selectSub", required = false, defaultValue = "0") int selectSub,
             @RequestParam(value = "zeroPossible", required = false, defaultValue = "false") boolean zeroPossible
     ) throws Exception {
-        return ResponseEntity.ok(searchService.findTotalSearchDatas(storeIndex, searchText, selectMajor, selectSub, zeroPossible));
+        return ResponseEntity.ok(searchService.findTotalSearchDatas(searchText, selectMajor, selectSub, zeroPossible));
     }
 
     @GetMapping("totalSearch")
-    public CompletableFuture<ResponseEntity<List<TotalSearchDto>>> findTotalSearchData(
+    public CompletableFuture<ResponseEntity<List<StoreSearchDto>>> findTotalSearchData(
             @RequestParam(value = "searchText", required = true) String searchText,
             @RequestParam(value = "zeroPossible", required = true) boolean zeroPossible,
             @RequestParam(value = "startIdx", required = true) int startIdx,
             @RequestParam(value = "pageCnt", required = true) int pageCnt
     ) {
-        return searchService.findTotalsearch(storeIndex, searchText, zeroPossible, startIdx, pageCnt)
+        return searchService.findTotalsearch(searchText, zeroPossible, startIdx, pageCnt)
                 .thenApply(ResponseEntity::ok);
     }
 
@@ -68,7 +68,7 @@ public class SearchController {
     public CompletableFuture<ResponseEntity<List<AutoCompleteResDto>>> findAutoKeyword(
             @RequestParam(value = "searchText", required = false) String searchText
     ) {
-        return searchService.findAutoSearchKeyword(autoKeywordIndex, searchText)
+        return searchService.findAutoSearchKeyword(searchText)
                 .thenApply(ResponseEntity::ok);
     }
 
@@ -80,7 +80,7 @@ public class SearchController {
             @RequestParam(value = "maxLon", required = true) double maxLon,
             @RequestParam(value = "zoom", required = true) int zoom
     ) {
-        return searchService.findSubwayInfoSearch(subwayIndex, minLat, maxLat, minLon, maxLon, zoom)
+        return searchService.findSubwayInfoSearch(minLat, maxLat, minLon, maxLon, zoom)
                 .thenApply(ResponseEntity::ok);
     }
 }
