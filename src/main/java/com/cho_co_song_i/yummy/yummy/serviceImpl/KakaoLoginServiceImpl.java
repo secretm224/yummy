@@ -8,7 +8,7 @@ import com.cho_co_song_i.yummy.yummy.dto.oauth.UserOAuthResponse;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.OauthChannelStatus;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
-import com.cho_co_song_i.yummy.yummy.model.KakaoToken;
+import com.cho_co_song_i.yummy.yummy.dto.oauth.kakao.KakaoToken;
 import com.cho_co_song_i.yummy.yummy.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +52,6 @@ public class KakaoLoginServiceImpl implements LoginService {
 
     private final RestTemplate restTemplate;
     private final RedisAdapter redisAdapter;
-
     private final UserService userService;
 
     /**

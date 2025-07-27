@@ -297,30 +297,6 @@ public class SearchServiceImpl implements SearchService {
                 .collect(Collectors.toList());
     }
 
-    public List<SearchStoreDto> findTotalSearchDatas(String searchText, int selectMajor, int selectSub, boolean zeroPossible) throws Exception {
-
-        BoolQuery.Builder boolQuery = getBuilder(selectMajor, selectSub, zeroPossible);
-
-        if (!searchText.isEmpty()) {
-            boolQuery.should(m -> m.match(mq -> mq.field("name").query(searchText).boost(2.0f)));
-            boolQuery.should(m -> m.match(mq -> mq.field("address").query(searchText).boost(1.5f)));
-            boolQuery.minimumShouldMatch("1");
-        }
-
-        SearchRequest searchRequest = SearchRequest.of(s -> s
-                .index(storeIndex)
-                .query(q -> q.bool(boolQuery.build()))
-                .size(10000)
-        );
-
-        SearchResponse<SearchStoreDto> resp = searchClient.search(searchRequest, SearchStoreDto.class);
-
-        return resp.hits().hits().stream()
-                .map(Hit::source)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-    }
-
     public CompletableFuture<List<AutoCompleteResDto>> findAutoSearchKeyword(String searchText) {
 
         return findTopAutoSearchKeyword(searchText, 15)
@@ -343,7 +319,11 @@ public class SearchServiceImpl implements SearchService {
     public CompletableFuture<TotalSearchDto> findTotalsearch(String searchText, boolean zeroPossible, int startIdx, int pageCnt) {
 
         /* 검색금지단어 -> 향후 추가 예정 */
+
+        /* 1. 상점 관련 검색결과*/
         CompletableFuture<List<StoreSearchDto>> storeFutures = findTotalStoreSearch(searchText, zeroPossible, startIdx, pageCnt);
+
+        /* 2. 지하철역 관련 검색 결과 */
         CompletableFuture<List<SubwayInfoDto>> subwayFutures = findTotalSubwaySearch(searchText);
 
         return CompletableFuture.allOf(storeFutures, subwayFutures)
@@ -356,7 +336,6 @@ public class SearchServiceImpl implements SearchService {
                             .storeSearchDtoList(storeList)
                             .subwayInfoDtoList(subwayList)
                             .build();
-
                 });
 
     }

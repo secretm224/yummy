@@ -133,11 +133,16 @@ public class YummyLoginServiceImpl implements YummyLoginService {
 
         String idToken = "";
 
+        /* Kakao 로그인의 경우 */
         if (userOAuthResponse.getLoginChannel() == OauthChannelStatus.kakao) {
             idToken = userOAuthResponse.getKakaoOauthInfoDto().getOauthUserSimpleInfoDto().getUserTokenId();
         }
-        /* 여기에 이어서 다른 채널 로직도 짜주면 된다...*/
+        /* Google 로그인의 경우 */
+        if (userOAuthResponse.getLoginChannel() == OauthChannelStatus.google) {
+            idToken = userOAuthResponse.getGoogleOauthInfoDto().getOauthUserSimpleInfoDto().getUserTokenId();
+        }
 
+        /* 여기에 이어서 다른 채널 로직도 짜주면 된다...*/
         jwtProvider.generateTempOauthJwtCookie(res, idToken, userOAuthResponse.getLoginChannel());
     }
 

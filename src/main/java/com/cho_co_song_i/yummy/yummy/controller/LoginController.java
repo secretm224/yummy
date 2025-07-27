@@ -78,9 +78,16 @@ public class LoginController {
      */
     @PostMapping("/oauth2/kakao")
     @ResponseBody
-    public PublicStatus kakaoLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) throws Exception{
+    public PublicStatus kakaoLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) throws Exception {
         return yummyLoginService.processOauthLogin(loginDto, res, req);
     }
+
+    @PostMapping("/oauth2/google")
+    @ResponseBody
+    public PublicStatus googleLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) throws Exception {
+        return yummyLoginService.processOauthLogin(loginDto, res, req);
+    }
+
 
     /* 아래의 메소드는 향후에 계속 추가해줄 것 ...Oauth2...*/
 //    @PostMapping("/oauth2/naver")

@@ -4,6 +4,7 @@ import com.cho_co_song_i.yummy.yummy.dto.JoinMemberDto;
 import com.cho_co_song_i.yummy.yummy.dto.JwtValidationResult;
 import com.cho_co_song_i.yummy.yummy.dto.oauth.UserOAuthResponse;
 import com.cho_co_song_i.yummy.yummy.dto.userCache.UserBasicInfoDto;
+import com.cho_co_song_i.yummy.yummy.entity.UserOauthGoogleTbl;
 import com.cho_co_song_i.yummy.yummy.entity.UserOauthKakaoTbl;
 import com.cho_co_song_i.yummy.yummy.entity.UserTbl;
 import com.cho_co_song_i.yummy.yummy.entity.UserTempPwTbl;
@@ -99,14 +100,31 @@ public interface UserService {
      */
     Optional<UserOauthKakaoTbl> findUserOauthKakaoTblByTokenId(String tokenId);
     /**
+     * TokenId 에 대응되는 UserOauthGoogleTbl 데이터를 반환해주는 함수
+     * @param tokenId
+     * @return
+     */
+    Optional<UserOauthGoogleTbl> findUserOauthGoogleTblByTokenId(String tokenId);
+    /**
      * UserOauthKakaoTbl 데이터를 DB에 넣어주는 함수
      * @param userOauthKakaoTbl
      */
     void inputUserOauthKakaoTbl(UserOauthKakaoTbl userOauthKakaoTbl);
+    /**
+     * UserOauthGoogleTbl 데이터를 DB에 넣어주는 함수
+     * @param userOauthGoogleTbl
+     */
+    void inputUserOauthGoogleTbl(UserOauthGoogleTbl userOauthGoogleTbl);
     /**
      * 유저의 고유번호를 통해서 UserOauthKakaoTbl 데이터를 가져와주는 함수
      * @param userNo
      * @return
      */
     Optional<UserOauthKakaoTbl> findUserOauthKakaoTblByUserNo(Long userNo);
+    /**
+     * 유저의 고유번호를 통해서 UserOauthGoogleTbl 데이터를 가져와주는 함수
+     * @param userNo
+     * @return
+     */
+    Optional<UserOauthGoogleTbl> findUserOauthGoogleTblByUserNo(Long userNo);
 }

@@ -41,17 +41,6 @@ public interface SearchService {
      */
     List<SearchStoreDto> findStoresByPage(int page, int size) throws Exception;
     /**
-     * 통함검색 알고리즘
-     * @param searchText
-     * @param selectMajor
-     * @param selectSub
-     * @param zeroPossible
-     * @return
-     * @throws Exception
-     */
-    List<SearchStoreDto> findTotalSearchDatas( String searchText, int selectMajor, int selectSub, boolean zeroPossible) throws Exception;
-
-    /**
      * 통합검색 알고리즘 (new)
      * @param searchText
      * @param zeroPossible
@@ -60,22 +49,6 @@ public interface SearchService {
      * @return
      */
     CompletableFuture<TotalSearchDto> findTotalsearch(String searchText, boolean zeroPossible, int startIdx, int pageCnt);
-//    /**
-//     * 통합검색 - 상점
-//     * @param searchText
-//     * @param zeroPossible
-//     * @param startIdx
-//     * @param pageCnt
-//     * @return
-//     */
-//    CompletableFuture<List<StoreSearchDto>> findTotalStoreSearch(String searchText, boolean zeroPossible, int startIdx, int pageCnt);
-//    /**
-//     * 통합검색 - 지하철
-//     * @param searchText
-//     * @return
-//     */
-//    CompletableFuture<List<SubwayInfoDto>> findTotalSubwaySearch(String searchText);
-
     /**
      * 맵에 지하철을 표시하기 위한 검색 메소드
      * @param minLat

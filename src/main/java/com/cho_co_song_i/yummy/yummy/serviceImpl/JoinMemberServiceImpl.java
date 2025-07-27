@@ -688,16 +688,17 @@ public class JoinMemberServiceImpl implements JoinMamberService {
     @Transactional(rollbackFor = Exception.class)
     public PublicStatus linkMemberByOauth(StandardLoginDto standardLoginDto, HttpServletResponse res, HttpServletRequest req) throws Exception {
 
-        /* 로그인 정보 검증 */
+        /* 1. 로그인 정보 검증 */
         StandardLoginBasicResDto loginInfo = yummyLoginService.verifyAndGetLoginUserInfo(standardLoginDto);
 
+        /* 비밀번호 또는 아이디가 존재하지 않는 경우 -> Auth Error 발생 */
         if (loginInfo.getPublicStatus() != PublicStatus.SUCCESS) {
             return PublicStatus.AUTH_ERROR;
         }
 
         UserTbl user = loginInfo.getUserTbl();
 
-        /* 해당 유저 Oauth2 정보 검증 */
+        /* 2. 해당 유저 Oauth2 정보 검증 */
         JwtValidationResult jwtRes = jwtProvider.validateJwtAndCleanIfInvalid("yummy-oauth-token", res, req);
 
         if (jwtRes.getStatus() != JwtValidationStatus.SUCCESS) {
@@ -709,7 +710,7 @@ public class JoinMemberServiceImpl implements JoinMamberService {
         OauthChannelStatus loginChannel = OauthChannelStatus.valueOf(
                 jwtProvider.getClaimFromJwt(jwtRes, "oauthChannel", String.class));
 
-        /* Oauth 채널별 로그인 서비스 */
+        /* 3. Oauth 채널별 로그인 서비스 */
         LoginService loginService = loginServiceFactory.getService(loginChannel);
 
         /* Oauth 채널당 하나의 아이디만 연동이 가능함. -> 해당 부분을 확인해주는 로직 */
@@ -718,16 +719,16 @@ public class JoinMemberServiceImpl implements JoinMamberService {
             return PublicStatus.OAUTH_DUPLICATED;
         }
 
-        /* idToken 유저와 매칭시켜서 디비에 저장해준다. */
+        /* 4. idToken 유저와 매칭시켜서 디비에 저장 */
         loginService.inputUserOauth(user, idToken);
 
-        /* 그외 로그인 완료처리 진행... */
+        /* 5. 그외 로그인 완료처리 진행... */
         yummyLoginService.processCommonLogin(res, loginInfo, loginChannel);
 
-        /* user_tbl에 main_oauth_channel 로 입력 -> 향후에 수정해야 할 듯. */
+        /* 6. user_tbl에 main_oauth_channel 로 입력 -> 향후에 수정해야 할 듯. */
         userService.modifyUserTblMainOauthChannel(loginChannel, user);
 
-        /* Oauth 유저 연동을 위한 임시 jwt 쿠키 제거 */
+        /* 7. Oauth 유저 연동을 위한 임시 jwt 쿠키 제거 */
         CookieUtil.clearCookie(res, "yummy-oauth-token");
 
         return PublicStatus.SUCCESS;
@@ -772,14 +773,14 @@ public class JoinMemberServiceImpl implements JoinMamberService {
                 인증 완료 후 30분이 지나면 재 인증 시도 진행
             */
             String  verifiedKey = String.format("%s:%s", redisJoinEmailVerifiedYn,userEmail);
-            boolean isVerifieded = redisAdapter.set(verifiedKey,
-                                              "Y",
-                                                    Duration.ofMinutes(30));
-            if(isVerifieded)
+            boolean isVerifieded = redisAdapter.set(verifiedKey, "Y", Duration.ofMinutes(30));
+
+            if (isVerifieded)
                 return PublicStatus.SUCCESS;
             else
                 return PublicStatus.EMAIL_ERR;
-        } else{
+
+        } else {
             return PublicStatus.EMAIL_ERR;
         }
     }

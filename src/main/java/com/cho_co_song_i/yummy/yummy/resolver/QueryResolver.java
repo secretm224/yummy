@@ -141,14 +141,14 @@ public class QueryResolver {
         }
 
      */
-    @QueryMapping(name = "SearchStoreName")
-    public SearchStoreDto GetSearchStoreName(@Argument("SearchStoreName") String storeName) throws Exception {
-        if (!StringUtils.hasText(storeName)) {
-            log.warn("검색할 매장 이름이 비어 있습니다.");
-            return null;
-        }
-        return searchService.findStoreByName(storeIndex, storeName).orElse(null);
-    }
+//    @QueryMapping(name = "SearchStoreName")
+//    public SearchStoreDto GetSearchStoreName(@Argument("SearchStoreName") String storeName) throws Exception {
+//        if (!StringUtils.hasText(storeName)) {
+//            log.warn("검색할 매장 이름이 비어 있습니다.");
+//            return null;
+//        }
+//        return searchService.findStoreByName(storeIndex, storeName).orElse(null);
+//    }
 
     /*
         query {
@@ -170,17 +170,17 @@ public class QueryResolver {
             }
         }
      */
-    @QueryMapping(name = "SearchStoreList")
-    public List<SearchStoreDto> searchStoreList(
-            @Argument("page") int page,
-            @Argument("size") int size
-    ) throws Exception {
-        if (!StringUtils.hasText(storeIndex)) {
-            return Collections.emptyList();
-        }
-
-        return searchService.findStoresByPage(storeIndex, page, size);
-    }
+//    @QueryMapping(name = "SearchStoreList")
+//    public List<SearchStoreDto> searchStoreList(
+//            @Argument("page") int page,
+//            @Argument("size") int size
+//    ) throws Exception {
+//        if (!StringUtils.hasText(storeIndex)) {
+//            return Collections.emptyList();
+//        }
+//
+//        return searchService.findStoresByPage(storeIndex, page, size);
+//    }
 
 //    query{
 //        StoreMajorsTypeList{

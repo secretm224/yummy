@@ -27,6 +27,7 @@ public class UserServiceImpl implements UserService {
     private final UserEmailRepository userEmailRepository;
     private final UserPhoneNumberRepository userPhoneNumberRepository;
     private final UserOauthKakaoRepository userOauthKakaoRepository;
+    private final UserOauthGoogleRepository userOauthGoogleRepository;
 
     private final RedisAdapter redisAdapter;
 
@@ -110,20 +111,25 @@ public class UserServiceImpl implements UserService {
     public void deleteUserTempPwTbl(UserTempPwTbl userTempPwTbl) {
         userTempPwHistoryRepository.delete(userTempPwTbl);
     }
-
     public boolean isDuplicatedUserEmail(String email) {
         return userEmailRepository.existsByEmail(email) == 0;
     }
-
     public Optional<UserOauthKakaoTbl> findUserOauthKakaoTblByTokenId(String tokenId) {
         return userOauthKakaoRepository.findFirstByTokenIdAndOauthBannedYn(tokenId, 'N');
     }
-
+    public Optional<UserOauthGoogleTbl> findUserOauthGoogleTblByTokenId(String tokenId) {
+        return userOauthGoogleRepository.findFirstByTokenIdAndOauthBannedYn(tokenId, 'N');
+    }
     public void inputUserOauthKakaoTbl(UserOauthKakaoTbl userOauthKakaoTbl) {
         userOauthKakaoRepository.save(userOauthKakaoTbl);
     }
-
+    public void inputUserOauthGoogleTbl(UserOauthGoogleTbl userOauthGoogleTbl) {
+        userOauthGoogleRepository.save(userOauthGoogleTbl);
+    }
     public Optional<UserOauthKakaoTbl> findUserOauthKakaoTblByUserNo(Long userNo) {
         return userOauthKakaoRepository.findById(userNo);
+    }
+    public Optional<UserOauthGoogleTbl> findUserOauthGoogleTblByUserNo(Long userNo) {
+        return userOauthGoogleRepository.findById(userNo);
     }
 }
