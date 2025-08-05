@@ -14,6 +14,8 @@ import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.service.LoginService;
 import com.cho_co_song_i.yummy.yummy.service.UserService;
 import com.cho_co_song_i.yummy.yummy.utils.CookieUtil;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,13 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.RequestBody;
+import okhttp3.FormBody;
+
+import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 
@@ -51,6 +60,10 @@ public class GoogleLoginServiceImpl implements LoginService {
     private final RestTemplate restTemplate;
     private final UserService userService;
     private final RedisAdapter redisAdapter;
+
+    private final OkHttpClient client;
+
+    private final ObjectMapper mapper;
 
     /**
      * Google api 를 통해서 현재 접속하려는 유저의 정보를 요청해준다.
@@ -127,6 +140,55 @@ public class GoogleLoginServiceImpl implements LoginService {
                 .build();
     }
 
+    private String refreshAccessToken(String refreshToken) throws IOException {
+        RequestBody formBody = new FormBody.Builder()
+                .add("client_id", googleClientId)
+                .add("client_secret", googleClientSecret)
+                .add("refresh_token", refreshToken)
+                .add("grant_type", "refresh_token")
+                .build();
+
+        Request request = new Request.Builder()
+                .url(googleOauthApiUri)
+                .post(formBody)
+                .build();
+
+        Response response = client.newCall(request).execute();
+
+        if (!response.isSuccessful()) return null;
+
+        JsonNode json = mapper.readTree(response.body().string());
+        return json.get("access_token").asText();
+    }
+
+    private JsonNode getGoogleUserInfoWithRetry(String accessToken, String refreshToken) throws IOException {
+        Request request = new Request.Builder()
+                .url(googleOauthApiUriUser)
+                .addHeader("Authorization", "Bearer " + accessToken)
+                .build();
+        Response response = client.newCall(request).execute();
+
+        if (response.code() == 401) {
+            String newAccessToken = refreshAccessToken(refreshToken);
+
+            if (newAccessToken == null) throw new RuntimeException("[Error][GoogleLoginServiceImpl->getGoogleUserInfoWithRetry] Failed to refresh token");
+
+            request = new Request.Builder()
+                    .url(googleOauthApiUriUser)
+                    .addHeader("Authorization", "Bearer " + newAccessToken)
+                    .build();
+
+            response = client.newCall(request).execute();
+        }
+
+        if (!response.isSuccessful()) {
+            throw new IOException("[Error][GoogleLoginServiceImpl->getGoogleUserInfoWithRetry] Failed to get user info: " + response.code());
+        }
+
+        return mapper.readTree(response.body().string());
+    }
+
+
     public OauthChannelStatus getOauthChannel() {
         return OauthChannelStatus.google;
     }
@@ -139,8 +201,8 @@ public class GoogleLoginServiceImpl implements LoginService {
 
         return userService.findUserOauthGoogleTblByTokenId(userTokenId)
                 .map(googleInfo -> {
+                    //Long userNo = googleInfo.getUserNo();
                     Optional<UserTbl> userTblOpt = userService.findUserByUserNo(googleInfo.getUserNo());
-
                     return UserOAuthResponse.builder()
                             .loginChannel(OauthChannelStatus.google)
                             .googleOauthInfoDto(googleOauthInfoDto)
@@ -156,13 +218,30 @@ public class GoogleLoginServiceImpl implements LoginService {
                         .publicStatus(PublicStatus.JOIN_TARGET_MEMBER)
                         .build()
                 );
+
     }
-    public void saveOauthTokenToRedis(Long userNo, UserOAuthResponse response) {}
+    public void saveOauthTokenToRedis(Long userNo, UserOAuthResponse response) {
+        String accessKey = String.format("%s:%s", googleAccessToken, userNo);
+        String refreshKey = String.format("%s:%s", googleRefreshToken, userNo);
+
+        redisAdapter.set(accessKey, response.getGoogleOauthInfoDto().getGoogleToken().getAccessToken());
+        redisAdapter.set(refreshKey, response.getGoogleOauthInfoDto().getGoogleToken().getRefreshToken());
+    }
 
     public OauthUserSimpleInfoDto getUserInfosByOauth(Long userNo) {
+
         /* Redis 에서 유저의 Google accessToken, refreshToken 을 가져와준다. */
         String accessToken = (String)redisAdapter.get(String.format("%s:%s",  googleAccessToken, String.valueOf(userNo)));
         String refreshToken = (String)redisAdapter.get(String.format("%s:%s",  googleRefreshToken, String.valueOf(userNo)));
+
+        try {
+            JsonNode jsonNode = getGoogleUserInfoWithRetry(accessToken, refreshToken);
+        } catch(Exception e) {
+            log.error("[Error][GoogleLoginServiceImpl->getUserInfosByOauth] {}", e.getMessage());
+        }
+
+
+        int a = 10;
 
         return null;
     }

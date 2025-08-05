@@ -74,8 +74,8 @@ public class YummyLoginServiceImpl implements YummyLoginService {
     private Optional<UserBasicInfoDto> getUserProfileByChannel(Long userNo, OauthChannelStatus loginChannel) throws Exception {
         return findUserProfileFromRedis(userNo)
                 .map(userInfo -> {
+                    /* 1. 기본적인 방법으로 로그인 한 경우 */
                     if (loginChannel == OauthChannelStatus.standard) {
-
                         try {
 
                             String key = String.format("%s:%s", oauthMainChannelPrefix, userNo);
@@ -92,6 +92,7 @@ public class YummyLoginServiceImpl implements YummyLoginService {
                         }
 
                     } else {
+                        /* 2. Oauth2 를 통해서 로그인 한 경우 */
                         LoginService loginService = loginServiceFactory.getService(loginChannel);
                         OauthUserSimpleInfoDto oauthInfo = loginService.getUserInfosByOauth(userNo);
                         userInfo.setUserPic(oauthInfo.getProfileImg());
@@ -141,8 +142,8 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         if (userOAuthResponse.getLoginChannel() == OauthChannelStatus.google) {
             idToken = userOAuthResponse.getGoogleOauthInfoDto().getOauthUserSimpleInfoDto().getUserTokenId();
         }
-
         /* 여기에 이어서 다른 채널 로직도 짜주면 된다...*/
+        
         jwtProvider.generateTempOauthJwtCookie(res, idToken, userOAuthResponse.getLoginChannel());
     }
 
@@ -265,7 +266,6 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         /* 1. 액세스 토큰 확인 */
         JwtValidationResult jwtResult = jwtProvider.validateJwtAndCleanIfInvalid("yummy-access-token", res, req);
 
-        // ??? 이쪽부분 뭔가가 이상한데??...
         if (jwtResult.getStatus() == JwtValidationStatus.EMPTY) return ServiceResponse.empty(PublicStatus.SUCCESS);
 
         Long userNo = Long.parseLong(jwtProvider.getSubjectFromJwt(jwtResult));
