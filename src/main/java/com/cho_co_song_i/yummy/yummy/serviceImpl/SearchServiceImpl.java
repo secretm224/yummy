@@ -13,6 +13,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
+import com.cho_co_song_i.yummy.yummy.adapter.kafka.KafkaAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.search.*;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
 import com.cho_co_song_i.yummy.yummy.utils.AnalyzerUtil;
@@ -38,9 +39,12 @@ public class SearchServiceImpl implements SearchService {
     private String autoKeywordIndex;
     @Value("${spring.elasticsearch.index.subway}")
     private String subwayIndex;
+    @Value("${spring.topic.kafka.search-hist}")
+    private String searchKeywordHist;
 
     private final ElasticsearchClient searchClient;
     private final ElasticsearchAsyncClient asyncSearchClient;
+    private final KafkaAdapter kafkaAdapter;
 
     /* ERROR 테스트용2 */
     private void test2() {
@@ -318,8 +322,10 @@ public class SearchServiceImpl implements SearchService {
 
     public CompletableFuture<TotalSearchDto> findTotalsearch(String searchText, boolean zeroPossible, int startIdx, int pageCnt) {
 
-        /* 검색금지단어 -> 향후 추가 예정 */
+        /* 검색어 히스토리 등록 -> 검색어 랭크를 위함 */
+        kafkaAdapter.sendMessage(searchKeywordHist, searchText);
 
+        /* 검색금지단어 -> 향후 추가 예정 */
         /* 1. 상점 관련 검색결과*/
         CompletableFuture<List<StoreSearchDto>> storeFutures = findTotalStoreSearch(searchText, zeroPossible, startIdx, pageCnt);
 
@@ -349,7 +355,7 @@ public class SearchServiceImpl implements SearchService {
         filters.add(Query.of(f -> f
                 .term(t -> t
                         .field("zero_possible")
-                        .value(true)
+                        .value(zeroPossible)
                 )
         ));
 
