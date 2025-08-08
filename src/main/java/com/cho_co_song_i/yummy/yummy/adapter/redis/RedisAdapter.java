@@ -80,4 +80,19 @@ public class RedisAdapter {
             throw new RuntimeException("[Error][RedisAdapter->set] Failed to set Redis value", e);
         }
     }
+
+    /**
+     * ZINCRBY (Sorted Set) - 점수 증가
+     * @param key
+     * @param member member 멤버 값
+     * @param score score 증가시킬 점수 (보통 1)
+     * @return 증가 후 점수
+     */
+    public Double zincrby(String key, String member, double score) {
+        try {
+            return redisTemplate.opsForZSet().incrementScore(key, member, score);
+        } catch(Exception e) {
+            throw new RuntimeException("[Error][RedisAdapter->zincrby] " + e.getMessage(), e);
+        }
+    }
 }

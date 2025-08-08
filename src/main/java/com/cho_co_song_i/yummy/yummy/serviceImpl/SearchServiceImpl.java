@@ -14,6 +14,7 @@ import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.cho_co_song_i.yummy.yummy.adapter.kafka.KafkaAdapter;
+import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.search.*;
 import com.cho_co_song_i.yummy.yummy.service.SearchService;
 import com.cho_co_song_i.yummy.yummy.utils.AnalyzerUtil;
@@ -41,10 +42,13 @@ public class SearchServiceImpl implements SearchService {
     private String subwayIndex;
     @Value("${spring.topic.kafka.search-hist}")
     private String searchKeywordHist;
+    @Value("${spring.redis.search_rank_key}")
+    private String searchRankKey;
 
     private final ElasticsearchClient searchClient;
     private final ElasticsearchAsyncClient asyncSearchClient;
     private final KafkaAdapter kafkaAdapter;
+    private final RedisAdapter redisAdapter;
 
     /* ERROR 테스트용2 */
     private void test2() {
@@ -323,7 +327,9 @@ public class SearchServiceImpl implements SearchService {
     public CompletableFuture<TotalSearchDto> findTotalsearch(String searchText, boolean zeroPossible, int startIdx, int pageCnt) {
 
         /* 검색어 히스토리 등록 -> 검색어 랭크를 위함 */
-        kafkaAdapter.sendMessage(searchKeywordHist, searchText);
+        redisAdapter.zincrby(searchRankKey, searchText, 1);
+        //searchRankKey
+        //kafkaAdapter.sendMessage(searchKeywordHist, searchText);
 
         /* 검색금지단어 -> 향후 추가 예정 */
         /* 1. 상점 관련 검색결과*/
