@@ -127,7 +127,7 @@ public class UserServiceImpl implements UserService {
         userOauthGoogleRepository.save(userOauthGoogleTbl);
     }
     public Optional<UserOauthKakaoTbl> findUserOauthKakaoTblByUserNo(Long userNo) {
-        return userOauthKakaoRepository.findById(userNo);
+        return userOauthKakaoRepository.findFirstByUserNo(userNo);
     }
     public Optional<UserOauthGoogleTbl> findUserOauthGoogleTblByUserNo(Long userNo) {
         return userOauthGoogleRepository.findFirstByUserNo(userNo);

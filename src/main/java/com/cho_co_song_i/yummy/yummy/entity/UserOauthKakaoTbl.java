@@ -11,14 +11,14 @@ import java.util.Date;
 @Table(name = "user_oauth_kakao_tbl")
 @NoArgsConstructor
 @Getter
-public class UserOauthKakaoTbl implements Persistable<Long> {
+public class UserOauthKakaoTbl implements Persistable<String> {
 
     @Id
+    @Column(name = "token_id", length = 255,  nullable = false)
+    private String tokenId;
+
     @Column(name = "user_no", nullable = false)
     private Long userNo;
-
-    @Column(name = "token_id", length = 255,  nullable = false, unique = true)
-    private String tokenId;
 
     @Column(name = "oauth_banned_yn", length = 1, nullable = false, columnDefinition = "char(1) default 'N'")
     private Character oauthBannedYn;
@@ -41,10 +41,10 @@ public class UserOauthKakaoTbl implements Persistable<Long> {
     private boolean isNew = false;
 
     @Override
-    public Long getId() { return this.userNo; }
+    public String getId() { return this.tokenId; }
 
     @Override
-    public boolean isNew() { return isNew || this.userNo == null; }
+    public boolean isNew() { return isNew || this.tokenId == null; }
 
     /* ✅ 새로운 엔티티를 표시하는 메서드 */
     public void markAsNew() { this.isNew = true; }
