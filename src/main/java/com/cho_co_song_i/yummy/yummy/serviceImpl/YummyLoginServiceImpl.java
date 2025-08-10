@@ -182,6 +182,10 @@ public class YummyLoginServiceImpl implements YummyLoginService {
         CookieUtil.clearCookie(res, "yummy-access-token");
     }
 
+    public void removeTempJwt(HttpServletResponse res) {
+        CookieUtil.clearCookie(res, "yummy-oauth-token");
+    }
+
     public StandardLoginBasicResDto verifyAndGetLoginUserInfo(StandardLoginDto standardLoginDto) throws Exception {
 
         /* 1. 사용자 조회 */

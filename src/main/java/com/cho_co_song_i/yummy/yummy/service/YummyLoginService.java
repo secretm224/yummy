@@ -34,6 +34,11 @@ public interface YummyLoginService {
      */
     void standardLogoutUser(HttpServletResponse res);
     /**
+     * Oauth 를 통해서 회원가입/기존회원 연동을 위해 받은 임시 jwt 를 제거해주는 함수.
+     * @param res
+     */
+    void removeTempJwt(HttpServletResponse res);
+    /**
      * Oauth2 로그인 처리 - 각 채널별로 처리해줌.
      * @param loginDto
      * @param res

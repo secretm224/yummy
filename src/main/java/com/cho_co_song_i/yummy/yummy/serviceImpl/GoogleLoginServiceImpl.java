@@ -201,7 +201,6 @@ public class GoogleLoginServiceImpl implements LoginService {
 
         return userService.findUserOauthGoogleTblByTokenId(userTokenId)
                 .map(googleInfo -> {
-                    //Long userNo = googleInfo.getUserNo();
                     Optional<UserTbl> userTblOpt = userService.findUserByUserNo(googleInfo.getUserNo());
                     return UserOAuthResponse.builder()
                             .loginChannel(OauthChannelStatus.google)

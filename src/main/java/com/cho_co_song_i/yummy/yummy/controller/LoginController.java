@@ -45,7 +45,7 @@ public class LoginController {
     }
 
     /**
-     * 로그아웃을 해주는 함수
+     * 로그아웃을 해주는 api
      * @param res
      * @return
      */
@@ -54,6 +54,18 @@ public class LoginController {
         yummyLoginService.standardLogoutUser(res);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Oauth2 정보를 통해서 회원가입/연동을 위해 임시로 발급받은 jwt 를 파기시켜주는 api
+     * @param res
+     * @return
+     */
+    @PostMapping("/removeTempJwt")
+    public ResponseEntity<Boolean> removeTempJwt(HttpServletResponse res) {
+        yummyLoginService.removeTempJwt(res);
+        return ResponseEntity.noContent().build();
+    }
+
 
     /**
      * 로그인을 체크해주는 함수
@@ -82,6 +94,14 @@ public class LoginController {
         return yummyLoginService.processOauthLogin(loginDto, res, req);
     }
 
+    /**
+     * Google Oauth2 를 통해서 로그인 해주는 컨트롤러
+     * @param loginDto
+     * @param res
+     * @param req
+     * @return
+     * @throws Exception
+     */
     @PostMapping("/oauth2/google")
     @ResponseBody
     public PublicStatus googleLogin(@RequestBody OauthLoginDto loginDto, HttpServletResponse res , HttpServletRequest req) throws Exception {

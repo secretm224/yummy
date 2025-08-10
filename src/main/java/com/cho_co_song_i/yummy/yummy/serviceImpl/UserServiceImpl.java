@@ -130,6 +130,6 @@ public class UserServiceImpl implements UserService {
         return userOauthKakaoRepository.findById(userNo);
     }
     public Optional<UserOauthGoogleTbl> findUserOauthGoogleTblByUserNo(Long userNo) {
-        return userOauthGoogleRepository.findById(userNo);
+        return userOauthGoogleRepository.findFirstByUserNo(userNo);
     }
 }
