@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
 @RestController
 @RequiredArgsConstructor
@@ -18,7 +19,7 @@ public class StoreController {
     private final StoreService storeService;
 
     /**
-     * 상점등록 기능
+     * 상점등록 api
      * @param storeName
      * @param page
      * @param size
@@ -40,7 +41,7 @@ public class StoreController {
     }
 
     /**
-     * 키워드 기준 여러개의 삼점을 등록하는 기능
+     * 키워드 기준 여러개의 삼점을 등록하는 api
      * @param storeName
      * @param size
      * @param zeroYn
@@ -57,11 +58,37 @@ public class StoreController {
     }
 
     /**
-     * 기존의 Store 데이터를 Kakao API 기준 데이터로 모두 update 시켜주는 함수
+     * 기존의 Store 데이터를 Kakao API 기준 데이터로 모두 update 시켜주는 api
      * @return
      */
     @GetMapping("/updateExistsStore")
     public ResponseEntity<PublicStatus> modifyExistsStoreDatas() {
         return ResponseEntity.ok(storeService.modifyExistsStores());
     }
+
+    /**
+     * 특정 상점의 평균별점을 가져오는 api -> 상세에서 쓸 것
+     * @param storeSeq
+     * @return
+     * @throws Exception
+     */
+    @GetMapping("/getRatingScore")
+    public ResponseEntity<BigDecimal> getRateScoreStore(
+            @RequestParam(value = "storeSeq", required = true) Integer storeSeq
+    ) throws Exception {
+        return ResponseEntity.ok(storeService.findRateScore(storeSeq));
+    }
+
+    /**
+     * 특정 상점의 리뷰 개수를 가져와주는 api -> 상세에서 쓸 것
+     * @param storeSeq
+     * @return
+     */
+    @GetMapping("/getReviewCnt")
+    public ResponseEntity<Long> getReviewCnt(
+            @RequestParam(value = "storeSeq", required = true) Integer storeSeq
+    ) {
+        return ResponseEntity.ok(storeService.findReviewCnt(storeSeq));
+    }
+
 }

@@ -1,10 +1,12 @@
 package com.cho_co_song_i.yummy.yummy.serviceImpl;
 
+import com.cho_co_song_i.yummy.yummy.adapter.redis.RedisAdapter;
 import com.cho_co_song_i.yummy.yummy.dto.store.KakaoStoreDto;
 import com.cho_co_song_i.yummy.yummy.entity.*;
 import com.cho_co_song_i.yummy.yummy.enums.PublicStatus;
 import com.cho_co_song_i.yummy.yummy.repository.*;
 import com.cho_co_song_i.yummy.yummy.service.StoreService;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -31,10 +34,6 @@ import static com.cho_co_song_i.yummy.yummy.entity.QStoreLocationInfoTbl.storeLo
 @Slf4j
 @RequiredArgsConstructor
 public class StoreServiceImpl implements StoreService {
-
-//    @PersistenceContext
-//    private EntityManager entityManager;
-
     private final StoreRepository storeRepository;
     private final StoreLocationInfoRepository storeLocationInfoRepository;
     private final StoreLocationRoadInfoRepository storeLocationRoadInfoRepository;
@@ -42,13 +41,20 @@ public class StoreServiceImpl implements StoreService {
     private final CategoryRepository categoryRepository;
     private final StoreCategoryRepository storeCategoryRepository;
 
+    private final StoreReviewRepository storeReviewRepository;
+
     private final JPAQueryFactory queryFactory;
     private final RestTemplate resttemplate;
+
+    private final RedisAdapter redisAdapter;
 
     @Value("${kakao.search.api-url}")
     private String KAKAO_SEARCH_API_URL;
     @Value("${kakao.search.header}")
     private String KAKAO_SEARCH_HEADER;
+
+    @Value("${spring.redis.store_rate_score}")
+    private String STORE_RATE_SCORE_KEY;
 
     /* 오류 테스트 코드 */
     private void test() {
@@ -407,4 +413,23 @@ public class StoreServiceImpl implements StoreService {
 
         return PublicStatus.SUCCESS;
     }
+
+    public BigDecimal findRateScore(long storeSeq) throws Exception {
+
+        String redisKey = String.format("%s:%d",STORE_RATE_SCORE_KEY,storeSeq);
+
+        /* Redis 에서 특정 상점의 평균 별점 점수를 가져와준다. */
+        Double avgScore = Optional.ofNullable(
+                redisAdapter.getValue(redisKey, new TypeReference<Double>() {})
+        ).orElse(0.0);
+
+        return BigDecimal.valueOf(avgScore).setScale(1, RoundingMode.HALF_UP);
+    }
+
+    public long findReviewCnt(long storeSeq) {
+        return storeReviewRepository.countByStoreSeq(storeSeq);
+    }
+
+
+
 }

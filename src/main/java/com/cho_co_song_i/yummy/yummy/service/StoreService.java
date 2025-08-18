@@ -39,4 +39,20 @@ public interface StoreService {
      * @return
      */
     PublicStatus modifyExistsStores();
+
+    /**
+     * 특정 상점의 별점 평균 점수를 가져와주는 메소드
+     * @param storeSeq
+     * @return
+     * @throws Exception
+     */
+    BigDecimal findRateScore(long storeSeq) throws Exception;
+
+    /**
+     * 특정 상점의 리뷰 개수를 가져와주는 메소드
+     * @param storeSeq
+     * @return
+     */
+    long findReviewCnt(long storeSeq);
+
 }

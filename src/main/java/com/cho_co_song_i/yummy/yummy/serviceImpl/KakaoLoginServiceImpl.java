@@ -26,7 +26,7 @@ import java.util.Optional;
 
 import static com.cho_co_song_i.yummy.yummy.utils.JwtUtil.decodeJwtPayload;
 
-
+//String channel = redisAdapter.getValue(key, new TypeReference<String>() {});
 @Service
 @Slf4j
 @RequiredArgsConstructor

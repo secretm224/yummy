@@ -382,7 +382,7 @@ public class SearchServiceImpl implements SearchService {
                 .size(pageCnt)
                 .source(src -> src
                         .filter(f -> f
-                                .includes("address", "lat", "lng", "name", "road_address", "seq", "tel", "url", "zeroPossible")
+                                .includes("address", "lat", "lng", "name", "road_address", "seq", "tel", "url", "zero_possible", "avg_rating", "review_count")
                         )
                 )
                 .query(q -> q

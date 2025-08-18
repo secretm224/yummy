@@ -25,4 +25,8 @@ public class StoreSearchDto {
 
     @JsonProperty("zero_possible")
     private boolean zeroPossible;
+    @JsonProperty("avg_rating")
+    private double avgRating;
+    @JsonProperty("review_count")
+    private int reviewCount;
 }
