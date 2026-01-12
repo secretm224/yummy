@@ -18,6 +18,7 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public class SearchController {
     private final SearchService searchService;
+    
     @GetMapping("searchStore")
     public CompletableFuture<ResponseEntity<List<SearchStoreDto>>> findStoresBoundary(
             @RequestParam(value = "minLat", required = true) double minLat,

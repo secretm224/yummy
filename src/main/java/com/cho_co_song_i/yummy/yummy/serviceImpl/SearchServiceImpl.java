@@ -392,7 +392,7 @@ public class SearchServiceImpl implements SearchService {
                         )
                 )
         );
-
+        
         return extractSources(
                 asyncSearchClient.search(searchRequest, StoreSearchDto.class)
         );
